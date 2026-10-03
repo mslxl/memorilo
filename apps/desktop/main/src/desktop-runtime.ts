@@ -26,9 +26,10 @@ import {
 } from '@memorilo/editor-storage'
 import { createOperationSupervisor, createResourceScope } from '@memorilo/effect-lifecycle'
 import { ShelfReadingFileStore } from '@memorilo/shelf/node'
-import { decodeSyncServerCredentialBundle } from '@memorilo/sync'
+import { decodeSyncServerCredentialBundle, encodeLearningMutation, learningMutationRecord } from '@memorilo/sync'
+import { decodeMemoriloProto, encodeMemoriloProto } from '@memorilo/sync-protocol'
 
-import { createP2pApplication, JsonSyncJournal, syncServerDialTarget } from '@memorilo/sync/node'
+import { createP2pApplication, ProtobufSyncJournal, syncServerDialTarget } from '@memorilo/sync/node'
 import { Effect } from 'effect'
 import { app, BrowserWindow, dialog } from 'electron'
 import { installApplicationMenu } from './application-menu'
@@ -347,8 +348,8 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
         })
     // Development worktrees keep identity, pairing, signing keys, and journal in .dev.
     const p2pStatePath = join(dataDirectory, 'p2p', 'identity.json')
-    const syncJournalPath = join(dataDirectory, 'p2p', 'sync-journal.json')
-    let syncJournal = new JsonSyncJournal(syncJournalPath)
+    const syncJournalPath = join(dataDirectory, 'p2p', 'sync-journal.bin')
+    let syncJournal = new ProtobufSyncJournal(syncJournalPath)
     await syncJournal.load()
     const pendingJournalWrites = new Set<Promise<void>>()
     const pendingLocalNoteUpdates: Array<{ noteId: string, update: Uint8Array }> = []
@@ -382,7 +383,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
         .update('\0')
         .update(update)
         .digest('hex')
-      const payload = JSON.stringify({ noteId, update: Buffer.from(update).toString('base64url') })
+      const payload = encodeMemoriloProto('NoteUpdate', { noteId, loroUpdate: update })
       const write = syncJournal.appendLocal({
         id: `${deviceId}:note:${updateId}`,
         kind: 'note-update',
@@ -516,14 +517,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
               const noteUpdates = new Map<string, Uint8Array[]>()
               for (const change of changes) {
                 if (change.kind === 'learning-mutation') {
-                  const learningChange = JSON.parse(change.payload) as {
-                    createdAt: number
-                    entityId: string
-                    entityKind: 'assignment' | 'card' | 'optimizer' | 'review-event' | 'tombstone'
-                    mutationId: string
-                    operation: 'delete' | 'upsert'
-                    payload: unknown
-                  }
+                  const learningChange = learningMutationRecord(change.payload) as any
                   await editorStorage.learning.sync.applyRemote({
                     ...learningChange,
                     sourceDeviceId: change.deviceId,
@@ -534,10 +528,10 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
                 }
                 if (change.kind !== 'note-update')
                   continue
-                const payload = JSON.parse(change.payload) as { noteId: string, update: string }
-                const updates = noteUpdates.get(payload.noteId) ?? []
-                updates.push(Uint8Array.from(Buffer.from(payload.update, 'base64url')))
-                noteUpdates.set(payload.noteId, updates)
+                const payload = decodeMemoriloProto('NoteUpdate', change.payload) as any
+                const updates = noteUpdates.get(String(payload.noteId)) ?? []
+                updates.push(new Uint8Array(payload.loroUpdate))
+                noteUpdates.set(String(payload.noteId), updates)
               }
               for (const [noteId, updates] of noteUpdates)
                 await notes.saveNoteUpdates({ noteId, updates })
@@ -602,7 +596,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
               const write = syncJournal.appendLocal({
                 id: change.mutationId,
                 kind: 'learning-mutation',
-                payload: JSON.stringify(change),
+                payload: encodeLearningMutation(change as any),
               })
               await write
             }
@@ -636,7 +630,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       if (syncJournal.deviceId !== null && syncJournal.deviceId !== deviceId) {
         const backupPath = `${syncJournal.path}.backup-${Date.now()}-${randomBytes(6).toString('hex')}`
         await rename(syncJournal.path, backupPath)
-        syncJournal = new JsonSyncJournal(syncJournal.path)
+        syncJournal = new ProtobufSyncJournal(syncJournal.path)
         await syncJournal.load()
         await reportP2pJournalRecovery(backupPath)
       }

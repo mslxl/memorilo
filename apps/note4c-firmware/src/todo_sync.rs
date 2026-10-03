@@ -7,6 +7,7 @@ use std::fmt;
 use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
+use prost::Message;
 
 use crate::model::{Status, TodoId, TodoItem, TodoModel};
 
@@ -214,6 +215,59 @@ pub struct TodoSnapshotItem {
     pub topic_title: String,
 }
 
+pub fn decode_protobuf_snapshot(bytes: &[u8]) -> Result<TodoSnapshot, TodoSnapshotError> {
+    if bytes.len() > MAX_SNAPSHOT_BYTES {
+        return Err(TodoSnapshotError::TooLarge);
+    }
+    let value = crate::proto::memorilo::sync::v1::TodoSnapshot::decode(bytes)
+        .map_err(|_| TodoSnapshotError::InvalidJson)?;
+    let items = value.items.into_iter().map(|item| Ok(TodoSnapshotItem {
+        all_day: item.all_day,
+        due_date: item.due_date,
+        due_time: item.due_time,
+        id: item.id,
+        note_title: item.note_title,
+        parent_id: item.parent_id,
+        revision: item.revision,
+        status: match item.status {
+            1 => SnapshotStatus::Todo,
+            2 => SnapshotStatus::InProgress,
+            3 => SnapshotStatus::Done,
+            _ => return Err(TodoSnapshotError::InvalidJson),
+        },
+        text: item.text,
+        topic_title: item.topic_title,
+    })).collect::<Result<Vec<_>, TodoSnapshotError>>()?;
+    let snapshot = TodoSnapshot {
+        generated_at: value.generated_at,
+        time_zone_offset_minutes: value.time_zone_offset_minutes.map(|v| v as i16),
+        items,
+        revision: value.revision,
+    };
+    validate_snapshot(&snapshot).map_err(|_| TodoSnapshotError::InvalidJson)?;
+    Ok(snapshot)
+}
+
+pub fn encode_protobuf_snapshot(snapshot: &TodoSnapshot) -> Vec<u8> {
+    crate::proto::memorilo::sync::v1::TodoSnapshot {
+        generated_at: snapshot.generated_at.clone(),
+        time_zone_offset_minutes: snapshot.time_zone_offset_minutes.map(i32::from),
+        items: snapshot.items.iter().map(|item| crate::proto::memorilo::sync::v1::TodoItem {
+            all_day: item.all_day,
+            due_date: item.due_date.clone(),
+            due_time: item.due_time.clone(),
+            id: item.id.clone(),
+            note_title: item.note_title.clone(),
+            parent_id: item.parent_id.clone(),
+            revision: item.revision.clone(),
+            status: match item.status { SnapshotStatus::Todo => 1, SnapshotStatus::InProgress => 2, SnapshotStatus::Done => 3 },
+            text: item.text.clone(),
+            topic_title: item.topic_title.clone(),
+        }).collect(),
+        revision: snapshot.revision.clone(),
+    }.encode_to_vec()
+}
+
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum SnapshotStatus {
@@ -290,21 +344,21 @@ pub enum TodoSyncEvent {
 }
 
 impl TodoSyncState {
-    pub fn admit_json(
+    pub fn admit_protobuf(
         &mut self,
         body: &[u8],
         source: SnapshotSource,
         now_unix_seconds: Option<i64>,
     ) -> Admission {
-        if body.len() > MAX_SNAPSHOT_BYTES {
-            self.last_error = Some("snapshot-too-large".into());
-            return Admission::Rejected(TodoSnapshotError::TooLarge);
-        }
-        let snapshot: TodoSnapshot = match serde_json::from_slice(body) {
+        let snapshot = match decode_protobuf_snapshot(body) {
             Ok(snapshot) => snapshot,
             Err(_) => {
-                self.last_error = Some("snapshot-invalid-json".into());
-                return Admission::Rejected(TodoSnapshotError::InvalidJson);
+                self.last_error = Some("snapshot-invalid-protobuf".into());
+                return Admission::Rejected(if body.len() > MAX_SNAPSHOT_BYTES {
+                    TodoSnapshotError::TooLarge
+                } else {
+                    TodoSnapshotError::InvalidJson
+                });
             }
         };
         self.admit(snapshot, source, now_unix_seconds)

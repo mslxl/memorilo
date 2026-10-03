@@ -7,6 +7,7 @@ use crate::provisioning_protocol::{
     parse_apply_request, parse_gallery_request, parse_todo_request,
 };
 use serde::Serialize;
+use prost::Message;
 
 pub const SERIAL_PROVISIONING_PREFIX: &str = "MEMORILO_PROVISIONING_V1 ";
 // A base64 encoded gallery frame is roughly 40 KiB; keep line framing bounded.
@@ -30,7 +31,32 @@ impl SerialProvisioningDecoder {
     pub fn push(&mut self, bytes: &[u8]) -> Vec<Result<SerialProvisioningCommand, String>> {
         self.buffered.extend_from_slice(bytes);
         let mut commands = Vec::new();
-        while let Some(newline) = self.buffered.iter().position(|byte| *byte == b'\n') {
+        loop {
+            let prefix = SERIAL_PROVISIONING_PREFIX.as_bytes();
+            if self.buffered.starts_with(prefix) && self.buffered.len() >= prefix.len() + 4 {
+                let header = &self.buffered[prefix.len()..prefix.len() + 4];
+                let length = u32::from_le_bytes(header.try_into().unwrap()) as usize;
+                let binary_header = header[0] != b'{'
+                    || header[1] == 0
+                    || header[2] == 0
+                    || header[3] == 0;
+                if binary_header {
+                    if length > MAX_SERIAL_MESSAGE_BYTES {
+                        self.buffered.clear();
+                        commands.push(Err("serial provisioning frame exceeds limit".into()));
+                        continue;
+                    }
+                    let total = prefix.len() + 4 + length;
+                    if self.buffered.len() < total {
+                        break;
+                    }
+                    let payload = self.buffered[prefix.len() + 4..total].to_vec();
+                    self.buffered.drain(..total);
+                    commands.push(parse_todo_request(&payload).map(SerialProvisioningCommand::Todo).map_err(|error| format!("invalid TODO request: {error:?}")));
+                    continue;
+                }
+            }
+            let Some(newline) = self.buffered.iter().position(|byte| *byte == b'\n') else { break; };
             let mut line: Vec<_> = self.buffered.drain(..=newline).collect();
             line.pop();
             if line.last() == Some(&b'\r') {
@@ -237,25 +263,16 @@ pub fn encode_todo_response(
     request_id: &str,
     error: Option<ProtocolErrorCode>,
 ) -> Result<Vec<u8>, serde_json::Error> {
-    #[derive(Serialize)]
-    #[serde(rename_all = "camelCase")]
-    struct TodoResponse<'a> {
-        operation: &'static str,
-        request_id: &'a str,
-        status: &'static str,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        error: Option<ProtocolErrorCode>,
-    }
-    encode_response(&TodoResponse {
-        operation: "todo.sync",
-        request_id,
-        status: if error.is_some() {
-            "rejected"
-        } else {
-            "accepted"
-        },
-        error,
-    })
+    let payload = crate::proto::memorilo::sync::v1::TodoSyncResponse {
+        operation: "todo.sync".into(),
+        request_id: request_id.into(),
+        status: if error.is_some() { "rejected" } else { "accepted" }.into(),
+        error: error.map(|value| format!("{value:?}")),
+    }.encode_to_vec();
+    let mut result = SERIAL_PROVISIONING_PREFIX.as_bytes().to_vec();
+    result.extend_from_slice(&(payload.len() as u32).to_le_bytes());
+    result.extend_from_slice(&payload);
+    Ok(result)
 }
 
 pub fn decode_gallery_bytes(value: &str) -> Result<Vec<u8>, &'static str> {

@@ -1,5 +1,5 @@
-import { Buffer } from 'node:buffer'
 import { EventEmitter } from 'node:events'
+import { decodeMemoriloProto } from '@memorilo/sync-protocol'
 import { describe, expect, it, vi } from 'vitest'
 import { createTodoNotificationPublisher, todoNotificationPayload, todoNotificationTopic } from './todo-notification-publisher'
 
@@ -13,8 +13,8 @@ describe('tODO notification topics', () => {
 
   it('keeps the notification bounded and free of task contents', () => {
     const payload = todoNotificationPayload({ changedAt: Date.parse('2026-09-05T00:00:00Z'), revision: 'r'.repeat(128) })
-    expect(Buffer.byteLength(payload, 'utf8')).toBeLessThanOrEqual(512)
-    expect(JSON.parse(payload)).toEqual({
+    expect(payload.byteLength).toBeLessThanOrEqual(512)
+    expect(decodeMemoriloProto('TodoRefreshHint', payload)).toEqual({
       generatedAt: '2026-09-05T00:00:00.000Z',
       revision: 'r'.repeat(128),
       view: 'all',
@@ -69,9 +69,9 @@ class FakeMqttClient extends EventEmitter {
   connected = false
   reconnecting = false
   readonly end = vi.fn((_force: boolean, _options: object, callback: (error?: Error) => void) => callback())
-  readonly published: Array<{ body: string, topic: string }> = []
+  readonly published: Array<{ body: Uint8Array, topic: string }> = []
 
-  publish(topic: string, body: string, _options: object, callback: (error?: Error) => void): void {
+  publish(topic: string, body: Uint8Array, _options: object, callback: (error?: Error) => void): void {
     this.published.push({ body, topic })
     callback()
   }

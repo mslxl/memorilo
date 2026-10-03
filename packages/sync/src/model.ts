@@ -1,3 +1,5 @@
+import { decodePairing, decodeSyncMessage, encodePairing, encodeSyncMessage } from './protobuf-codec'
+
 export type DeviceId = string
 
 export type VersionVector = Readonly<Record<DeviceId, number>>
@@ -208,7 +210,7 @@ export interface SyncChange {
   readonly deviceId: DeviceId
   readonly sequence: number
   readonly kind: 'note-update' | 'learning-mutation'
-  readonly payload: string
+  readonly payload: Uint8Array
 }
 
 export function normalizeVersionVector(vector: VersionVector): VersionVector {
@@ -345,7 +347,7 @@ function syncChangeValue(value: unknown): SyncChange {
     deviceId: stringValue(record.deviceId, 'Sync change device id', 256),
     id: stringValue(record.id, 'Sync change id', 256),
     kind: enumValue(record.kind, 'Sync change kind', ['note-update', 'learning-mutation']),
-    payload: stringValue(record.payload, 'Sync change payload', maxSyncDecodedPayloadBytes),
+    payload: bytesValue(record.payload, 'Sync change payload', maxSyncDecodedPayloadBytes),
     sequence: integerValue(record.sequence, 'Sync change sequence', 1),
   }
 }
@@ -453,7 +455,7 @@ function syncMessageValue(value: unknown): SyncMessage {
     const namespace = enumValue(record.namespace, 'Sync namespace', ['notes', 'learning'])
     if (changes.some(change => namespace === 'notes' ? change.kind !== 'note-update' : change.kind !== 'learning-mutation'))
       throw new TypeError('Sync change kind does not match its namespace')
-    const payloadBytes = changes.reduce((total, change) => total + textEncoder.encode(change.payload).byteLength, 0)
+    const payloadBytes = changes.reduce((total, change) => total + change.payload.byteLength, 0)
     if (payloadBytes > maxSyncDecodedPayloadBytes)
       throw new RangeError(`Decoded sync payload cannot exceed ${maxSyncDecodedPayloadBytes} bytes`)
     return {
@@ -595,7 +597,9 @@ function messagePayload(data: Uint8Array, name: string): Uint8Array {
 }
 
 export function encodeMessage(message: SyncMessage): Uint8Array {
-  const payload = textEncoder.encode(JSON.stringify(syncMessageValue(message)))
+  // Protobuf is the wire format; the outer four-byte length prefix remains
+  // the stream framing used by libp2p and the sync server.
+  const payload = encodeSyncMessage(syncMessageValue(message))
   if (payload.byteLength > maxSyncFrameBytes)
     throw new RangeError('Memorilo sync message exceeds the maximum frame size')
   const framed = new Uint8Array(4 + payload.byteLength)
@@ -605,19 +609,23 @@ export function encodeMessage(message: SyncMessage): Uint8Array {
 }
 
 export function decodeMessage(data: Uint8Array): SyncMessage {
-  let message: unknown
   try {
     const payload = messagePayload(data, 'Memorilo sync message')
-    message = JSON.parse(new TextDecoder().decode(payload).trim())
+    return syncMessageValue(decodeSyncMessage(payload))
   }
   catch (error) {
     throw new TypeError('Invalid Memorilo sync message', { cause: error })
   }
-  return syncMessageValue(message)
+}
+
+function bytesValue(value: unknown, name: string, maximum: number): Uint8Array {
+  if (!(value instanceof Uint8Array) || value.byteLength === 0 || value.byteLength > maximum)
+    throw new TypeError(`${name} must be a non-empty byte array no larger than ${maximum} bytes`)
+  return new Uint8Array(value)
 }
 
 export function encodePairingMessage(message: PairingMessage): Uint8Array {
-  const payload = textEncoder.encode(JSON.stringify(pairingMessageValue(message)))
+  const payload = encodePairing(pairingMessageValue(message))
   if (payload.byteLength > maxSyncFrameBytes)
     throw new RangeError('Memorilo pairing message exceeds the maximum frame size')
   const framed = new Uint8Array(4 + payload.byteLength)
@@ -627,13 +635,11 @@ export function encodePairingMessage(message: PairingMessage): Uint8Array {
 }
 
 export function decodePairingMessage(data: Uint8Array): PairingMessage {
-  let message: unknown
   try {
     const payload = messagePayload(data, 'Memorilo pairing message')
-    message = JSON.parse(new TextDecoder().decode(payload).trim())
+    return pairingMessageValue(decodePairing(payload))
   }
   catch (error) {
     throw new TypeError('Invalid Memorilo pairing message', { cause: error })
   }
-  return pairingMessageValue(message)
 }

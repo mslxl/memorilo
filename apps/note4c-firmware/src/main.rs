@@ -358,14 +358,14 @@ mod firmware {
                                 );
                                 continue;
                             }
-                            if let Ok(snapshot) = serde_json::from_slice::<TodoSnapshot>(&body) {
+                            if let Ok(snapshot) = crate::todo_sync::decode_protobuf_snapshot(&body) {
                                 synchronize_snapshot_time(
                                     &snapshot,
                                     &application.snapshot().config.timezone,
                                     &mut status_service,
                                 );
                             }
-                            match todo_sync.admit_json(&body, source, unix_timestamp()) {
+                            match todo_sync.admit_protobuf(&body, source, unix_timestamp()) {
                                 Admission::Accepted { model, .. } => {
                                     todo_sync.etag = etag;
                                     let transition = application
@@ -1017,14 +1017,20 @@ mod firmware {
                     refresh_tx,
                 )?;
                 let payload = encode_todo_response(&request_id, error)?;
-                let json = payload
+                let body = payload
                     .strip_prefix(
                         memorilo_device_firmware::provisioning_serial::SERIAL_PROVISIONING_PREFIX
                             .as_bytes(),
                     )
-                    .and_then(|value| value.strip_suffix(b"\n"))
+                    .and_then(|value| {
+                        if value.len() < 4 {
+                            return None;
+                        }
+                        let length = u32::from_le_bytes(value[..4].try_into().ok()?) as usize;
+                        (value.len() == 4 + length).then_some(&value[4..])
+                    })
                     .unwrap_or(payload.as_slice());
-                let frames = encode_frames(0x544F_444F, json, 180)
+                let frames = encode_frames(0x544F_444F, body, 180)
                     .map_err(|error| anyhow::anyhow!("TODO response framing failed: {error:?}"))?;
                 if let Some(transport) = transport.as_ref() {
                     for frame in frames {

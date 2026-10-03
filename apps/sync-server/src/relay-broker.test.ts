@@ -1,4 +1,5 @@
 import type { PairedDevice, SyncAssetManifest, SyncChange } from '@memorilo/sync'
+import { encodeMemoriloProto } from '@memorilo/sync-protocol'
 import { Duration, Effect, Exit } from 'effect'
 import { describe, expect, it } from 'vitest'
 import { createRelayBroker, createRelayBytePipe } from '../infrastructure/p2p/server-peer'
@@ -8,7 +9,7 @@ function change(deviceId: string, sequence: number): SyncChange {
     deviceId,
     id: `${deviceId}:change:${sequence}`,
     kind: 'note-update',
-    payload: `{"sequence":${sequence}}`,
+    payload: encodeMemoriloProto('NoteUpdate', { noteId: `${deviceId}:note`, loroUpdate: Uint8Array.from([sequence]) }),
     sequence,
   }
 }

@@ -50,6 +50,7 @@ export {
   validateAssetManifest,
 } from './model'
 export type { LocalDeviceIdentity, PairingStore } from './pairing-contract'
+export { decodeLearningMutation, encodeLearningMutation, learningMutationRecord } from './protobuf-codec'
 export type {
   SyncAccountState,
   SyncAssetManifestRecord,

@@ -1,4 +1,7 @@
+import { decodeMemoriloProto, encodeMemoriloProto } from '@memorilo/sync-protocol'
+
 export const PROTOCOL_VERSION = 1
+
 export const CONFIG_SCHEMA_VERSION = 2
 export const MAX_JSON_BYTES = 64 * 1024
 export const MAX_CHUNKS = 256
@@ -99,22 +102,114 @@ export interface TodoSyncResponse {
   error?: ProtocolErrorCode
 }
 
-export function parseTodoSyncRequest(json: Uint8Array): TodoSyncRequest {
-  const value = parseJsonRecord(json)
+const todoStatusToProto = { 'todo': 1, 'in-progress': 2, 'done': 3 } as const
+const todoStatusFromProto = { 1: 'todo', 2: 'in-progress', 3: 'done' } as const
+
+function todoSnapshotToProto(snapshot: TodoSnapshot): Record<string, unknown> {
+  return {
+    generatedAt: snapshot.generatedAt,
+    items: snapshot.items.map(item => ({
+      allDay: item.allDay,
+      dueDate: item.dueDate ?? undefined,
+      dueTime: item.dueTime ?? undefined,
+      id: item.id,
+      noteTitle: item.noteTitle,
+      parentId: item.parentId ?? undefined,
+      revision: item.revision,
+      status: todoStatusToProto[item.status],
+      text: item.text,
+      topicTitle: item.topicTitle,
+    })),
+    revision: snapshot.revision,
+    timeZoneOffsetMinutes: snapshot.timeZoneOffsetMinutes,
+  }
+}
+
+function todoSnapshotFromProto(value: Record<string, any>): TodoSnapshot {
+  return {
+    generatedAt: String(value.generatedAt),
+    ...(value.timeZoneOffsetMinutes === undefined ? {} : { timeZoneOffsetMinutes: Number(value.timeZoneOffsetMinutes) }),
+    items: (value.items ?? []).map((item: Record<string, any>) => ({
+      allDay: Boolean(item.allDay),
+      dueDate: item.dueDate === undefined ? null : String(item.dueDate),
+      dueTime: item.dueTime === undefined ? null : String(item.dueTime),
+      id: String(item.id),
+      noteTitle: String(item.noteTitle),
+      parentId: item.parentId === undefined ? null : String(item.parentId),
+      revision: String(item.revision),
+      status: todoStatusFromProto[item.status as keyof typeof todoStatusFromProto],
+      text: String(item.text),
+      topicTitle: String(item.topicTitle),
+    })),
+    revision: String(value.revision),
+  }
+}
+
+export function encodeTodoSnapshot(snapshot: TodoSnapshot): Uint8Array {
+  return encodeMemoriloProto('TodoSnapshot', todoSnapshotToProto(snapshot))
+}
+
+export function decodeTodoSnapshot(bytes: Uint8Array): TodoSnapshot {
+  let value: Record<string, any>
+  try {
+    value = decodeMemoriloProto('TodoSnapshot', bytes)
+  }
+  catch {
+    throw new ProvisioningProtocolError('invalid-request')
+  }
+  const snapshot = todoSnapshotFromProto(value)
+  if (!isTodoSnapshot(snapshot))
+    throw new ProvisioningProtocolError('invalid-request')
+  return snapshot
+}
+
+export function encodeTodoSyncRequest(request: TodoSyncRequest): Uint8Array {
+  return encodeMemoriloProto('TodoSyncRequest', {
+    operation: request.operation,
+    protocolVersion: request.protocolVersion,
+    requestId: request.requestId,
+    snapshot: todoSnapshotToProto(request.snapshot),
+  })
+}
+
+export function parseTodoSyncRequest(bytes: Uint8Array): TodoSyncRequest {
+  let value: Record<string, any>
+  try {
+    value = decodeMemoriloProto('TodoSyncRequest', bytes)
+  }
+  catch {
+    throw new ProvisioningProtocolError('invalid-request')
+  }
+  const snapshot = value.snapshot === undefined ? undefined : todoSnapshotFromProto(value.snapshot)
   if (value.operation !== 'todo.sync'
     || value.protocolVersion !== PROTOCOL_VERSION
     || typeof value.requestId !== 'string'
     || value.requestId.length === 0
     || value.requestId.length > 64
     || !isAscii(value.requestId)
-    || !isTodoSnapshot(value.snapshot)) {
+    || !isTodoSnapshot(snapshot)) {
     throw new ProvisioningProtocolError('invalid-request')
   }
-  return value as unknown as TodoSyncRequest
+  return { operation: 'todo.sync', protocolVersion: PROTOCOL_VERSION, requestId: String(value.requestId), snapshot }
 }
 
-export function parseTodoSyncResponse(json: Uint8Array): TodoSyncResponse {
-  const value = parseJsonRecord(json)
+export function encodeTodoSyncResponse(response: TodoSyncResponse): Uint8Array {
+  return encodeMemoriloProto('TodoSyncResponse', {
+    error: response.error,
+    operation: response.operation,
+    requestId: response.requestId,
+    status: response.status,
+  })
+}
+
+export function parseTodoSyncResponse(bytes: Uint8Array): TodoSyncResponse {
+  let value: Record<string, any>
+  try {
+    value = decodeMemoriloProto('TodoSyncResponse', bytes)
+  }
+  catch {
+    throw new ProvisioningProtocolError('invalid-request')
+  }
   if (value.operation !== 'todo.sync'
     || typeof value.requestId !== 'string'
     || value.requestId.length === 0
@@ -122,8 +217,12 @@ export function parseTodoSyncResponse(json: Uint8Array): TodoSyncResponse {
     || (value.error !== undefined && value.error !== null && !isProtocolErrorCode(value.error))) {
     throw new ProvisioningProtocolError('invalid-request')
   }
-  const { error, ...response } = value
-  return (error === null ? response : value) as unknown as TodoSyncResponse
+  return {
+    ...(value.error === undefined ? {} : { error: value.error as ProtocolErrorCode }),
+    operation: 'todo.sync',
+    requestId: String(value.requestId),
+    status: value.status as 'accepted' | 'rejected',
+  }
 }
 
 /** Transport-neutral gallery contract shared by LAN, Bluetooth and USB serial. */

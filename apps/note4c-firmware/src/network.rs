@@ -1225,7 +1225,7 @@ pub mod runtime {
         let authorization = format!("Bearer {token}");
         let mut headers = vec![
             ("Authorization", authorization.as_str()),
-            ("Accept", "application/json"),
+            ("Accept", "application/x-protobuf"),
         ];
         if let Some(etag) = etag {
             headers.push(("If-None-Match", etag));
@@ -1691,13 +1691,7 @@ pub mod runtime {
                             respond_invalid_body(request, event_tx, audit)?;
                             return Ok(());
                         }
-                        let snapshot =
-                            serde_json::from_slice::<crate::todo_sync::TodoSnapshot>(&body);
-                        if snapshot.as_ref().is_err()
-                            || snapshot.as_ref().is_ok_and(|value| {
-                                crate::todo_sync::validate_snapshot(value).is_err()
-                            })
-                        {
+                        if crate::todo_sync::decode_protobuf_snapshot(&body).is_err() {
                             respond_invalid_body(request, event_tx, audit)?;
                             return Ok(());
                         }

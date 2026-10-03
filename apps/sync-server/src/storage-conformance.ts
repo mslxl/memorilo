@@ -2,6 +2,7 @@ import type { SyncAuditStore, SyncAuthStore, SyncObjectStore, SyncRepository } f
 import { createHash, randomUUID } from 'node:crypto'
 import { toError } from '@memorilo/effect-lifecycle'
 import { objectKeyFor } from '@memorilo/sync'
+import { encodeMemoriloProto } from '@memorilo/sync-protocol'
 import { Effect } from 'effect'
 import { expect } from 'vitest'
 
@@ -60,7 +61,7 @@ export async function verifyStorageConformance(options: StorageConformanceOption
     deviceId,
     id: `change-${identity}`,
     kind: 'note-update' as const,
-    payload: '{"title":"portable"}',
+    payload: encodeMemoriloProto('NoteUpdate', { noteId: 'portable', loroUpdate: Uint8Array.from([1]) }),
     sequence: 1,
   }
   const bytes = new TextEncoder().encode(`object-${identity}`)

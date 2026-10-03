@@ -11,6 +11,7 @@ import { createHash, randomUUID, timingSafeEqual } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import { extname, join } from 'node:path'
 import { encodeSyncServerCredentialBundle } from '@memorilo/sync'
+import { encodeMemoriloProto } from '@memorilo/sync-protocol'
 import { decodePairingPayload, verifyPairingResponse } from '@memorilo/sync/node'
 import { Effect } from 'effect'
 import { Hono } from 'hono'
@@ -538,7 +539,23 @@ export function createSyncServerApp(config: SyncServerConfig, services: SyncServ
     context.header('cache-control', 'private, max-age=0')
     if (context.req.header('if-none-match') === tag)
       return new Response(null, { status: 304, headers: { etag: tag } })
-    return context.json(result.value)
+    const body = encodeMemoriloProto('TodoSnapshot', {
+      generatedAt: result.value.generatedAt,
+      items: result.value.items.map(item => ({
+        allDay: item.allDay,
+        dueDate: item.dueDate ?? undefined,
+        dueTime: item.dueTime ?? undefined,
+        id: item.id,
+        noteTitle: item.noteTitle,
+        parentId: item.parentId ?? undefined,
+        revision: item.revision,
+        status: item.status === 'todo' ? 1 : item.status === 'doing' ? 2 : 3,
+        text: item.text,
+        topicTitle: item.topicTitle,
+      })),
+      revision: result.value.revision,
+    })
+    return new Response(new Uint8Array(body).buffer, { status: 200, headers: { 'cache-control': 'private, max-age=0', 'content-type': 'application/x-protobuf', 'etag': tag } })
   })
   app.post('/api/devices/pairing', async (context) => {
     const account = await requireAccountWithCsrf(context)
