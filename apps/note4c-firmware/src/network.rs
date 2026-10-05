@@ -2,6 +2,8 @@ use std::time::Duration;
 
 #[cfg(target_os = "espidf")]
 use serde::Deserialize;
+#[cfg(target_os = "espidf")]
+use prost::Message;
 use serde::Serialize;
 
 use crate::framebuffer::FRAME_BYTES;
@@ -1707,12 +1709,16 @@ pub mod runtime {
                 let _ = event_tx.try_send(NetworkRuntimeEvent::Audit(management_queue_audit(
                     audit, queued,
                 )));
-                let mut response = request.into_status_response(if queued { 202 } else { 503 })?;
-                response.write_all(if queued {
-                    br#"{"accepted":true}"#
-                } else {
-                    br#"{"accepted":false}"#
-                })?;
+                let body = crate::proto::memorilo::sync::v1::TodoSyncResponse {
+                    operation: "todo.sync".into(),
+                    request_id: String::new(),
+                    status: if queued { "accepted" } else { "rejected" }.into(),
+                    error: (!queued).then(|| "capacity-exceeded".into()),
+                }
+                .encode_to_vec();
+                request
+                    .into_status_response(if queued { 202 } else { 503 })?
+                    .write_all(&body)?;
             }
             Ok((_, audit)) => {
                 let _ = event_tx.try_send(NetworkRuntimeEvent::Audit(ManagementAudit {

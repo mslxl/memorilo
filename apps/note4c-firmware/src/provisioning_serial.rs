@@ -267,7 +267,7 @@ pub fn encode_todo_response(
         operation: "todo.sync".into(),
         request_id: request_id.into(),
         status: if error.is_some() { "rejected" } else { "accepted" }.into(),
-        error: error.map(|value| format!("{value:?}")),
+        error: error.map(|value| value.as_str().into()),
     }.encode_to_vec();
     let mut result = SERIAL_PROVISIONING_PREFIX.as_bytes().to_vec();
     result.extend_from_slice(&(payload.len() as u32).to_le_bytes());
@@ -436,6 +436,7 @@ pub use transport::SerialProvisioningTransport;
 #[cfg(test)]
 mod tests {
     use super::*;
+    use prost::Message;
 
     #[test]
     fn ignores_logs_and_decodes_fragmented_commands() {
@@ -462,5 +463,15 @@ mod tests {
         };
         assert_eq!(request.request_id, "apply-1");
         assert_eq!(request.base_revision, 4);
+    }
+
+    #[test]
+    fn todo_rejection_uses_wire_error_code() {
+        let encoded = encode_todo_response("todo-1", Some(ProtocolErrorCode::InvalidRequest)).unwrap();
+        let prefix_len = SERIAL_PROVISIONING_PREFIX.len();
+        let length = u32::from_le_bytes(encoded[prefix_len..prefix_len + 4].try_into().unwrap()) as usize;
+        let response = crate::proto::memorilo::sync::v1::TodoSyncResponse::decode(&encoded[prefix_len + 4..]).unwrap();
+        assert_eq!(length, encoded.len() - prefix_len - 4);
+        assert_eq!(response.error.as_deref(), Some("invalid-request"));
     }
 }
