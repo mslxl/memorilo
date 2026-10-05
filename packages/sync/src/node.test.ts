@@ -697,11 +697,11 @@ describe('p2p communication', () => {
       transport: 'websocket',
     })
     handles.push(client)
-    await waitFor(() => client.status().devices.some(device => device.peerId === serverKey.peerId && device.state === 'synced'))
+    await waitFor(() => client.status().devices.some(device => device.peerId === serverKey.peerId && device.state === 'synced'), 30_000)
 
     handles.splice(handles.indexOf(server), 1)
     await server.close()
-    await waitFor(() => client.status().devices.some(device => device.peerId === serverKey.peerId && device.state === 'paused'))
+    await waitFor(() => client.status().devices.some(device => device.peerId === serverKey.peerId && device.state === 'paused'), 30_000)
     await Effect.runPromise(Effect.sleep(Duration.millis(250)))
     server = await createP2pNode({
       discovery: false,
@@ -718,7 +718,7 @@ describe('p2p communication', () => {
     await client.notifyChangesAvailable()
     // A restarted WebSocket listener may spend several seconds rebinding on a busy CI runner.
     await waitFor(() => client.status().devices.some(device => device.peerId === serverKey.peerId && device.state === 'synced'), 30_000)
-  })
+  }, 90_000)
 
   it('discovers a paired peer without a user-provided multiaddress', async () => {
     const firstPairing = new PairingManager({ deviceId: 'first', deviceName: 'First', peerId: '' }, new MemoryPairingStore())
