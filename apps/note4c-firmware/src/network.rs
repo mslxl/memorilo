@@ -2,8 +2,6 @@ use std::time::Duration;
 
 #[cfg(target_os = "espidf")]
 use serde::Deserialize;
-#[cfg(target_os = "espidf")]
-use prost::Message;
 use serde::Serialize;
 
 use crate::framebuffer::FRAME_BYTES;
@@ -599,6 +597,7 @@ pub mod runtime {
     use esp_idf_svc::mqtt::client::{EspMqttClient, EventPayload, MqttClientConfiguration, QoS};
     use esp_idf_svc::sntp::{EspSntp, SyncStatus};
     use esp_idf_svc::wifi::{AuthMethod, ClientConfiguration, Configuration, EspWifi, WifiEvent};
+    use prost::Message;
 
     use super::{
         FRAME_BYTES, GalleryDeleteBody, GalleryManagementSnapshot, GalleryMutation,

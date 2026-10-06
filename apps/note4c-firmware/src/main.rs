@@ -66,7 +66,7 @@ mod firmware {
     };
     #[cfg(not(feature = "color-test"))]
     use memorilo_device_firmware::todo_sync::{
-        Admission, SnapshotSource, TodoSnapshot, TodoSyncEvent,
+        Admission, SnapshotSource, TodoSnapshot, TodoSyncEvent, decode_protobuf_snapshot,
     };
     #[cfg(not(feature = "color-test"))]
     use memorilo_device_firmware::ui;
@@ -358,7 +358,7 @@ mod firmware {
                                 );
                                 continue;
                             }
-                            if let Ok(snapshot) = crate::todo_sync::decode_protobuf_snapshot(&body) {
+                            if let Ok(snapshot) = decode_protobuf_snapshot(&body) {
                                 synchronize_snapshot_time(
                                     &snapshot,
                                     &application.snapshot().config.timezone,
