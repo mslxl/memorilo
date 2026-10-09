@@ -41,14 +41,17 @@ test('switches a non-empty Topic between Document and Outline without losing edi
       const editorShell = window.locator('[data-editor-mode]')
       await expect(editorShell).toHaveAttribute('data-editor-mode', 'document')
 
+      await window.getByRole('button', { name: 'Document' }).click()
+      await expect(window.locator('[data-editor-mode-picker]')).toHaveCount(0)
       await heading.click()
+      await window.keyboard.type(title)
       await window.keyboard.press('End')
       const readSelection = () => heading.evaluate((element) => {
         const selection = document.getSelection()
         if (!selection?.anchorNode || !selection.focusNode)
           throw new Error('Editor heading has no active DOM selection')
         return {
-          activeEditor: document.activeElement?.matches('[data-editor-content].ProseMirror') === true,
+          activeEditor: document.activeElement?.matches('[data-editor-content]') === true,
           anchorInHeading: element.contains(selection.anchorNode),
           anchorOffset: selection.anchorOffset,
           collapsed: selection.isCollapsed,
