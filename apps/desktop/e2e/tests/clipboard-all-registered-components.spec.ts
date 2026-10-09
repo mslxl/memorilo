@@ -17,7 +17,7 @@ async function createNote(window: Page, title: string): Promise<void> {
 }
 
 async function placeCaretAtDocumentEnd(editor: Locator): Promise<void> {
-  await editor.locator('[data-editor-content]').evaluate((element) => {
+  await editor.evaluate((element) => {
     const selection = globalThis.getSelection()
     if (!selection)
       throw new Error('Editor selection is unavailable')
@@ -49,14 +49,24 @@ async function registeredSlashMenuComponents(window: Page, editor: Locator): Pro
 }
 
 async function addTodoStates(editor: Locator, window: Page): Promise<void> {
-  await window.keyboard.insertText('clipboard todo todo')
-  await window.keyboard.press('Enter')
-  await window.keyboard.insertText('clipboard todo doing')
-  await window.keyboard.press('Enter')
-  await window.keyboard.insertText('clipboard todo done')
-
   const tasks = editor.locator('[data-list-kind="task"]')
+  const appendTaskText = async (text: string): Promise<void> => {
+    const paragraph = editor.locator('[data-list-kind="task"] > .list-content > p').last()
+    await paragraph.click()
+    await window.keyboard.insertText(text)
+    await expect(paragraph).toHaveText(text)
+  }
+
+  await expect(tasks).toHaveCount(1)
+  await appendTaskText('clipboard todo todo')
+  await window.keyboard.press('Enter')
+  await window.keyboard.press('Meta+Enter')
+  await expect(tasks).toHaveCount(2)
+  await appendTaskText('clipboard todo doing')
+  await window.keyboard.press('Enter')
+  await window.keyboard.press('Meta+Enter')
   await expect(tasks).toHaveCount(3)
+  await appendTaskText('clipboard todo done')
   const statusButton = (index: number) => tasks.nth(index).getByRole('button', { name: /Task status:/u })
   await statusButton(1).click()
   await statusButton(2).click()
@@ -81,7 +91,7 @@ async function appendRegisteredComponents(window: Page, editor: Locator, labels:
 }
 
 async function editorStructure(editor: Locator): Promise<readonly unknown[]> {
-  return editor.locator('[data-editor-content]').evaluate((root) => {
+  return editor.evaluate((root) => {
     const dynamicAttribute = /^id$|id$|^aria-(?:activedescendant|controls|describedby|owns)$/iu
     return Array.from(root.querySelectorAll<HTMLElement>('*')).map(element => ({
       attributes: Array.from(element.attributes)
