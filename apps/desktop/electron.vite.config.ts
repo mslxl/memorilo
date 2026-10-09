@@ -9,8 +9,8 @@ import wasm from 'vite-plugin-wasm'
 const desktopRoot = dirname(fileURLToPath(import.meta.url))
 const repositoryRoot = resolve(desktopRoot, '../..')
 const stylexOptions: NonNullable<Parameters<typeof stylex>[0]> & { externalPackages: string[] } = {
-  cssInjectionTarget: fileName => fileName.includes('renderer-global'),
-  externalPackages: ['@memorilo/config', '@memorilo/editor', '@memorilo/reader', '@memorilo/ui'],
+  cssInjectionTarget: fileName => fileName.includes('renderer-stylex'),
+  externalPackages: ['@memorilo/config', '@memorilo/editor', '@memorilo/ui'],
   unstable_moduleResolution: { type: 'commonJS' },
   useCSSLayers: true,
 }

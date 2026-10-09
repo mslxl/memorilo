@@ -56,6 +56,7 @@ test('arrow keys scroll before turning PDF pages at viewport boundaries', async 
   })
   try {
     const window = await electronApplication.firstWindow()
+    await window.setViewportSize({ height: 720, width: 1280 })
     await window.evaluate(() => {
       location.hash = '/reader'
     })
@@ -67,7 +68,7 @@ test('arrow keys scroll before turning PDF pages at viewport boundaries', async 
     await expect(window.getByText('1 of 2', { exact: true })).toBeVisible()
     await expect(window.locator('.reader-pdf-page-slot')).toHaveCount(2)
 
-    const scroller = window.locator('.reader-pdf-scroller')
+    const scroller = window.locator('[data-ui="reader-pdf-scroller"]')
     await expect.poll(() => scroller.evaluate(element => element.scrollHeight > element.clientHeight)).toBe(true)
     await expect.poll(() => scroller.evaluate(element => element.scrollTop)).toBe(0)
     await expect.poll(() => window.evaluate(() => document.activeElement?.tagName)).toBe('BODY')
