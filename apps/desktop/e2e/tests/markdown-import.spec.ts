@@ -1,6 +1,6 @@
 import type { ElectronApplication, Page } from '@playwright/test'
 import { Buffer } from 'node:buffer'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { dirname, resolve } from 'node:path'
@@ -55,6 +55,12 @@ async function attachMarkdownFile(window: Page, name: string): Promise<void> {
   })
 }
 
+async function selectMarkdownFile(application: ElectronApplication, filePath: string): Promise<void> {
+  await application.evaluate(({ dialog }, selectedPath) => {
+    dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [selectedPath] })
+  }, filePath)
+}
+
 async function createNote(window: Page, title: string): Promise<void> {
   await window.getByRole('link', { name: 'Journals' }).waitFor()
   await window.keyboard.press('Meta+P')
@@ -70,10 +76,12 @@ test('imports Markdown as a new Note with GFM content and warnings', async () =>
     const application = await launchApplication(userDataDirectory)
     try {
       const window = await application.firstWindow()
+      const markdownPath = resolve(userDataDirectory, 'Markdown import E2E.md')
+      await writeFile(markdownPath, markdownSource)
       await window.getByRole('link', { name: 'Pages' }).click()
       await expect(window.getByRole('main', { name: 'Pages' })).toBeVisible()
-      await window.getByRole('button', { name: 'Import Markdown' }).click()
-      await attachMarkdownFile(window, 'Markdown import E2E.md')
+      await selectMarkdownFile(application, markdownPath)
+      await window.getByRole('button', { name: 'Import…' }).click()
 
       const dialog = window.getByRole('dialog', { name: 'Import Markdown' })
       await expect(dialog).toBeVisible()
