@@ -1,7 +1,7 @@
 import type { MouseEvent as ReactMouseEvent, ReactNode } from 'react'
 import { ContextMenu } from '@memorilo/ui'
 import * as stylex from '@stylexjs/stylex'
-import { BookOpen, ChevronRight, CircleAlert, FileText, FileUp, Folder, Pencil, PenLine, Plus, RefreshCw, Table2, Trash2 } from 'lucide-react'
+import { BookOpen, ChevronRight, CircleAlert, FileText, FileUp, Folder, Pencil, PenLine, Plus, RefreshCw, Trash2 } from 'lucide-react'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { desktopRequests } from '../../../shared/desktop-requests'
@@ -36,7 +36,6 @@ interface NoteEntryContextMenuActions {
   onAddBook: (parentId: string | null) => void
   onAddFolder: (parentId: string | null) => void
   onImportMarkdown: (parentId: string | null) => void
-  onAddSpreadsheet: (parentId: string | null) => void
   onAddTopic: (parentId: string | null) => void
   onAddWhiteboard: (parentId: string | null) => void
   onRebindBook: (topicId: string) => void
@@ -54,7 +53,6 @@ export function useNoteEntryContextMenu({
   onAddBook,
   onAddFolder,
   onImportMarkdown,
-  onAddSpreadsheet,
   onAddTopic,
   onAddWhiteboard,
   onRebindBook,
@@ -240,18 +238,6 @@ export function useNoteEntryContextMenu({
                           >
                             <PenLine aria-hidden="true" size={14} strokeWidth={1.8} />
                             {t('whiteboard')}
-                          </button>
-                          <button
-                            {...stylex.props(noteEntryContextMenuStyles.entryContextMenuItem)}
-                            role="menuitem"
-                            type="button"
-                            onClick={() => {
-                              onAddSpreadsheet(contextMenu.kind === 'book' ? contextMenu.topicId : contextMenu.parentId)
-                              close()
-                            }}
-                          >
-                            <Table2 aria-hidden="true" size={14} strokeWidth={1.8} />
-                            {t('spreadsheet.label')}
                           </button>
                           {(contextMenu.kind === 'book' || contextMenu.allowFolder)
                             ? (

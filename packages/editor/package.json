@@ -29,7 +29,6 @@
     "@memorilo/loro-prosemirror-tree": "workspace:*",
     "@memorilo/reader": "workspace:*",
     "@memorilo/reading-model": "workspace:*",
-    "@memorilo/spreadsheet": "workspace:*",
     "@memorilo/ui": "workspace:*",
     "@stylexjs/stylex": "0.19.0",
     "beautiful-mermaid": "^1.1.3",

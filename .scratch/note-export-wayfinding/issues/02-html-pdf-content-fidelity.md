@@ -4,11 +4,11 @@ Blocked by: 01
 
 ## Question
 
-What content projection should power self-contained HTML and PDF export? Establish a supported matrix for regular topics, nested blocks, marks, links, images, tables, math, tasks, Reader sources, whiteboards, spreadsheets, and image occlusion. Decide how unsupported or interactive content is represented so the output is readable and loss is explicit.
+What content projection should power self-contained HTML and PDF export? Establish a supported matrix for regular topics, nested blocks, marks, links, images, tables, math, tasks, Reader sources, whiteboards, and image occlusion. Decide how unsupported or interactive content is represented so the output is readable and loss is explicit.
 
 ## Answer
 
-HTML and PDF will consume one validated static export projection, built from each Topic's canonical data rather than editor DOM, React state, or application routes. Regular and Book Topics use validated Topic JSON; Spreadsheet Topics use their workbook projection; ImageOcclusion Topics use their image snapshot plus normalized shapes; Whiteboard Topics use a static scene image when available and then export embedded editor content as ordinary rich text.
+HTML and PDF will consume one validated static export projection, built from each Topic's canonical data rather than editor DOM, React state, or application routes. Regular and Book Topics use validated Topic JSON; ImageOcclusion Topics use their image snapshot plus normalized shapes; Whiteboard Topics use a static scene image when available and then export embedded editor content as ordinary rich text.
 
 The projection matrix is:
 
@@ -16,7 +16,6 @@ The projection matrix is:
 - Math is rendered through the existing KaTeX/MathML path with source LaTeX retained as fallback.
 - Images prefer Memorilo-managed data URLs; external or missing resources remain visible as an explicitly diagnosed placeholder or warning.
 - Reader sources become static asides containing quote/image and location; Reader navigation and source-book files are not embedded.
-- Spreadsheet sheets become static tables preserving displayed values, original formula input, and readable formatting/reference text; editing, locking, filtering, and undo are not exported.
 - Image occlusion becomes a static image with SVG overlays and a mode/source caption; reveal interactions are frozen.
 - Whiteboards become a static SVG/PNG scene when renderable, with embedded editor text following it; scene tools, selection, zoom, and editability are not exported.
 - Cloze, card delimiters, highlights, timers, reminders, and other learning interactions are frozen to readable content and non-executable styling/labels.

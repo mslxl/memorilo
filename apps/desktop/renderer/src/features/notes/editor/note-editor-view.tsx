@@ -34,7 +34,6 @@ import { desktopEditorAdapters } from './note-editor-session'
 import { CardTopicPreview, ReaderSourceHeader } from './note-editor-topic-chrome'
 import { noteEditorStyles } from './note-editor.stylex'
 import { useNoteEntryContextMenu } from './note-entry-context-menu'
-import { SpreadsheetEditor } from './spreadsheet-editor'
 import { WhiteboardEditor } from './whiteboard-editor'
 
 const ImageOcclusionTopicEditor = lazy(async () => {
@@ -64,7 +63,6 @@ export interface NoteEditorViewProps {
   onAddBook: (parentId: string | null) => void
   onAddFolder: (parentId: string | null) => void
   onImportMarkdown: (parentId: string | null) => void
-  onAddSpreadsheet: (parentId: string | null) => void
   onAddTopic: (parentId: string | null) => void
   onAddWhiteboard: (parentId: string | null) => void
   onOpenImageOcclusion: (input: OpenImageOcclusionInput) => Promise<void> | void
@@ -90,7 +88,6 @@ export function NoteEditorView({
   onAddBook,
   onAddFolder,
   onImportMarkdown,
-  onAddSpreadsheet,
   onAddTopic,
   onAddWhiteboard,
   onOpenImageOcclusion,
@@ -128,13 +125,10 @@ export function NoteEditorView({
 
   const imageOcclusionTopic = isImageOcclusionTopic(opened.topic) ? opened.topic : null
   const editorTopic = 'documentId' in opened.topic ? opened.topic : null
-  const spreadsheetTopic = 'getWorkbook' in opened.topic ? opened.topic : null
   const whiteboardTopic = 'getScene' in opened.topic ? opened.topic : null
   if ((currentEntry.topicType === 'image-occlusion') !== (imageOcclusionTopic !== null))
     throw new Error(`Topic ${currentEntry.id} document does not match type ${currentEntry.topicType}`)
   if ((currentEntry.topicType === 'whiteboard') !== (whiteboardTopic !== null))
-    throw new Error(`Topic ${currentEntry.id} document does not match type ${currentEntry.topicType}`)
-  if ((currentEntry.topicType === 'spreadsheet') !== (spreadsheetTopic !== null))
     throw new Error(`Topic ${currentEntry.id} document does not match type ${currentEntry.topicType}`)
 
   const mode = useEditorTopicMode(editorTopic)
@@ -242,7 +236,6 @@ export function NoteEditorView({
     onAddBook,
     onAddFolder,
     onImportMarkdown,
-    onAddSpreadsheet,
     onAddTopic,
     onAddWhiteboard,
     onRebindBook,
@@ -347,7 +340,7 @@ export function NoteEditorView({
     ? copyFeedback.status
     : null
   const titlebar = useMemo(() => ({
-    ...(whiteboardTopic === null && spreadsheetTopic === null ? { onRenameTitle: renameNote } : {}),
+    ...(whiteboardTopic === null ? { onRenameTitle: renameNote } : {}),
     sidebarAction: (
       <NoteInspectorActions
         favorite={opened.stored.favorite}
@@ -359,7 +352,7 @@ export function NoteEditorView({
     ),
     trailing: <NoteExportMenu exporting={exporting} onCancelExport={onCancelExport} onExport={format => void onExport(format)} />,
     title: opened.stored.title,
-    titleVisibility: whiteboardTopic === null && spreadsheetTopic === null ? 'always' as const : 'hidden' as const,
+    titleVisibility: whiteboardTopic === null ? 'always' as const : 'hidden' as const,
   }), [
     favoritePending,
     exporting,
@@ -370,7 +363,6 @@ export function NoteEditorView({
     opened.stored.favorite,
     opened.stored.title,
     renameNote,
-    spreadsheetTopic,
     toggleInspector,
     whiteboardTopic,
   ])
@@ -381,7 +373,7 @@ export function NoteEditorView({
       <section
         {...stylex.props(
           noteEditorStyles.workspace,
-          (whiteboardTopic !== null || spreadsheetTopic !== null) && noteEditorStyles.fullBleedWorkspace,
+          whiteboardTopic !== null && noteEditorStyles.fullBleedWorkspace,
         )}
         aria-label={opened.stored.title}
       >
@@ -450,46 +442,38 @@ export function NoteEditorView({
                 />
               </Suspense>
             )
-          : spreadsheetTopic !== null
+          : editorTopic !== null
             ? (
-                <SpreadsheetEditor
-                  key={spreadsheetTopic.topicId}
-                  title={currentEntry.title}
-                  topic={spreadsheetTopic}
-                />
+                <>
+                  {configuration.learning.enabled && cardSource !== undefined
+                    ? <CardTopicPreview cards={cardTopicCards} />
+                    : null}
+                  <Editor
+                    adapters={editorAdapters}
+                    cardPreviewDisabled={currentEntry.topicType === 'regular'}
+                    cardTopic={cardSource !== undefined}
+                    focus={focusBlockId === undefined ? undefined : { blockId: focusBlockId }}
+                    imageOcclusion={regularTopicImageOcclusion}
+                    learningEnabled={configuration.learning.enabled}
+                    platform={getPlatform()}
+                    shortcuts={configuration.shortcuts}
+                    onDocumentChange={reconcileCardTopics}
+                    outline={{ outdentBehavior: configuration.outdentBehavior }}
+                    topic={editorTopic}
+                  />
+                </>
               )
-            : editorTopic !== null
+            : whiteboardTopic !== null
               ? (
-                  <>
-                    {configuration.learning.enabled && cardSource !== undefined
-                      ? <CardTopicPreview cards={cardTopicCards} />
-                      : null}
-                    <Editor
-                      adapters={editorAdapters}
-                      cardPreviewDisabled={currentEntry.topicType === 'regular'}
-                      cardTopic={cardSource !== undefined}
-                      focus={focusBlockId === undefined ? undefined : { blockId: focusBlockId }}
-                      imageOcclusion={regularTopicImageOcclusion}
-                      learningEnabled={configuration.learning.enabled}
-                      platform={getPlatform()}
-                      shortcuts={configuration.shortcuts}
-                      onDocumentChange={reconcileCardTopics}
-                      outline={{ outdentBehavior: configuration.outdentBehavior }}
-                      topic={editorTopic}
-                    />
-                  </>
+                  <WhiteboardEditor
+                    adapters={editorAdapters}
+                    inspectorVisible={inspectorVisible}
+                    learningEnabled={configuration.learning.enabled}
+                    shortcuts={configuration.shortcuts}
+                    topic={whiteboardTopic}
+                  />
                 )
-              : whiteboardTopic !== null
-                ? (
-                    <WhiteboardEditor
-                      adapters={editorAdapters}
-                      inspectorVisible={inspectorVisible}
-                      learningEnabled={configuration.learning.enabled}
-                      shortcuts={configuration.shortcuts}
-                      topic={whiteboardTopic}
-                    />
-                  )
-                : null}
+              : null}
       </section>
       <NoteInspector
         collapsedEntryIds={collapsedEntryIds}

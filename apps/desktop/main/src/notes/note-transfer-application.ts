@@ -45,7 +45,7 @@ import { dialog } from 'electron'
 import * as tar from 'tar-stream'
 import { projectNoteAssetReferences } from '../assets/asset-references'
 import { assetFileNamePattern, assetSource, parseAssetFileName } from '../assets/asset-uri'
-import { toStoredEntries, toStoredSpreadsheets, toStoredTopic } from './note-authoritative-projection'
+import { toStoredEntries, toStoredTopic } from './note-authoritative-projection'
 import { projectNoteLearningCards, projectNoteReadingItems } from './note-learning-cards'
 import { embedMemoAttachment, extractMemoAttachment } from './note-transfer-pdf'
 
@@ -118,7 +118,6 @@ interface MemoManifest {
 }
 
 type ImageOcclusionExportState = ReturnType<ReturnType<typeof createEditorNote>['getImageOcclusionTopic']>['getState'] extends () => infer State ? State : never
-type SpreadsheetExportWorkbook = ReturnType<ReturnType<typeof createEditorNote>['getSpreadsheetTopic']>['getWorkbook'] extends () => infer Workbook ? Workbook : never
 
 interface StagedFile {
   absolutePath: string
@@ -585,17 +584,6 @@ async function existingTypstFontDirectories(extra: readonly string[] = []): Prom
     }
   }
   return directories
-}
-
-function renderSpreadsheetTypst(workbook: SpreadsheetExportWorkbook): string {
-  return workbook.sheets.map((sheet) => {
-    const columns = sheet.columns.length + 1
-    const cells = [
-      ['', ...sheet.columns.map(column => column.id)],
-      ...sheet.rows.map(row => [row.id, ...sheet.columns.map(column => sheet.cells[`${row.id}\u001F${column.id}`]?.display ?? '')]),
-    ]
-    return `== ${escapeTypst(sheet.name)}\n\n#table(columns: ${columns}, ${cells.flat().map(cell => `[${escapeTypst(cell)}]`).join(', ')})\n\n`
-  }).join('')
 }
 
 function renderImageOcclusionTypst(
@@ -1789,7 +1777,6 @@ export class NoteTransferApplication {
       learningCards: projectNoteLearningCards(note),
       learningReadingItems: projectNoteReadingItems(note),
       snapshot: note.exportSnapshot(),
-      spreadsheets: toStoredSpreadsheets(note),
       title: note.getTitle(),
       topics: note.getEntries().flatMap(entry => entry.kind === 'topic' ? [toStoredTopic(note.getTopicContent(entry.id))] : []),
     }
@@ -1826,11 +1813,9 @@ function entriesTypst(
       ? renderTypstContent(validation.document, { inlineAsset })
       : 'embeddedEditors' in validation
         ? `${whiteboardScenePath(entry.id).length === 0 ? '[Whiteboard scene unavailable]\n\n' : `#image("${escapeTypstString(whiteboardScenePath(entry.id))}", width: 100%)\n\n`}${Object.values(validation.embeddedEditors).map(editor => renderTypstContent(editor.document, { inlineAsset })).join('')}`
-        : 'workbook' in validation
-          ? renderSpreadsheetTypst(validation.workbook as unknown as SpreadsheetExportWorkbook)
-          : 'state' in validation
-            ? renderImageOcclusionTypst(validation.state as ImageOcclusionExportState, inlineAsset)
-            : '[content unavailable]\n\n'
+        : 'state' in validation
+          ? renderImageOcclusionTypst(validation.state as ImageOcclusionExportState, inlineAsset)
+          : '[content unavailable]\n\n'
     return `== ${escapeTypst(entry.title)}\n\n${readerSource}${content}${render(entry.children)}`
   }).join('')
   return render(document.entries)

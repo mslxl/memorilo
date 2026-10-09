@@ -37,7 +37,7 @@ Markdown 导入在当前架构中可行，且两个目标入口都已有合适�
 
 ### Note Structure 右键入口
 
-`NoteInspectorContent` 在标题栏、Folder、普通 Topic 和 BookTopic 上分别调用 `onOpenContainer` / `onOpenBook`；`useNoteEntryContextMenu` 的 Add 子菜单目前已有 Topic、Whiteboard、Spreadsheet、Folder、Book。普通 Topic 和 Folder 都可作为 `createTopic` 的 parent，BookTopic 也按容器处理；Folder 不能作为 Folder 的 parent。新增“Import Markdown…”只需复用容器右键的 `parentId`，选择文件后调用：
+`NoteInspectorContent` 在标题栏、Folder、普通 Topic 和 BookTopic 上分别调用 `onOpenContainer` / `onOpenBook`；`useNoteEntryContextMenu` 的 Add 子菜单目前已有 Topic、Whiteboard、Folder、Book。普通 Topic 和 Folder 都可作为 `createTopic` 的 parent，BookTopic 也按容器处理；Folder 不能作为 Folder 的 parent。新增“Import Markdown…”只需复用容器右键的 `parentId`，选择文件后调用：
 
 ```ts
 opened.note.createTopic({

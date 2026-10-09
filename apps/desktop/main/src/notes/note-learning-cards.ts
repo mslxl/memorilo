@@ -45,7 +45,7 @@ export function projectNoteLearningCards(
     const topicOrder = entries.findIndex(candidate => candidate.id === topicId)
     const entry = topicOrder === -1 ? undefined : entries[topicOrder]
     let cards: readonly LearningCardProjection[]
-    if (entry?.kind !== 'topic' || !learningEnabled || entry.topicType === 'spreadsheet') {
+    if (entry?.kind !== 'topic' || !learningEnabled) {
       cards = []
     }
     else if (entry.topicType === 'image-occlusion') {
@@ -79,7 +79,6 @@ export function projectNoteReadingItems(note: EditorNote, topicIds?: Iterable<st
     // marks must not create a second Reading Item for the same source.
     if (
       entry?.kind !== 'topic'
-      || entry.topicType === 'spreadsheet'
       || entry.topicType === 'image-occlusion'
       || (entry.topicType === 'regular' && entry.cardSource !== undefined)
     ) {

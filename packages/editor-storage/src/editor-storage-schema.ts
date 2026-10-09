@@ -85,34 +85,6 @@ const assetConstraints = `
 // FTS5 and sqlite-vec are virtual tables whose layout is provided by the loaded
 // extensions, not by the relational schema consumed by Drizzle.
 const extensionSchema = `
-  CREATE VIRTUAL TABLE IF NOT EXISTS spreadsheet_cells_fts USING fts5(
-    input,
-    display,
-    content='spreadsheet_cells',
-    content_rowid='storage_row_id',
-    tokenize='trigram'
-  );
-
-  CREATE TRIGGER IF NOT EXISTS spreadsheet_cells_fts_insert
-  AFTER INSERT ON spreadsheet_cells BEGIN
-    INSERT INTO spreadsheet_cells_fts(rowid, input, display)
-      VALUES (new.storage_row_id, new.input, new.display);
-  END;
-
-  CREATE TRIGGER IF NOT EXISTS spreadsheet_cells_fts_delete
-  AFTER DELETE ON spreadsheet_cells BEGIN
-    INSERT INTO spreadsheet_cells_fts(spreadsheet_cells_fts, rowid, input, display)
-      VALUES ('delete', old.storage_row_id, old.input, old.display);
-  END;
-
-  CREATE TRIGGER IF NOT EXISTS spreadsheet_cells_fts_update
-  AFTER UPDATE OF input, display ON spreadsheet_cells BEGIN
-    INSERT INTO spreadsheet_cells_fts(spreadsheet_cells_fts, rowid, input, display)
-      VALUES ('delete', old.storage_row_id, old.input, old.display);
-    INSERT INTO spreadsheet_cells_fts(rowid, input, display)
-      VALUES (new.storage_row_id, new.input, new.display);
-  END;
-
   CREATE VIRTUAL TABLE IF NOT EXISTS topic_blocks_fts USING fts5(
     text,
     content='topic_blocks',

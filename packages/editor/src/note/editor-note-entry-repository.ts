@@ -2,7 +2,6 @@ import type {
   CreateBookTopicInput,
   CreateFolderInput,
   CreateImageOcclusionTopicInput,
-  CreateSpreadsheetTopicInput,
   CreateTopicInput,
   CreateWhiteboardTopicInput,
   DeleteNoteEntryInput,
@@ -36,7 +35,6 @@ import {
   assertLinkedReaderAnnotationExists,
   findReaderAnnotationTopicId,
 } from './editor-note-reader-bindings'
-import { createSpreadsheetNode, spreadsheetHasUserContent } from './editor-note-spreadsheet'
 import {
   assertBookFileAvailable,
   readTopicValidationInput,
@@ -61,7 +59,6 @@ export interface EditorNoteEntryRepository {
   readonly createBookTopic: (input: CreateBookTopicInput) => string
   readonly createFolder: (input: CreateFolderInput) => string
   readonly createImageOcclusionTopic: (input: CreateImageOcclusionTopicInput) => Promise<string>
-  readonly createSpreadsheetTopic: (input: CreateSpreadsheetTopicInput) => string
   readonly createTopic: (input: CreateTopicInput) => string
   readonly createWhiteboardTopic: (input: CreateWhiteboardTopicInput) => string
   readonly deleteEntry: (input: DeleteNoteEntryInput) => void
@@ -180,13 +177,6 @@ export function createEditorNoteEntryRepository(
         return entryId
       })
     },
-    createSpreadsheetTopic: input => runMutation(() => {
-      const parent = resolveParent(input.parentId)
-      const entryId = createSpreadsheetNode(doc, input, parent?.id)
-      validateTopicInput(readTopicValidationInput(runtime, entryId))
-      doc.commit({ origin: 'note:create-spreadsheet-topic' })
-      return entryId
-    }),
     createTopic: input => runMutation(() => {
       const parent = resolveParent(input.parentId)
       const readerReference = input.readerReference === undefined
@@ -284,11 +274,6 @@ export function createEditorNoteEntryRepository(
       }
       if (entry.topicType === 'whiteboard')
         return topic.entry.title.length > 0 || whiteboardHasUserContent(validation)
-      if (entry.topicType === 'spreadsheet') {
-        if (!('workbook' in validation))
-          throw new Error(`SpreadsheetTopic ${entry.id} is missing its Workbook`)
-        return topic.entry.title.length > 0 || spreadsheetHasUserContent(validation)
-      }
       if (!('document' in validation))
         throw new Error(`Topic ${entry.id} is missing its document`)
       return topic.entry.title.length > 0 || hasTopicUserContent(validation.document)

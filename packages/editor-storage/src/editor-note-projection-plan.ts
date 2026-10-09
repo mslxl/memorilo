@@ -1,7 +1,6 @@
 import type { DatabaseCommand, EditorStorageDrizzleDatabase } from './database-driver'
 import type {
   NoteEntryProjection,
-  SpreadsheetProjection,
   TopicContentProjection,
   TopicProjection,
 } from './editor-storage-contracts'
@@ -10,10 +9,6 @@ import {
   bookTopics,
   noteEntries,
   notes,
-  spreadsheetCells,
-  spreadsheetColumns,
-  spreadsheetRows,
-  spreadsheetSheets,
   topics as storedTopics,
   topicBlocks,
 } from './drizzle-schema'
@@ -56,7 +51,6 @@ function planNoteProjection(
   target: NoteProjectionTarget,
   entries: readonly NoteEntryProjection[] | undefined,
   topics: readonly TopicContentProjection[],
-  spreadsheets: readonly SpreadsheetProjection[],
   mode: ProjectionWriteMode,
 ): NoteProjectionPlan {
   const commands: DatabaseCommand[] = []
@@ -115,21 +109,6 @@ function planNoteProjection(
         .where(eq(bookTopics.noteRowId, resolveNoteRowId(database, target)))
         .run(),
     })
-    commands.push({
-      drizzle: database => database.delete(spreadsheetSheets)
-        .where(eq(spreadsheetSheets.noteRowId, resolveNoteRowId(database, target)))
-        .run(),
-    })
-  }
-  else if (mode === 'upsert') {
-    for (const spreadsheet of spreadsheets) {
-      commands.push({
-        drizzle: database => database.delete(spreadsheetSheets).where(and(
-          eq(spreadsheetSheets.noteRowId, resolveNoteRowId(database, target)),
-          eq(spreadsheetSheets.topicId, spreadsheet.topicId),
-        )).run(),
-      })
-    }
   }
   for (const entry of topicEntries.values()) {
     if (entry.topicType !== 'book')
@@ -195,57 +174,6 @@ function planNoteProjection(
     }
   }
 
-  for (const spreadsheet of spreadsheets) {
-    spreadsheet.sheets.forEach((sheet, sheetOrdinal) => {
-      commands.push({
-        drizzle: database => database.insert(spreadsheetSheets).values({
-          name: sheet.name,
-          noteRowId: resolveNoteRowId(database, target),
-          ordinal: sheetOrdinal,
-          sheetId: sheet.id,
-          topicId: spreadsheet.topicId,
-        }).run(),
-      })
-      sheet.rowIds.forEach((rowId, rowOrdinal) => {
-        commands.push({
-          drizzle: database => database.insert(spreadsheetRows).values({
-            noteRowId: resolveNoteRowId(database, target),
-            ordinal: rowOrdinal,
-            rowId,
-            sheetId: sheet.id,
-            topicId: spreadsheet.topicId,
-          }).run(),
-        })
-      })
-      sheet.columnIds.forEach((columnId, columnOrdinal) => {
-        commands.push({
-          drizzle: database => database.insert(spreadsheetColumns).values({
-            columnId,
-            noteRowId: resolveNoteRowId(database, target),
-            ordinal: columnOrdinal,
-            sheetId: sheet.id,
-            topicId: spreadsheet.topicId,
-          }).run(),
-        })
-      })
-      for (const cell of sheet.cells) {
-        commands.push({
-          drizzle: database => database.insert(spreadsheetCells).values({
-            columnId: cell.columnId,
-            display: cell.display,
-            formatJson: JSON.stringify(cell.format),
-            formulaReferencesJson: JSON.stringify(cell.formulaReferences),
-            input: cell.input,
-            noteRowId: resolveNoteRowId(database, target),
-            sheetId: sheet.id,
-            sheetRowId: cell.rowId,
-            topicId: spreadsheet.topicId,
-          }).run(),
-        })
-      }
-    })
-  }
-
   return { blocks, commands, entryIds, topicIds }
 }
 
@@ -253,16 +181,14 @@ export function planInitializedNoteProjection(
   noteId: string,
   entries: readonly NoteEntryProjection[],
   topics: readonly TopicContentProjection[],
-  spreadsheets: readonly SpreadsheetProjection[],
 ): NoteProjectionPlan {
-  return planNoteProjection({ noteId }, entries, topics, spreadsheets, 'insert')
+  return planNoteProjection({ noteId }, entries, topics, 'insert')
 }
 
 export function planUpdatedNoteProjection(
   noteRowId: number,
   entries: readonly NoteEntryProjection[] | undefined,
   topics: readonly TopicContentProjection[],
-  spreadsheets: readonly SpreadsheetProjection[],
 ): NoteProjectionPlan {
-  return planNoteProjection({ noteRowId }, entries, topics, spreadsheets, 'upsert')
+  return planNoteProjection({ noteRowId }, entries, topics, 'upsert')
 }

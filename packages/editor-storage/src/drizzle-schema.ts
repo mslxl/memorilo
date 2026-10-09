@@ -130,7 +130,7 @@ export const topics = sqliteTable('topics', {
   title: text().notNull(),
 }, table => [
   uniqueIndex('topics_note_topic_unique').on(table.noteRowId, table.topicId),
-  check('topics_type_check', sql`topic_type IN ('regular', 'book', 'image-occlusion', 'spreadsheet', 'whiteboard')`),
+  check('topics_type_check', sql`topic_type IN ('regular', 'book', 'image-occlusion', 'whiteboard')`),
   check('topics_editor_mode_check', sql`editor_mode IS NULL OR editor_mode IN (0, 1)`),
 ])
 
@@ -156,87 +156,6 @@ export const bookTopics = sqliteTable('book_topics', {
   check('book_topics_format_check', sql`format IN ('cbr', 'cbz', 'epub', 'pdf', 'txt')`),
   check('book_topics_hash_check', sql`length(content_hash) = 64 AND content_hash NOT GLOB '*[^0-9a-f]*'`),
   check('book_topics_byte_length_check', sql`byte_length > 0`),
-])
-
-export const spreadsheetSheets = sqliteTable('spreadsheet_sheets', {
-  noteRowId: integer('note_row_id').notNull(),
-  topicId: text('topic_id').notNull(),
-  sheetId: text('sheet_id').notNull(),
-  ordinal: integer().notNull(),
-  name: text().notNull(),
-}, table => [
-  foreignKey(() => ({
-    columns: [table.noteRowId, table.topicId],
-    foreignColumns: [topics.noteRowId, topics.topicId],
-    name: 'spreadsheet_sheets_note_row_id_topic_id_topics_note_row_id_topic_id_fk',
-  })).onDelete('cascade'),
-  primaryKey({ columns: [table.noteRowId, table.topicId, table.sheetId], name: 'spreadsheet_sheets_note_row_id_topic_id_sheet_id_pk' }),
-  uniqueIndex('spreadsheet_sheets_note_topic_ordinal_unique').on(table.noteRowId, table.topicId, table.ordinal),
-  check('spreadsheet_sheets_id_check', sql`length(trim(sheet_id)) > 0`),
-  check('spreadsheet_sheets_ordinal_check', sql`ordinal >= 0`),
-  check('spreadsheet_sheets_name_check', sql`length(trim(name)) > 0`),
-])
-
-export const spreadsheetRows = sqliteTable('spreadsheet_rows', {
-  noteRowId: integer('note_row_id').notNull(),
-  topicId: text('topic_id').notNull(),
-  sheetId: text('sheet_id').notNull(),
-  rowId: text('row_id').notNull(),
-  ordinal: integer().notNull(),
-}, table => [
-  foreignKey(() => ({
-    columns: [table.noteRowId, table.topicId, table.sheetId],
-    foreignColumns: [spreadsheetSheets.noteRowId, spreadsheetSheets.topicId, spreadsheetSheets.sheetId],
-    name: 'spreadsheet_rows_note_row_id_topic_id_sheet_id_spreadsheet_sheets_note_row_id_topic_id_sheet_id_fk',
-  })).onDelete('cascade'),
-  primaryKey({ columns: [table.noteRowId, table.topicId, table.sheetId, table.rowId], name: 'spreadsheet_rows_note_row_id_topic_id_sheet_id_row_id_pk' }),
-  uniqueIndex('spreadsheet_rows_note_topic_sheet_ordinal_unique').on(table.noteRowId, table.topicId, table.sheetId, table.ordinal),
-  check('spreadsheet_rows_id_check', sql`length(trim(row_id)) > 0`),
-  check('spreadsheet_rows_ordinal_check', sql`ordinal >= 0`),
-])
-
-export const spreadsheetColumns = sqliteTable('spreadsheet_columns', {
-  noteRowId: integer('note_row_id').notNull(),
-  topicId: text('topic_id').notNull(),
-  sheetId: text('sheet_id').notNull(),
-  columnId: text('column_id').notNull(),
-  ordinal: integer().notNull(),
-}, table => [
-  foreignKey(() => ({
-    columns: [table.noteRowId, table.topicId, table.sheetId],
-    foreignColumns: [spreadsheetSheets.noteRowId, spreadsheetSheets.topicId, spreadsheetSheets.sheetId],
-    name: 'spreadsheet_columns_note_row_id_topic_id_sheet_id_spreadsheet_sheets_note_row_id_topic_id_sheet_id_fk',
-  })).onDelete('cascade'),
-  primaryKey({ columns: [table.noteRowId, table.topicId, table.sheetId, table.columnId], name: 'spreadsheet_columns_note_row_id_topic_id_sheet_id_column_id_pk' }),
-  uniqueIndex('spreadsheet_columns_note_topic_sheet_ordinal_unique').on(table.noteRowId, table.topicId, table.sheetId, table.ordinal),
-  check('spreadsheet_columns_id_check', sql`length(trim(column_id)) > 0`),
-  check('spreadsheet_columns_ordinal_check', sql`ordinal >= 0`),
-])
-
-export const spreadsheetCells = sqliteTable('spreadsheet_cells', {
-  storageRowId: integer('storage_row_id').primaryKey({ autoIncrement: true }),
-  noteRowId: integer('note_row_id').notNull(),
-  topicId: text('topic_id').notNull(),
-  sheetId: text('sheet_id').notNull(),
-  sheetRowId: text('sheet_row_id').notNull(),
-  columnId: text('column_id').notNull(),
-  input: text().notNull(),
-  display: text().notNull(),
-  formatJson: text('format_json').notNull(),
-  formulaReferencesJson: text('formula_references_json').notNull(),
-}, table => [
-  index('spreadsheet_cells_topic_idx').on(table.noteRowId, table.topicId, table.sheetId, table.sheetRowId, table.columnId),
-  foreignKey(() => ({
-    columns: [table.noteRowId, table.topicId, table.sheetId, table.columnId],
-    foreignColumns: [spreadsheetColumns.noteRowId, spreadsheetColumns.topicId, spreadsheetColumns.sheetId, spreadsheetColumns.columnId],
-    name: 'spreadsheet_cells_note_row_id_topic_id_sheet_id_column_id_spreadsheet_columns_note_row_id_topic_id_sheet_id_column_id_fk',
-  })).onDelete('cascade'),
-  foreignKey(() => ({
-    columns: [table.noteRowId, table.topicId, table.sheetId, table.sheetRowId],
-    foreignColumns: [spreadsheetRows.noteRowId, spreadsheetRows.topicId, spreadsheetRows.sheetId, spreadsheetRows.rowId],
-    name: 'spreadsheet_cells_note_row_id_topic_id_sheet_id_sheet_row_id_spreadsheet_rows_note_row_id_topic_id_sheet_id_row_id_fk',
-  })).onDelete('cascade'),
-  uniqueIndex('spreadsheet_cells_identity_unique').on(table.noteRowId, table.topicId, table.sheetId, table.sheetRowId, table.columnId),
 ])
 
 export const noteFavorites = sqliteTable('note_favorites', {
@@ -718,10 +637,6 @@ export const editorStorageDrizzleSchema = {
   noteUpdateReceipts,
   noteUpdates,
   notes,
-  spreadsheetCells,
-  spreadsheetColumns,
-  spreadsheetRows,
-  spreadsheetSheets,
   todoCalendarEvents,
   todoCalendarSubscriptions,
   todoCalendarVersions,

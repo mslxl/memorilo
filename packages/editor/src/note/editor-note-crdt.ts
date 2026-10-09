@@ -27,15 +27,6 @@ export const BOOK_READING_STATE_KEY = 'readingStateKey'
 export const BOOK_ANNOTATIONS_KEY = 'annotationsKey'
 export const WHITEBOARD_SCENE_KEY = 'scene'
 export const WHITEBOARD_EMBEDDED_EDITORS_KEY = 'embeddedEditors'
-export const SPREADSHEET_WORKBOOK_KEY = 'workbook'
-export const SPREADSHEET_SHEET_ORDER_KEY = 'sheetOrder'
-export const SPREADSHEET_SHEETS_KEY = 'sheets'
-export const SPREADSHEET_SHEET_ID_KEY = 'id'
-export const SPREADSHEET_SHEET_NAME_KEY = 'name'
-export const SPREADSHEET_ROW_ORDER_KEY = 'rowOrder'
-export const SPREADSHEET_COLUMN_ORDER_KEY = 'columnOrder'
-export const SPREADSHEET_CELL_CONTENTS_KEY = 'cellContents'
-export const SPREADSHEET_CELL_FORMATS_KEY = 'cellFormats'
 export const EMBEDDED_EDITOR_ID_KEY = 'editorId'
 export const EMBEDDED_EDITOR_MODE_KEY = 'editorMode'
 export const EMBEDDED_EDITOR_DOCUMENT_KEY = 'document'
@@ -61,10 +52,10 @@ export function readTopicTitle(map: LoroMap, description: string): string {
   return value
 }
 
-export function readTopicType(map: LoroMap, description: string): 'book' | 'image-occlusion' | 'regular' | 'spreadsheet' | 'whiteboard' {
+export function readTopicType(map: LoroMap, description: string): 'book' | 'image-occlusion' | 'regular' | 'whiteboard' {
   const value = map.get(TOPIC_TYPE_KEY)
-  if (value !== 'book' && value !== 'image-occlusion' && value !== 'regular' && value !== 'spreadsheet' && value !== 'whiteboard')
-    throw new Error(`${description} must be "book", "image-occlusion", "regular", "spreadsheet", or "whiteboard"`)
+  if (value !== 'book' && value !== 'image-occlusion' && value !== 'regular' && value !== 'whiteboard')
+    throw new Error(`${description} must be "book", "image-occlusion", "regular", or "whiteboard"`)
   return value
 }
 

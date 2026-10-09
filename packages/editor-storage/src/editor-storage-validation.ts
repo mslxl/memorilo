@@ -1,7 +1,6 @@
 import type {
   AssetReferenceProjection,
   NoteEntryProjection,
-  SpreadsheetProjection,
   TopicContentProjection,
   TopicProjection,
 } from './editor-storage-contracts'
@@ -93,7 +92,6 @@ export function validateJournalProjection(
 export function validateProjectionPatch(
   entries: readonly NoteEntryProjection[] | undefined,
   topics: readonly TopicContentProjection[],
-  spreadsheets: readonly SpreadsheetProjection[] | undefined = undefined,
 ): void {
   const entriesById = entries ? validateHierarchy(entries, 'NoteEntry') : undefined
   const topicEntries = new Map<string, TopicProjection>()
@@ -107,7 +105,6 @@ export function validateProjectionPatch(
       const entryId = entry.id
       assertString(entry.title, `Topic ${entryId} title`)
       if (entry.topicType !== 'image-occlusion'
-        && entry.topicType !== 'spreadsheet'
         && entry.topicType !== 'whiteboard'
         && entry.mode !== 0
         && entry.mode !== 1) {
@@ -124,7 +121,6 @@ export function validateProjectionPatch(
       }
       else if (entry.topicType !== 'image-occlusion'
         && entry.topicType !== 'regular'
-        && entry.topicType !== 'spreadsheet'
         && entry.topicType !== 'whiteboard') {
         throw new TypeError(`Topic ${entryId} has an unknown subtype`)
       }
@@ -149,8 +145,6 @@ export function validateProjectionPatch(
       throw new TypeError(`Unknown NoteEntry kind: ${String((entry as { kind: unknown }).kind)}`)
     }
   }
-
-  validateSpreadsheetProjections(entries, topics, spreadsheets)
 
   const projectedTopics = new Set<string>()
   for (const topic of topics) {
@@ -178,131 +172,6 @@ export function validateProjectionPatch(
       throw new Error(`NoteEntry ${entry.id} has unknown parent ${entry.parentId}`)
     if (entry.kind === 'folder' && entry.parentId !== null && entriesById?.get(entry.parentId)?.kind === 'topic')
       throw new Error(`Folder ${entry.id} cannot use Topic ${entry.parentId} as its parent`)
-  }
-}
-
-function validateOrderedIds(values: readonly string[], description: string): Set<string> {
-  if (values.length === 0)
-    throw new TypeError(`${description} must contain at least one id`)
-  const ids = new Set<string>()
-  values.forEach((value, index) => {
-    assertNonEmpty(value, `${description} ${index}`)
-    if (ids.has(value))
-      throw new Error(`${description} contains duplicate id ${value}`)
-    ids.add(value)
-  })
-  return ids
-}
-
-function validateSpreadsheetProjections(
-  entries: readonly NoteEntryProjection[] | undefined,
-  topics: readonly TopicContentProjection[],
-  spreadsheets: readonly SpreadsheetProjection[] | undefined,
-): void {
-  const spreadsheetEntries = new Set((entries ?? []).flatMap(entry => (
-    entry.kind === 'topic' && entry.topicType === 'spreadsheet' ? [entry.id] : []
-  )))
-  const projections = spreadsheets ?? []
-  const projectedTopicIds = new Set<string>()
-
-  for (const spreadsheet of projections) {
-    assertNonEmpty(spreadsheet.topicId, 'SpreadsheetTopic projection id')
-    if (projectedTopicIds.has(spreadsheet.topicId))
-      throw new Error(`Duplicate SpreadsheetTopic projection: ${spreadsheet.topicId}`)
-    projectedTopicIds.add(spreadsheet.topicId)
-    if (entries && !spreadsheetEntries.has(spreadsheet.topicId)) {
-      throw new Error(
-        `SpreadsheetTopic projection ${spreadsheet.topicId} has no matching SpreadsheetTopic NoteEntry`,
-      )
-    }
-    if (spreadsheet.sheets.length === 0)
-      throw new TypeError(`SpreadsheetTopic ${spreadsheet.topicId} must contain at least one Sheet`)
-
-    const sheetIds = new Set<string>()
-    const sheetNames = new Set<string>()
-    for (const sheet of spreadsheet.sheets) {
-      assertNonEmpty(sheet.id, `SpreadsheetTopic ${spreadsheet.topicId} Sheet id`)
-      assertNonEmpty(sheet.name, `SpreadsheetTopic ${spreadsheet.topicId} Sheet ${sheet.id} name`)
-      if (sheetIds.has(sheet.id))
-        throw new Error(`SpreadsheetTopic ${spreadsheet.topicId} contains duplicate Sheet id ${sheet.id}`)
-      if (sheetNames.has(sheet.name))
-        throw new Error(`SpreadsheetTopic ${spreadsheet.topicId} contains duplicate Sheet name ${sheet.name}`)
-      sheetIds.add(sheet.id)
-      sheetNames.add(sheet.name)
-      const rowIds = validateOrderedIds(
-        sheet.rowIds,
-        `SpreadsheetTopic ${spreadsheet.topicId} Sheet ${sheet.id} Row order`,
-      )
-      const columnIds = validateOrderedIds(
-        sheet.columnIds,
-        `SpreadsheetTopic ${spreadsheet.topicId} Sheet ${sheet.id} Column order`,
-      )
-      const cellCoordinates = new Set<string>()
-
-      for (const cell of sheet.cells) {
-        assertNonEmpty(cell.rowId, `SpreadsheetTopic ${spreadsheet.topicId} Sheet ${sheet.id} Cell Row id`)
-        assertNonEmpty(cell.columnId, `SpreadsheetTopic ${spreadsheet.topicId} Sheet ${sheet.id} Cell Column id`)
-        if (!rowIds.has(cell.rowId))
-          throw new Error(`SpreadsheetTopic ${spreadsheet.topicId} Sheet ${sheet.id} Cell uses unknown Row ${cell.rowId}`)
-        if (!columnIds.has(cell.columnId)) {
-          throw new Error(
-            `SpreadsheetTopic ${spreadsheet.topicId} Sheet ${sheet.id} Cell uses unknown Column ${cell.columnId}`,
-          )
-        }
-        const coordinate = `${cell.rowId}\0${cell.columnId}`
-        if (cellCoordinates.has(coordinate)) {
-          throw new Error(
-            `SpreadsheetTopic ${spreadsheet.topicId} Sheet ${sheet.id} contains duplicate Cell ${cell.rowId}/${cell.columnId}`,
-          )
-        }
-        cellCoordinates.add(coordinate)
-        assertString(cell.input, `SpreadsheetTopic ${spreadsheet.topicId} Sheet ${sheet.id} Cell input`)
-        assertString(cell.display, `SpreadsheetTopic ${spreadsheet.topicId} Sheet ${sheet.id} Cell display`)
-        if (cell.format === null || Array.isArray(cell.format) || typeof cell.format !== 'object') {
-          throw new TypeError(
-            `SpreadsheetTopic ${spreadsheet.topicId} Sheet ${sheet.id} Cell format must be an object`,
-          )
-        }
-        if (!Array.isArray(cell.formulaReferences)) {
-          throw new TypeError(
-            `SpreadsheetTopic ${spreadsheet.topicId} Sheet ${sheet.id} Cell FormulaReferences must be an array`,
-          )
-        }
-        if (cell.formulaReferences.length > 0 && !cell.input.startsWith('=')) {
-          throw new TypeError(
-            `SpreadsheetTopic ${spreadsheet.topicId} Sheet ${sheet.id} Cell FormulaReferences require formula input`,
-          )
-        }
-        let previousEnd = 0
-        for (const reference of cell.formulaReferences) {
-          assertNonEmpty(reference.topicId, 'FormulaReference Topic id')
-          assertNonEmpty(reference.sheetId, 'FormulaReference Sheet id')
-          assertNonEmpty(reference.rowId, 'FormulaReference Row id')
-          assertNonEmpty(reference.columnId, 'FormulaReference Column id')
-          if (!Number.isInteger(reference.sourceStart) || reference.sourceStart < previousEnd) {
-            throw new RangeError('FormulaReference source ranges must be ordered, non-overlapping integers')
-          }
-          if (!Number.isInteger(reference.sourceEnd)
-            || reference.sourceEnd <= reference.sourceStart
-            || reference.sourceEnd > cell.input.length) {
-            throw new RangeError('FormulaReference source range must be non-empty and inside the Cell input')
-          }
-          previousEnd = reference.sourceEnd
-        }
-      }
-    }
-  }
-
-  if (entries && (
-    spreadsheetEntries.size !== projectedTopicIds.size
-    || [...spreadsheetEntries].some(topicId => !projectedTopicIds.has(topicId))
-  )) {
-    throw new Error('A complete Note entry projection must include every SpreadsheetTopic Workbook')
-  }
-
-  for (const topic of topics) {
-    if (projectedTopicIds.has(topic.topicId) && topic.blocks.length > 0)
-      throw new Error(`SpreadsheetTopic ${topic.topicId} must not project Topic Blocks`)
   }
 }
 
