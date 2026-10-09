@@ -65,28 +65,13 @@ function createCapturedJournal(journalDate: string, text: string, createdAt: num
   }
 }
 
-function seedSourceDatabase(databasePath: string): void {
+async function seedSourceDatabase(databasePath: string, userDataDirectory: string): Promise<void> {
+  const bootstrap = await launchPeer(databasePath, 'Source bootstrap', userDataDirectory)
+  await bootstrap.firstWindow()
+  await bootstrap.close()
+
   const database: Database.Database = new BetterSqlite3(databasePath)
   try {
-    database.exec(`
-      PRAGMA foreign_keys = ON;
-      CREATE TABLE notes (
-        row_id INTEGER PRIMARY KEY AUTOINCREMENT,
-        id TEXT NOT NULL UNIQUE,
-        title TEXT NOT NULL,
-        kind TEXT NOT NULL DEFAULT 'regular' CHECK (kind IN ('regular', 'journal')),
-        checkpoint_snapshot BLOB,
-        checkpoint_sequence INTEGER NOT NULL DEFAULT 0 CHECK (checkpoint_sequence >= 0),
-        latest_sequence INTEGER NOT NULL DEFAULT 0 CHECK (latest_sequence >= checkpoint_sequence),
-        created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL
-      );
-      CREATE TABLE journals (
-        note_row_id INTEGER PRIMARY KEY REFERENCES notes(row_id) ON DELETE CASCADE,
-        journal_date TEXT NOT NULL UNIQUE,
-        has_user_content INTEGER NOT NULL CHECK (has_user_content IN (0, 1))
-      );
-    `)
     const insertNote = database.prepare(`
       INSERT INTO notes (
         id, title, kind, checkpoint_snapshot, checkpoint_sequence,
@@ -111,7 +96,6 @@ function seedSourceDatabase(databasePath: string): void {
         insertJournal.run(inserted.lastInsertRowid, note.title)
       }
     })()
-    database.pragma('user_version = 1')
   }
   finally {
     database.close()
@@ -180,7 +164,7 @@ test('synchronizes the captured existing database to a new peer', async () => {
   const directory = await mkdtemp(resolve(tmpdir(), 'memorilo-p2p-existing-database-'))
   const sourceDatabasePath = resolve(directory, 'source.sqlite')
   const destinationDatabasePath = resolve(directory, 'destination.sqlite')
-  seedSourceDatabase(sourceDatabasePath)
+  await seedSourceDatabase(sourceDatabasePath, resolve(directory, 'source-bootstrap-user-data'))
   let sourceApplication: ElectronApplication | null = null
   let destinationApplication: ElectronApplication | null = null
   try {
