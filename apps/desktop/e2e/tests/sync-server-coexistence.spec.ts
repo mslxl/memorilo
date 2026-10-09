@@ -227,7 +227,7 @@ async function createNote(window: Page, title: string): Promise<void> {
   await expect(window.getByRole('button', { name: `Rename Note: ${title}` })).toBeVisible()
 }
 
-async function openSettings(application: ElectronApplication, _mainWindow: Page): Promise<Page> {
+async function openSettings(application: ElectronApplication, _mainWindow: Page, startPairing = false): Promise<Page> {
   const previous = new Set(application.windows())
   await application.evaluate(({ Menu }) => {
     const item = Menu.getApplicationMenu()?.getMenuItemById('settings')
@@ -239,7 +239,9 @@ async function openSettings(application: ElectronApplication, _mainWindow: Page)
   const settings = application.windows().find(window => !previous.has(window))
   if (!settings)
     throw new Error('Settings window did not open')
-  await settings.getByRole('button', { name: 'Sync' }).click()
+  await settings.getByRole('button', { exact: true, name: 'Sync Server' }).click()
+  if (startPairing)
+    await settings.getByRole('button', { exact: true, name: 'Set up Sync Server' }).click()
   return settings
 }
 
@@ -296,17 +298,19 @@ test('pairs through the management page, coexists with direct P2P, and restores 
     await management.getByRole('button', { name: 'Create invitation' }).click()
     const invitation = await management.getByLabel('Invitation').inputValue()
 
-    const settings = await openSettings(firstApplication, firstWindow)
+    const settings = await openSettings(firstApplication, firstWindow, true)
     const serverUrl = settings.getByRole('textbox', { name: 'Sync Server URL' })
     await serverUrl.fill(server.wsUrl)
     await serverUrl.blur()
     await settings.getByLabel('Sync Server invitation').fill(invitation)
-    await settings.getByRole('button', { name: 'Create response' }).click()
-    const response = await settings.getByLabel('Client pairing response').inputValue()
+    await settings.getByRole('button', { exact: true, name: 'Continue' }).click()
+    const response = (await settings.locator('code').textContent())?.trim() ?? ''
+    expect(response).not.toBe('')
 
     await management.getByLabel('Client response').fill(response)
     await management.getByRole('button', { name: 'Complete pairing' }).click()
     const credential = await management.getByLabel('Device credential (copy into the client)').inputValue()
+    await settings.getByRole('button', { exact: true, name: 'Continue' }).click()
     await settings.getByLabel('Issued device credential').fill(credential)
     await settings.getByRole('button', { name: 'Finish pairing' }).click()
     await expect(settings.getByText('Sync Server paired. Restart Memorilo to apply the server connection.')).toBeVisible()
@@ -360,13 +364,13 @@ test('pairs through the management page, coexists with direct P2P, and restores 
     await management.getByRole('button', { name: 'Relay enabled' }).click()
     await management.getByLabel('Current password').fill('correct-horse-battery-staple')
     await management.getByRole('button', { name: 'Confirm change' }).click()
-    await expect(eventSettings.getByRole('status')).toContainText('The Sync Server policy changed', { timeout: 30_000 })
+    await expect(eventSettings.getByRole('status').filter({ hasText: 'The Sync Server policy changed' })).toBeVisible({ timeout: 30_000 })
 
     await management.getByRole('button', { name: 'Server data', exact: true }).click()
     await management.getByLabel('Current password').fill('correct-horse-battery-staple')
     await management.getByLabel('Type CLEAR SERVER DATA to confirm').fill('CLEAR SERVER DATA')
     await management.getByRole('button', { name: 'Clear server data' }).click()
-    await expect(eventSettings.getByRole('status')).toContainText('The Sync Server data was cleared', { timeout: 30_000 })
+    await expect(eventSettings.getByRole('status').filter({ hasText: 'The Sync Server data was cleared' })).toBeVisible({ timeout: 30_000 })
     await expect.poll(() => firstWindow.evaluate(() => (window as unknown as MemoriloWindow).desktop.p2p.getServerStatus()), { timeout: 30_000 }).toMatchObject({ state: 'synced' })
 
     await Promise.all([applications.close(firstApplication), applications.close(secondApplication)])

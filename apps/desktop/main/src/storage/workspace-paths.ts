@@ -11,6 +11,9 @@ export function mainDatabasePath(userDataPath: string): string {
 }
 
 export function applicationDataDirectory(userDataPath: string, developmentDirectory: string, packaged: boolean): string {
+  // E2E launches the unpackaged app with isolated user-data paths, so identities and configuration must not leak through .dev.
+  if (process.env.MEMORILO_E2E_USE_USER_DATA === '1')
+    return userDataPath
   return packaged ? userDataPath : developmentDirectory
 }
 
