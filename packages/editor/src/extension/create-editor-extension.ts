@@ -34,6 +34,7 @@ import { defineImageUploadHandler } from 'prosekit/extensions/image'
 import { defineMath } from 'prosekit/extensions/math'
 import { definePlaceholder } from 'prosekit/extensions/placeholder'
 import { defineReadonly } from 'prosekit/extensions/readonly'
+import { Fragment, Slice } from 'prosekit/pm/model'
 import { Plugin } from 'prosekit/pm/state'
 import { defaultAttributesGetter, listToDOM } from 'prosemirror-flat-list'
 import { defineCardExtension } from '../card/card-extension'
@@ -147,6 +148,83 @@ function defineOutlineClipboardParser() {
   }))
 }
 
+const pastedLearningIdentityKeys = new Set([
+  'backwardCardId',
+  'blockHighlightId',
+  'cardItemDefinitionId',
+  'cardId',
+  'definitionId',
+  'forwardCardId',
+  'groupId',
+  'highlightId',
+  'id',
+  'targetGroupId',
+])
+
+function remapPastedLearningIdentities(slice: Slice): Slice {
+  const jsonNodes = slice.content.content.map(node => node.toJSON() as NodeJSON)
+  const remappableIds = new Set<string>()
+  const collect = (node: NodeJSON): void => {
+    if (node.type === 'cardDelimiter') {
+      for (const key of ['backwardCardId', 'definitionId', 'forwardCardId']) {
+        const value = node.attrs?.[key]
+        if (typeof value === 'string')
+          remappableIds.add(value)
+      }
+    }
+    for (const key of ['blockHighlightId', 'cardItemDefinitionId']) {
+      const value = node.attrs?.[key]
+      if (typeof value === 'string')
+        remappableIds.add(value)
+    }
+    for (const mark of node.marks ?? []) {
+      if (mark.type === 'cloze') {
+        for (const key of ['cardId', 'definitionId', 'groupId']) {
+          const value = mark.attrs?.[key]
+          if (typeof value === 'string')
+            remappableIds.add(value)
+        }
+      }
+      if (mark.type === 'inlineHighlight' && typeof mark.attrs?.id === 'string')
+        remappableIds.add(mark.attrs.id)
+    }
+    node.content?.forEach(collect)
+  }
+  jsonNodes.forEach(collect)
+
+  const identities = new Map<string, string>()
+  const remap = (value: unknown, key: string): unknown => {
+    if (!pastedLearningIdentityKeys.has(key) || typeof value !== 'string' || !remappableIds.has(value))
+      return value
+    const mapped = identities.get(value) ?? crypto.randomUUID()
+    identities.set(value, mapped)
+    return mapped
+  }
+  const rewrite = (value: unknown): unknown => {
+    if (Array.isArray(value))
+      return value.map(rewrite)
+    if (value === null || typeof value !== 'object')
+      return value
+    return Object.fromEntries(Object.entries(value).map(([key, child]) => [
+      key,
+      pastedLearningIdentityKeys.has(key) ? remap(child, key) : rewrite(child),
+    ]))
+  }
+  const children = slice.content.content.map((node, index) => {
+    const json = rewrite(jsonNodes[index]!) as NodeJSON
+    return node.type.schema.nodeFromJSON(json)
+  })
+  return new Slice(Fragment.fromArray(children), slice.openStart, slice.openEnd)
+}
+
+function defineLearningIdentityClipboardParser() {
+  return definePlugin(new Plugin({
+    props: {
+      transformPasted: remapPastedLearningIdentities,
+    },
+  }))
+}
+
 function defineOutlineDocumentNormalization() {
   return definePlugin(new Plugin({
     appendTransaction: (transactions, _oldState, newState) => {
@@ -233,6 +311,7 @@ export function createEditorExtension(
     defineTaskListView(adapters.taskActions),
     defineTaskClipboardSerializer(),
     defineOutlineClipboardParser(),
+    defineLearningIdentityClipboardParser(),
     defineImageUploadHandler({
       uploader,
       onError: ({ error }) => {
