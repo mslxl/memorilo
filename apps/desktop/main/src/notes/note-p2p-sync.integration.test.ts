@@ -1,12 +1,12 @@
 import type { SyncChange, VersionVector } from '@memorilo/sync'
-import { Buffer } from 'node:buffer'
 import { createHash } from 'node:crypto'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { SqliteEditorStorage } from '@memorilo/editor-storage'
 import { createEditorNote } from '@memorilo/editor/note'
-import { createP2pNode, JsonSyncJournal, MemoryPairingStore, PairingManager } from '@memorilo/sync/node'
+import { decodeMemoriloProto, encodeMemoriloProto } from '@memorilo/sync-protocol'
+import { createP2pNode, MemoryPairingStore, PairingManager, ProtobufSyncJournal } from '@memorilo/sync/node'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { BetterSqliteDatabase } from '../storage/better-sqlite-database'
 import { createNoteApplicationService } from './note-application-service'
@@ -54,8 +54,8 @@ describe('p2p Note synchronization', () => {
   it('creates and updates a missing Note received from a peer', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'memorilo-note-p2p-sync-'))
     temporaryDirectories.push(directory)
-    const sourceJournal = new JsonSyncJournal(join(directory, 'source-journal.json'))
-    const destinationJournal = new JsonSyncJournal(join(directory, 'destination-journal.json'))
+    const sourceJournal = new ProtobufSyncJournal(join(directory, 'source-journal.bin'))
+    const destinationJournal = new ProtobufSyncJournal(join(directory, 'destination-journal.bin'))
     await sourceJournal.load()
     await destinationJournal.load()
     await sourceJournal.setDeviceId('source')
@@ -69,7 +69,7 @@ describe('p2p Note synchronization', () => {
       sourceJournalWrites.push(sourceJournal.appendLocal({
         id: `note:${noteId}:${updateId}`,
         kind: 'note-update',
-        payload: JSON.stringify({ noteId, update: Buffer.from(update).toString('base64url') }),
+        payload: encodeMemoriloProto('NoteUpdate', { noteId, loroUpdate: update }),
       }).then(() => undefined))
     })
     const destinationNotes = createNoteApplicationService(destinationStorage)
@@ -107,10 +107,10 @@ describe('p2p Note synchronization', () => {
           for (const change of changes) {
             if (change.kind !== 'note-update')
               continue
-            const payload = JSON.parse(change.payload) as { noteId: string, update: string }
+            const payload = decodeMemoriloProto('NoteUpdate', change.payload)
             await destinationNotes.saveNoteUpdates({
-              noteId: payload.noteId,
-              updates: [Uint8Array.from(Buffer.from(payload.update, 'base64url'))],
+              noteId: String(payload.noteId),
+              updates: [new Uint8Array(payload.loroUpdate as Uint8Array)],
             })
             receivedNote = true
           }
@@ -221,7 +221,7 @@ describe('p2p Note synchronization', () => {
   it('seeds a complete baseline for Notes that predate the P2P journal', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'memorilo-note-p2p-baseline-'))
     temporaryDirectories.push(directory)
-    const sourceJournal = new JsonSyncJournal(join(directory, 'source-journal.json'))
+    const sourceJournal = new ProtobufSyncJournal(join(directory, 'source-journal.bin'))
     await sourceJournal.load()
     await sourceJournal.setDeviceId('source')
 
@@ -237,7 +237,7 @@ describe('p2p Note synchronization', () => {
     await sourceJournal.appendLocal({
       id: 'source:note:rename',
       kind: 'note-update',
-      payload: JSON.stringify({ noteId: source.id, update: Buffer.from(edit).toString('base64url') }),
+      payload: encodeMemoriloProto('NoteUpdate', { noteId: source.id, loroUpdate: edit }),
     })
 
     const seedBaselines = () => ensureNoteP2pBaselines({
@@ -274,10 +274,11 @@ describe('p2p Note synchronization', () => {
     applications.push(destinationNotes)
     const updatesByNoteId = new Map<string, Uint8Array[]>()
     for (const change of changes) {
-      const payload = JSON.parse(change.payload) as { noteId: string, update: string }
-      const updates = updatesByNoteId.get(payload.noteId) ?? []
-      updates.push(Uint8Array.from(Buffer.from(payload.update, 'base64url')))
-      updatesByNoteId.set(payload.noteId, updates)
+      const payload = decodeMemoriloProto('NoteUpdate', change.payload)
+      const noteId = String(payload.noteId)
+      const updates = updatesByNoteId.get(noteId) ?? []
+      updates.push(new Uint8Array(payload.loroUpdate as Uint8Array))
+      updatesByNoteId.set(noteId, updates)
     }
     for (const [noteId, updates] of updatesByNoteId)
       await destinationNotes.saveNoteUpdates({ noteId, updates })

@@ -16,6 +16,7 @@ import { mdns } from '@libp2p/mdns'
 import { peerIdFromString } from '@libp2p/peer-id'
 import { tcp } from '@libp2p/tcp'
 import { webSockets } from '@libp2p/websockets'
+import { decodeMemoriloProto, encodeMemoriloProto } from '@memorilo/sync-protocol'
 import { multiaddr } from '@multiformats/multiaddr'
 import { createLibp2p } from 'libp2p'
 import { JsonDeviceSigningKeyStore, loadOrCreateDeviceSigner, signDevicePayload, verifyDevicePayload, withoutDeviceSignature } from './device-signing'
@@ -26,7 +27,7 @@ import { sharedServerWebSockets } from './shared-server-websockets'
 export type { DeviceSigner, DeviceSigningKeyStore } from './device-signing'
 export { createDeviceSigner, generateDeviceSigningPrivateKey, JsonDeviceSigningKeyStore, loadOrCreateDeviceSigner, signDevicePayload, verifyDevicePayload } from './device-signing'
 export type { LocalSyncChangeInput } from './journal'
-export { JsonSyncJournal } from './journal'
+export { ProtobufSyncJournal } from './journal'
 export type { LocalDeviceIdentity, PairingStore } from './pairing'
 export { decodePairingPayload, encodePairingPayload, JsonPairingStore, MemoryPairingStore, PairingManager, verifyPairingInvitation, verifyPairingResponse } from './pairing'
 
@@ -531,7 +532,12 @@ function createObjectStreamReader(stream: SyncStream): ObjectStreamReader {
       if (bodyActive)
         throw new Error('Object stream body must finish before reading another frame')
       const frame = await readFrame(reader, 64 * 1024, 'Peer closed the object stream before completing the transfer', 'Memorilo object header exceeds the maximum frame size')
-      return JSON.parse(new TextDecoder().decode(frame)) as Value
+      const decoded = decodeMemoriloProto('ObjectFrame', frame) as any
+      if (decoded.put !== undefined)
+        return decoded.put as Value
+      if (decoded.response !== undefined)
+        return decoded.response as Value
+      throw new TypeError('Memorilo object frame has no body')
     },
   }
 }
@@ -546,7 +552,16 @@ function decodeObjectPutRequest(value: unknown): SyncObjectPutRequest {
   if (typeof value !== 'object' || value === null || Array.isArray(value))
     throw new TypeError('Memorilo object request must be an object')
   const record = value as Record<string, unknown>
-  exactObjectKeys(record, ['type', 'protocol', 'deviceId', 'generation', 'membershipEpoch', 'policyEpoch', 'pairingId', 'sharedSecret', 'nonce', 'issuedAt', 'manifest', 'signature'], ['credential'])
+  if (record.manifest && typeof record.manifest === 'object' && (record.manifest as any).contentHash instanceof Uint8Array) {
+    const manifest = record.manifest as any
+    record.manifest = {
+      ...manifest,
+      contentHash: manifest.contentHash.length === 0 ? null : Buffer.from(manifest.contentHash).toString('hex'),
+      contentLength: manifest.contentLength === undefined ? null : Number(manifest.contentLength),
+      contentType: manifest.contentType === undefined ? null : String(manifest.contentType),
+    }
+  }
+  exactObjectKeys(record, ['type', 'protocol', 'deviceId', 'generation', 'membershipEpoch', 'policyEpoch', 'pairingId', 'sharedSecret', 'nonce', 'issuedAt', 'manifest', 'signature'], ['credential', 'body'])
   if (record.type !== 'put-object' || record.protocol !== 'memorilo-object/1')
     throw new TypeError('Memorilo object protocol is invalid')
   const manifest = decodeAssetManifest(record.manifest)
@@ -580,19 +595,44 @@ function decodeObjectResponse(value: unknown): ObjectTransferResponse {
     throw new TypeError('Memorilo object response must be an object')
   const record = value as Record<string, unknown>
   if (record.type === 'error') {
-    exactObjectKeys(record, ['type', 'code'])
     if (typeof record.code !== 'string' || record.code.length === 0)
       throw new TypeError('Memorilo object error code is invalid')
     return { code: record.code, type: 'error' }
   }
-  exactObjectKeys(record, ['type'])
   if (record.type !== 'ready' && record.type !== 'exists' && record.type !== 'complete')
     throw new TypeError('Memorilo object response type is invalid')
   return { type: record.type }
 }
 
 async function writeObjectFrame(stream: SyncStream, value: SyncObjectPutRequest | ObjectTransferResponse): Promise<void> {
-  const body = new TextEncoder().encode(JSON.stringify(value))
+  const body = 'type' in value && value.type === 'put-object'
+    ? encodeMemoriloProto('ObjectFrame', { put: {
+        credential: value.credential,
+        deviceId: value.deviceId,
+        generation: value.generation,
+        issuedAt: value.issuedAt,
+        manifest: {
+          contentHash: value.manifest.contentHash === null ? undefined : Uint8Array.from(Buffer.from(value.manifest.contentHash, 'hex')),
+          contentLength: value.manifest.contentLength ?? undefined,
+          contentType: value.manifest.contentType ?? undefined,
+          createdAt: value.manifest.createdAt,
+          deviceId: value.manifest.deviceId,
+          fileName: value.manifest.fileName,
+          id: value.manifest.id,
+          operation: value.manifest.operation,
+          originalFileName: value.manifest.originalFileName,
+          sequence: value.manifest.sequence,
+        },
+        membershipEpoch: value.membershipEpoch,
+        nonce: value.nonce,
+        pairingId: value.pairingId,
+        policyEpoch: value.policyEpoch,
+        protocol: value.protocol,
+        sharedSecret: value.sharedSecret,
+        signature: value.signature,
+        type: value.type,
+      } })
+    : encodeMemoriloProto('ObjectFrame', { response: value })
   if (body.byteLength > 64 * 1024)
     throw new RangeError('Memorilo object header exceeds the maximum frame size')
   const frame = new Uint8Array(body.byteLength + 4)

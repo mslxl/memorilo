@@ -7,7 +7,7 @@ import { and, asc, desc, eq, gt, isNull, lt, lte, or, sql } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { migrate as migrateDrizzle } from 'drizzle-orm/better-sqlite3/migrator'
 import { syncAccounts, syncAssetManifests, syncAuditEvents, syncChanges, syncDeviceCredentials, syncDeviceNonces, syncDeviceTodoTokens, syncInvites, syncLearningEntities, syncLearningTombstones, syncNoteSnapshots, syncObjects, syncPairingSessions, syncResetJobs, syncSessions, syncUsers } from './schema'
-import { accountStateFromRow, compareLearningEntityOrder, deviceTodoTokenFromRow, frontierFromRows, objectMetadataFromRow, payloadHash, resetJobFromRow } from './shared'
+import { accountStateFromRow, compareLearningEntityOrder, deviceTodoTokenFromRow, frontierFromRows, objectMetadataFromRow, payloadHash, resetJobFromRow, restoredSyncPayload, storedSyncPayload } from './shared'
 
 export interface SqliteSyncDatabaseOptions {
   readonly filename: string
@@ -338,7 +338,7 @@ export function createSqliteSyncDatabase(options: SqliteSyncDatabaseOptions): Sq
             id: change.id,
             kind: change.kind,
             namespace: batch.namespace,
-            payload: change.payload,
+            payload: storedSyncPayload(change.payload),
             payloadHash: hash,
             receiptSequence: nextReceiptSequence,
             receivedAt: now(),
@@ -600,7 +600,7 @@ export function createSqliteSyncDatabase(options: SqliteSyncDatabaseOptions): Sq
         id: row.id,
         kind: row.kind,
         namespace: row.namespace,
-        payload: row.payload,
+        payload: restoredSyncPayload(row.payload),
         payloadHash: row.payloadHash,
         receivedAt: row.receivedAt,
         receiptSequence: row.receiptSequence,

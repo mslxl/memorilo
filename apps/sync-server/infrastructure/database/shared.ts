@@ -1,9 +1,20 @@
 import type { SyncAccountState, SyncDeviceTodoToken, SyncLearningEntityRecord, SyncNoteSnapshotRecord, SyncObjectMetadata, SyncResetJob, VersionVector } from '@memorilo/sync'
+import { Buffer } from 'node:buffer'
 import { createHash } from 'node:crypto'
 import { mergeVersionVectors } from '@memorilo/sync'
 
-export function payloadHash(payload: string): string {
+export function payloadHash(payload: Uint8Array): string {
   return createHash('sha256').update(payload).digest('hex')
+}
+
+// SQL text columns store the protobuf bytes losslessly; decoding belongs to
+// this adapter so repository callers always exchange byte arrays.
+export function storedSyncPayload(payload: Uint8Array): string {
+  return Buffer.from(payload).toString('base64')
+}
+
+export function restoredSyncPayload(payload: string): Uint8Array {
+  return new Uint8Array(Buffer.from(payload, 'base64'))
 }
 
 export function noteSnapshotRevision(snapshot: Pick<SyncNoteSnapshotRecord, 'snapshot'> | null): string | null {

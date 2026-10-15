@@ -374,7 +374,7 @@ test('pairs through the management page, coexists with direct P2P, and restores 
       rm(firstDatabase, { force: true }),
       rm(`${firstDatabase}-shm`, { force: true }),
       rm(`${firstDatabase}-wal`, { force: true }),
-      rm(resolve(firstUserData, 'p2p/sync-journal.json'), { force: true }),
+      rm(resolve(firstUserData, 'p2p/sync-journal.bin'), { force: true }),
     ])
 
     firstApplication = await applications.launch(firstDatabase, 'Server and direct peer', firstUserData)

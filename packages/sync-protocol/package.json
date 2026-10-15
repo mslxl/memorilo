@@ -1,0 +1,22 @@
+{
+  "name": "@memorilo/sync-protocol",
+  "type": "module",
+  "version": "0.0.0",
+  "private": true,
+  "exports": {
+    ".": "./src/index.ts",
+    "./proto": "./proto/memorilo.proto"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "protobufjs": "7.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.30"
+  }
+}

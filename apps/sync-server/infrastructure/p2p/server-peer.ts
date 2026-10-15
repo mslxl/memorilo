@@ -2,8 +2,11 @@ import type { PairedDevice, SyncAccountState, SyncAssetManifest, SyncAuthStore, 
 import type { P2pApplication, SyncObjectPutRequest, SyncObjectTransferStore, SyncStateProvider } from '@memorilo/sync/node'
 import type { Server } from 'node:http'
 import type { SyncPeerMetricsRecorder } from '../metrics'
+import { Buffer } from 'node:buffer'
 import { createHash, randomUUID } from 'node:crypto'
-import { mergeAuthoritativeNoteSnapshot, objectKeyFor } from '@memorilo/sync'
+import { learningMutationRecord, mergeAuthoritativeNoteSnapshot, objectKeyFor } from '@memorilo/sync'
+
+import { decodeMemoriloProto } from '@memorilo/sync-protocol'
 import { createP2pApplication, maxDeviceSignatureClockSkewMs, verifySyncHelloSignature, verifySyncObjectRequestSignature } from '@memorilo/sync/node'
 import { Effect, Queue, Stream } from 'effect'
 import { compareLearningEntityOrder } from '../database/shared'
@@ -336,43 +339,40 @@ function pairedDevice(hello: SyncHello, peerId: string, createdAt: number, signi
 }
 
 function validateAuthoritativePayload(namespace: SyncDataNamespace, change: SyncChange): void {
-  let payload: unknown
+  let payload: Record<string, unknown>
   try {
-    payload = JSON.parse(change.payload)
+    payload = namespace === 'notes'
+      ? decodeMemoriloProto('NoteUpdate', change.payload) as Record<string, unknown>
+      : learningMutationRecord(change.payload)
   }
   catch {
     throw new Error('sync-payload-invalid')
   }
   if (namespace === 'notes') {
-    if (payload === null || typeof payload !== 'object')
-      throw new Error('sync-note-payload-invalid')
-    const noteId = (payload as { noteId?: unknown }).noteId
-    const update = (payload as { update?: unknown }).update
-    if (typeof noteId !== 'string' || noteId.length === 0 || typeof update !== 'string' || update.length === 0)
+    const noteId = payload.noteId
+    const update = payload.loroUpdate
+    if (typeof noteId !== 'string' || noteId.length === 0 || !(update instanceof Uint8Array) || update.length === 0)
       throw new Error('sync-note-payload-invalid')
     try {
-      mergeAuthoritativeNoteSnapshot(null, update)
+      mergeAuthoritativeNoteSnapshot(null, Buffer.from(update).toString('base64url'))
     }
     catch {
       throw new Error('sync-note-payload-invalid')
     }
     return
   }
-  if (typeof payload !== 'object' || payload === null
-    || typeof (payload as { mutationId?: unknown }).mutationId !== 'string'
-    || typeof (payload as { entityId?: unknown }).entityId !== 'string'
-    || typeof (payload as { entityKind?: unknown }).entityKind !== 'string'
-    || typeof (payload as { operation?: unknown }).operation !== 'string') {
-    throw new Error('sync-learning-payload-invalid')
+  if (typeof payload.mutationId !== 'string' || typeof payload.entityId !== 'string'
+    || typeof payload.entityKind !== 'string' || typeof payload.operation !== 'string') {
+    throw new TypeError('sync-learning-payload-invalid')
   }
-  const entityKind = (payload as { entityKind: string }).entityKind
-  const operation = (payload as { operation: string }).operation
+  const entityKind = payload.entityKind
+  const operation = payload.operation
   if (!['assignment', 'card', 'optimizer', 'review-event', 'tombstone'].includes(entityKind)
     || !['upsert', 'delete'].includes(operation)) {
     throw new Error('sync-learning-payload-invalid')
   }
   if (entityKind === 'tombstone' && operation === 'delete') {
-    const tombstone = payload as { scopeKind?: unknown, scopeId?: unknown, tombstoneId?: unknown, generation?: unknown }
+    const tombstone = payload.payload as Record<string, unknown>
     if ((tombstone.scopeKind !== 'target' && tombstone.scopeKind !== 'card' && tombstone.scopeKind !== 'optimizer')
       || typeof tombstone.scopeId !== 'string' || tombstone.scopeId.length === 0
       || typeof tombstone.tombstoneId !== 'string' || tombstone.tombstoneId.length === 0
@@ -384,8 +384,9 @@ function validateAuthoritativePayload(namespace: SyncDataNamespace, change: Sync
 
 function payloadRecord(change: SyncChange): Record<string, unknown> | null {
   try {
-    const value: unknown = JSON.parse(change.payload)
-    return value !== null && typeof value === 'object' ? value as Record<string, unknown> : null
+    return change.kind === 'note-update'
+      ? decodeMemoriloProto('NoteUpdate', change.payload) as Record<string, unknown>
+      : learningMutationRecord(change.payload)
   }
   catch {
     return null
@@ -404,12 +405,13 @@ async function materializeAuthoritativeChanges(
     const payload = payloadRecord(change)
     if (change.kind === 'note-update') {
       const noteId = typeof payload?.noteId === 'string' ? payload.noteId : null
-      const update = typeof payload?.update === 'string' ? payload.update : null
+      const updateBytes = payload?.loroUpdate instanceof Uint8Array ? payload.loroUpdate : null
+      const update = updateBytes === null ? null : Buffer.from(updateBytes).toString('base64url')
       if (noteId === null || update === null)
         throw new Error('sync-note-payload-invalid')
       try {
-        // Validate before entering the repository so a malformed legacy envelope
-        // is skipped, while database failures still abort the session before ACK.
+        // Validate before entering the repository so malformed protobuf data is
+        // rejected while database failures still abort the session before ACK.
         mergeAuthoritativeNoteSnapshot(null, update)
       }
       catch {
@@ -454,10 +456,11 @@ async function materializeAuthoritativeChanges(
     await repository.upsertLearningEntity(record)
     existingEntities.set(entityId, record)
     if (entityKind === 'tombstone' && operation === 'delete') {
-      const scopeKind = payload.scopeKind
-      const scopeId = payload.scopeId
-      const tombstoneGeneration = payload.generation
-      const tombstoneId = payload.tombstoneId
+      const tombstone = payload.payload as Record<string, unknown>
+      const scopeKind = tombstone.scopeKind
+      const scopeId = tombstone.scopeId
+      const tombstoneGeneration = tombstone.generation
+      const tombstoneId = tombstone.tombstoneId
       if ((scopeKind === 'target' || scopeKind === 'card' || scopeKind === 'optimizer')
         && typeof scopeId === 'string' && scopeId.length > 0
         && Number.isSafeInteger(tombstoneGeneration) && (tombstoneGeneration as number) >= 0

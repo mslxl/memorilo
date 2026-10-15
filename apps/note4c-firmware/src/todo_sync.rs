@@ -7,6 +7,7 @@ use std::fmt;
 use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
+use prost::Message;
 
 use crate::model::{Status, TodoId, TodoItem, TodoModel};
 
@@ -212,6 +213,70 @@ pub struct TodoSnapshotItem {
     pub topic_title: String,
 }
 
+pub fn decode_protobuf_snapshot(bytes: &[u8]) -> Result<TodoSnapshot, TodoSnapshotError> {
+    if bytes.len() > MAX_SNAPSHOT_BYTES {
+        return Err(TodoSnapshotError::TooLarge);
+    }
+    let value = crate::proto::memorilo::sync::v1::TodoSnapshot::decode(bytes)
+        .map_err(|_| TodoSnapshotError::InvalidJson)?;
+    snapshot_from_proto(value)
+}
+
+pub(crate) fn snapshot_from_proto(value: crate::proto::memorilo::sync::v1::TodoSnapshot) -> Result<TodoSnapshot, TodoSnapshotError> {
+    let items = value.items.into_iter().map(|item| Ok(TodoSnapshotItem {
+        schedule: match item.schedule.and_then(|schedule| schedule.body) {
+            Some(crate::proto::memorilo::sync::v1::todo_schedule::Body::None(_)) => TodoSchedule::None,
+            Some(crate::proto::memorilo::sync::v1::todo_schedule::Body::Deadline(value)) => TodoSchedule::Deadline { date: value.date, time: value.time },
+            Some(crate::proto::memorilo::sync::v1::todo_schedule::Body::Span(value)) => TodoSchedule::Span { all_day: value.all_day, start: value.start, end: value.end },
+            None => return Err(TodoSnapshotError::InvalidJson),
+        },
+        id: item.id,
+        note_title: item.note_title,
+        parent_id: item.parent_id,
+        revision: item.revision,
+        status: match item.status {
+            1 => SnapshotStatus::Todo,
+            2 => SnapshotStatus::InProgress,
+            3 => SnapshotStatus::Done,
+            _ => return Err(TodoSnapshotError::InvalidJson),
+        },
+        text: item.text,
+        topic_title: item.topic_title,
+    })).collect::<Result<Vec<_>, TodoSnapshotError>>()?;
+    let snapshot = TodoSnapshot {
+        generated_at: value.generated_at,
+        time_zone_offset_minutes: value.time_zone_offset_minutes.map(|v| v as i16),
+        items,
+        revision: value.revision,
+    };
+    validate_snapshot(&snapshot).map_err(|_| TodoSnapshotError::InvalidJson)?;
+    Ok(snapshot)
+}
+
+pub fn encode_protobuf_snapshot(snapshot: &TodoSnapshot) -> Vec<u8> {
+    crate::proto::memorilo::sync::v1::TodoSnapshot {
+        generated_at: snapshot.generated_at.clone(),
+        time_zone_offset_minutes: snapshot.time_zone_offset_minutes.map(i32::from),
+        items: snapshot.items.iter().map(|item| crate::proto::memorilo::sync::v1::TodoItem {
+            schedule: Some(crate::proto::memorilo::sync::v1::TodoSchedule {
+                body: Some(match &item.schedule {
+                    TodoSchedule::None => crate::proto::memorilo::sync::v1::todo_schedule::Body::None(crate::proto::memorilo::sync::v1::TodoUnscheduled {}),
+                    TodoSchedule::Deadline { date, time } => crate::proto::memorilo::sync::v1::todo_schedule::Body::Deadline(crate::proto::memorilo::sync::v1::TodoDeadline { date: date.clone(), time: time.clone() }),
+                    TodoSchedule::Span { all_day, start, end } => crate::proto::memorilo::sync::v1::todo_schedule::Body::Span(crate::proto::memorilo::sync::v1::TodoSpan { all_day: *all_day, start: start.clone(), end: end.clone() }),
+                }),
+            }),
+            id: item.id.clone(),
+            note_title: item.note_title.clone(),
+            parent_id: item.parent_id.clone(),
+            revision: item.revision.clone(),
+            status: match item.status { SnapshotStatus::Todo => 1, SnapshotStatus::InProgress => 2, SnapshotStatus::Done => 3 },
+            text: item.text.clone(),
+            topic_title: item.topic_title.clone(),
+        }).collect(),
+        revision: snapshot.revision.clone(),
+    }.encode_to_vec()
+}
+
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(tag = "kind", rename_all = "lowercase")]
 pub enum TodoSchedule {
@@ -296,21 +361,21 @@ pub enum TodoSyncEvent {
 }
 
 impl TodoSyncState {
-    pub fn admit_json(
+    pub fn admit_protobuf(
         &mut self,
         body: &[u8],
         source: SnapshotSource,
         now_unix_seconds: Option<i64>,
     ) -> Admission {
-        if body.len() > MAX_SNAPSHOT_BYTES {
-            self.last_error = Some("snapshot-too-large".into());
-            return Admission::Rejected(TodoSnapshotError::TooLarge);
-        }
-        let snapshot: TodoSnapshot = match serde_json::from_slice(body) {
+        let snapshot = match decode_protobuf_snapshot(body) {
             Ok(snapshot) => snapshot,
             Err(_) => {
-                self.last_error = Some("snapshot-invalid-json".into());
-                return Admission::Rejected(TodoSnapshotError::InvalidJson);
+                self.last_error = Some("snapshot-invalid-protobuf".into());
+                return Admission::Rejected(if body.len() > MAX_SNAPSHOT_BYTES {
+                    TodoSnapshotError::TooLarge
+                } else {
+                    TodoSnapshotError::InvalidJson
+                });
             }
         };
         self.admit(snapshot, source, now_unix_seconds)
@@ -577,6 +642,21 @@ mod tests {
                 text: text.into(),
                 topic_title: "Topic".into(),
             }],
+        }
+    }
+
+    #[test]
+    fn protobuf_preserves_all_schedule_variants() {
+        for schedule in [
+            TodoSchedule::None,
+            TodoSchedule::Deadline { date: "2026-10-15".into(), time: None },
+            TodoSchedule::Deadline { date: "2026-10-15".into(), time: Some("12:00".into()) },
+            TodoSchedule::Span { all_day: false, start: "2026-10-15T09:00".into(), end: "2026-10-15T10:00".into() },
+            TodoSchedule::Span { all_day: true, start: "2026-10-15T00:00".into(), end: "2026-10-16T00:00".into() },
+        ] {
+            let mut value = snapshot("schedules", "Task");
+            value.items[0].schedule = schedule;
+            assert_eq!(decode_protobuf_snapshot(&encode_protobuf_snapshot(&value)), Ok(value));
         }
     }
 
