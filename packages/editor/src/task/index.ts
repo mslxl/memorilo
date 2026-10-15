@@ -1,5 +1,5 @@
-export type { TaskStatus } from '../schema/task-schema'
-export { parseTaskDueDate, parseTaskTime, readTaskStatus, transitionTaskAttrs } from '../schema/task-schema'
+export type { TaskSchedule, TaskStatus } from '../schema/task-schema'
+export { parseTaskDate, parseTaskDateTime, parseTaskRepeatRule, parseTaskSchedule, parseTaskTime, readTaskStatus, transitionTaskAttrs } from '../schema/task-schema'
 export type {
   TaskActionMutation,
   TaskActionPlan,
@@ -20,6 +20,10 @@ export {
   planRecurringTaskOccurrences,
   resetTaskForNextOccurrence,
 } from './task-completion'
+export type { TaskIcsCalendarOptions, TaskIcsEvent } from './task-ics'
+export { serializeTodoIcsFeed, todoOccurrenceUid } from './task-ics'
+export type { TaskOccurrence, TaskOccurrenceProjectionOptions } from './task-occurrences'
+export { projectTaskOccurrences } from './task-occurrences'
 export {
   lunarDateForGregorian,
   nextTaskOccurrenceDate,

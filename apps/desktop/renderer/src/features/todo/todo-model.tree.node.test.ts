@@ -7,12 +7,9 @@ function task(
   options: Pick<DesktopTodoTask, 'parentId'> & Pick<Partial<DesktopTodoTask>, 'todoParentId'>,
 ): DesktopTodoTask {
   const result: DesktopTodoTask = {
-    allDay: false,
+    schedule: { kind: 'none' },
     blockId,
-    dueDate: null,
-    dueTime: null,
     elapsedMs: 0,
-    endAt: null,
     journalDate: null,
     noteFavorite: false,
     noteId: 'note',
@@ -21,7 +18,6 @@ function task(
     repeatRule: null,
     reminderMinutes: null,
     reminders: null,
-    startAt: null,
     startedAt: null,
     status: 'todo',
     text: blockId,

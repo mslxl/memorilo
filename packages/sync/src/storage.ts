@@ -45,7 +45,7 @@ export interface SyncNoteSnapshotRecord {
   readonly updatedAt: number
 }
 
-export type SyncDeviceTodoScope = 'todos:read'
+export type SyncDeviceTodoScope = 'todos:read' | 'todos:calendar:read'
 
 export interface SyncDeviceTodoToken {
   readonly tokenHash: string

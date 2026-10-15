@@ -20,7 +20,7 @@ function sourceNode(): TaskNodeJSON {
       blockId: 'source',
       checked: false,
       collapsed: false,
-      dueDate: '2026-08-18',
+      schedule: { date: '2026-08-18', kind: 'deadline', time: null },
       elapsedMs: 25,
       kind: 'task',
       order: null,
@@ -175,7 +175,7 @@ describe('recurring task completion placement', () => {
           blockId: 'recurring-child',
           checked: true,
           collapsed: false,
-          dueDate: '2026-08-22',
+          schedule: { date: '2026-08-22', kind: 'deadline', time: null },
           elapsedMs: 500,
           kind: 'task',
           order: null,
@@ -215,7 +215,7 @@ describe('recurring task completion placement', () => {
       {
         attributes: {
           checked: false,
-          dueDate: '2026-08-19',
+          schedule: { date: '2026-08-19', kind: 'deadline', time: null },
           elapsedMs: 0,
           repeatRule,
           startedAt: null,
@@ -227,7 +227,7 @@ describe('recurring task completion placement', () => {
       {
         attributes: {
           checked: false,
-          dueDate: '2026-08-22',
+          schedule: { date: '2026-08-22', kind: 'deadline', time: null },
           elapsedMs: 0,
           repeatRule: recurringChildRule,
           startedAt: null,

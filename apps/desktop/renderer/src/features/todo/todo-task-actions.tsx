@@ -35,14 +35,10 @@ function eventBelongsToNestedTaskAction(event: Event, ownerId: string): boolean 
 function taskActionRevision(task: DesktopTodoTask, calendarSubscriptions: readonly DesktopTodoCalendarSubscription[]): string {
   return JSON.stringify([
     task.blockId,
-    task.allDay,
-    task.dueDate,
-    task.dueTime,
-    task.endAt,
+    task.schedule,
     task.reminderMinutes,
     task.reminders,
     task.repeatRule,
-    task.startAt,
     task.text,
     calendarSubscriptions.map(subscription => [subscription.id, subscription.enabled]),
   ])
@@ -158,16 +154,12 @@ function TodoTaskActionsForm({
                 }}
                 t={t}
                 task={{
-                  allDay: task.allDay,
-                  dueDate: task.dueDate,
-                  dueTime: task.dueTime,
-                  endAt: task.endAt,
                   occurrenceDate: taskOccurrenceDate(task),
                   reminderMinutes: task.reminderMinutes,
                   reminders: task.reminders,
                   repeatRule: task.repeatRule,
+                  schedule: task.schedule,
                   status: task.status,
-                  startAt: task.startAt,
                   text: task.text,
                 }}
                 visible={isPositioned}

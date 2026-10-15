@@ -60,7 +60,7 @@
   "couldNotUpdateTask": "无法更新任务：{{message}}",
   "source": "{{note}} · {{topic}}",
   "elapsed": "已用时 {{duration}}",
-  "dueDate": "{{date}} 到期",
+  "scheduledDate": "安排于 {{date}}",
   "overdue": "已逾期 · {{date}}",
   "timelineSubtitle": "按时间安排每天的任务",
   "calendarSubtitle": "按日期查看任务",

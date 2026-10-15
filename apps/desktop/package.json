@@ -13,6 +13,7 @@
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
+    "icons:generate": "node ../../scripts/generate-desktop-icons.mjs",
     "rebuild:native": "electron-builder install-app-deps",
     "pack:dir": "pnpm --workspace-root prepare:embedding-model && pnpm build && node ../../scripts/pack-desktop-directory.mjs",
     "lint": "eslint .",

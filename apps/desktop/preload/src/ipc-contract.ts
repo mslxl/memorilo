@@ -1,4 +1,4 @@
-import type { DesktopP2pDiscoveredPeer, DesktopP2pLocalDevice, DesktopP2pPairedDevice, DesktopP2pPairingRequest, DesktopP2pStatus, DesktopSyncServerStatus } from '@memorilo/desktop-api'
+import type { DesktopP2pDiscoveredPeer, DesktopP2pLocalDevice, DesktopP2pPairedDevice, DesktopP2pPairingRequest, DesktopP2pStatus, DesktopSyncServerStatus, DesktopTodoCalendarFeed } from '@memorilo/desktop-api'
 import type { DesktopFetchRequest, DesktopFetchResponse } from '@memorilo/desktop-api/transport'
 import type { DesktopWhiteboardLibraryData } from './contract'
 
@@ -37,6 +37,11 @@ export interface DesktopIpcClient {
     removeDevice: (deviceId: string) => Promise<void>
     updateDeviceName: (deviceName: string) => Promise<void>
   }
+  todoCalendarFeed?: {
+    get: () => Promise<DesktopTodoCalendarFeed>
+    issue: () => Promise<DesktopTodoCalendarFeed>
+    revoke: () => Promise<void>
+  }
 }
 
 type DesktopIpcChannels = {
@@ -70,5 +75,10 @@ export const desktopIpcChannels = {
     requestPairing: 'memorilo:invoke:p2p:requestPairing',
     removeDevice: 'memorilo:invoke:p2p:removeDevice',
     updateDeviceName: 'memorilo:invoke:p2p:updateDeviceName',
+  },
+  todoCalendarFeed: {
+    get: 'memorilo:invoke:todoCalendarFeed:get',
+    issue: 'memorilo:invoke:todoCalendarFeed:issue',
+    revoke: 'memorilo:invoke:todoCalendarFeed:revoke',
   },
 } as const satisfies DesktopIpcChannels

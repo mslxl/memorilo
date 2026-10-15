@@ -13,7 +13,7 @@ function recurringTask(blockId: string, status: 'doing' | 'done' = 'doing'): Nod
       blockId,
       checked: status === 'done',
       collapsed: false,
-      dueDate: '2026-08-18',
+      schedule: { date: '2026-08-18', kind: 'deadline', time: null },
       elapsedMs: 100,
       kind: 'task',
       order: null,

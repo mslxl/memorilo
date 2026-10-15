@@ -215,4 +215,42 @@ export const calendarSettingsStyles = stylex.create({
     fontSize: 11,
     lineHeight: '16px',
   },
+  feedSection: {
+    marginTop: 22,
+  },
+  feedPanel: {
+    display: 'grid',
+    gap: 10,
+    borderColor: {
+      'default': uiColors.border,
+      '@media (prefers-contrast: more)': uiColors.borderStrong,
+    },
+    borderStyle: 'solid',
+    borderWidth: uiColors.surfaceStroke,
+    borderRadius: uiColors.surfaceRadius,
+    padding: 12,
+    backgroundColor: {
+      'default': uiColors.surfaceTranslucent,
+      '@media (prefers-reduced-transparency: reduce)': uiColors.surfaceOpaque,
+    },
+    backgroundImage: uiColors.surfaceBackgroundImage,
+    backdropFilter: {
+      'default': uiColors.materialFilter,
+      '@media (prefers-reduced-transparency: reduce)': 'none',
+    },
+  },
+  feedUrl: {
+    width: '100%',
+  },
+  feedHint: {
+    margin: 0,
+    color: uiColors.textQuiet,
+    fontSize: 11,
+    lineHeight: '16px',
+  },
+  feedActions: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 7,
+  },
 })

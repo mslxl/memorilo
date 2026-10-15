@@ -143,6 +143,7 @@ export const DesktopConfigurationSchema = Schema.Struct({
   readerAnnotationCopyFormat: Schema.Literals(['text', 'text-book', 'text-book-location']),
   readerEpubPresentationMode: Schema.Literals(['publisher', 'reader']),
   readerPageMode: Schema.Literals(['continuous', 'single-page']),
+  redrawTitlebar: Schema.Boolean,
   reduceMotion: Schema.Boolean,
   shortcuts: Schema.Struct({
     addBasicCard: Schema.String,
@@ -171,6 +172,11 @@ export const DesktopConfigurationSchema = Schema.Struct({
   todo: Schema.Struct({
     autoCompleteParentTasks: Schema.Boolean,
     blankTaskDurationMinutes: Schema.Int.check(Schema.isBetween({ maximum: 1_440, minimum: 0 })),
+    calendarFeedAfterDays: Schema.Int.check(Schema.isBetween({ maximum: 3_660, minimum: 0 })),
+    calendarFeedBeforeDays: Schema.Int.check(Schema.isBetween({ maximum: 3_660, minimum: 0 })),
+    calendarFeedCompleted: Schema.Literals(['hide', 'show']),
+    calendarFeedTimeZone: Schema.String,
+    calendarFeedUndated: Schema.Literals(['hide', 'today']),
     enabled: Schema.Boolean,
     keepDetailOpenWhenTaskLeavesView: Schema.Boolean,
     recurringTaskCompletionAction: Schema.Literals([
@@ -236,6 +242,7 @@ export const desktopConfigurationDefinition = defineConfiguration({
     readerAnnotationCopyFormat: 'text' as const,
     readerEpubPresentationMode: 'publisher' as const,
     readerPageMode: 'continuous' as const,
+    redrawTitlebar: true,
     reduceMotion: false,
     shortcuts: defaultShortcutConfiguration,
     syncServer: {
@@ -251,6 +258,11 @@ export const desktopConfigurationDefinition = defineConfiguration({
     todo: {
       autoCompleteParentTasks: true,
       blankTaskDurationMinutes: 0,
+      calendarFeedAfterDays: 365,
+      calendarFeedBeforeDays: 30,
+      calendarFeedCompleted: 'hide' as const,
+      calendarFeedTimeZone: 'UTC',
+      calendarFeedUndated: 'today' as const,
       enabled: true,
       keepDetailOpenWhenTaskLeavesView: true,
       recurringTaskCompletionAction: 'archive-completed-to-today' as const,
@@ -287,6 +299,12 @@ export const desktopConfigurationDefinition = defineConfiguration({
         control: 'toggle',
         label: 'Reduce motion',
         path: 'reduceMotion',
+      },
+      {
+        control: 'toggle',
+        description: 'Place the application menus beside Memorilo. Turn off to use the system title bar. Takes effect after restarting the app.',
+        label: 'Enable redrawn title bar',
+        path: 'redrawTitlebar',
       },
       {
         control: 'select',
@@ -340,6 +358,47 @@ export const desktopConfigurationDefinition = defineConfiguration({
       description: 'Keep the selected task open when a change removes it from the current Todo view.',
       label: 'Keep task details open',
       path: 'todo.keepDetailOpenWhenTaskLeavesView',
+    }, {
+      control: 'select',
+      description: 'Choose whether completed Todos appear in the external ICS feed.',
+      label: 'ICS completed Todos',
+      options: [
+        { label: 'Hide', value: 'hide' },
+        { label: 'Show', value: 'show' },
+      ],
+      path: 'todo.calendarFeedCompleted',
+    }, {
+      control: 'select',
+      description: 'Choose whether Todos without a date appear on the request day.',
+      label: 'ICS undated Todos',
+      options: [
+        { label: 'Request day', value: 'today' },
+        { label: 'Hide', value: 'hide' },
+      ],
+      path: 'todo.calendarFeedUndated',
+    }, {
+      control: 'text',
+      description: 'IANA timezone used when placing undated and timed Todos in the feed.',
+      label: 'ICS timezone',
+      path: 'todo.calendarFeedTimeZone',
+    }, {
+      control: 'number',
+      description: 'Include events this many days before the request day.',
+      label: 'ICS days before',
+      max: 3_660,
+      min: 0,
+      path: 'todo.calendarFeedBeforeDays',
+      step: 1,
+      unit: 'days',
+    }, {
+      control: 'number',
+      description: 'Include events this many days after the request day.',
+      label: 'ICS days after',
+      max: 3_660,
+      min: 0,
+      path: 'todo.calendarFeedAfterDays',
+      step: 1,
+      unit: 'days',
     }, {
       control: 'select',
       description: 'Choose where the completed occurrence and the next task are placed.',
@@ -783,6 +842,9 @@ export function migrateDesktopConfiguration(configuration: unknown): unknown {
   const withPanel = Object.hasOwn(record, 'panel')
     ? withTheme
     : { ...withTheme, panel: desktopConfigurationDefinition.defaults.panel }
+  const withTitlebar = Object.hasOwn(record, 'redrawTitlebar')
+    ? withPanel
+    : { ...withPanel, redrawTitlebar: desktopConfigurationDefinition.defaults.redrawTitlebar }
   const storedShortcuts = record.shortcuts
   const shortcuts = typeof storedShortcuts === 'object' && storedShortcuts !== null && !Array.isArray(storedShortcuts)
     ? storedShortcuts as Record<string, unknown>
@@ -790,8 +852,8 @@ export function migrateDesktopConfiguration(configuration: unknown): unknown {
   const defaultShortcuts = desktopConfigurationDefinition.defaults.shortcuts
   const withShortcuts = shortcuts !== undefined
     && Object.keys(defaultShortcuts).every(key => typeof shortcuts[key] === 'string')
-    ? withPanel
-    : { ...withPanel, shortcuts: { ...defaultShortcuts, ...shortcuts } }
+    ? withTitlebar
+    : { ...withTitlebar, shortcuts: { ...defaultShortcuts, ...shortcuts } }
   const storedEditor = record.editor
   const editor = typeof storedEditor === 'object' && storedEditor !== null && !Array.isArray(storedEditor)
     ? storedEditor as Record<string, unknown>
@@ -829,37 +891,17 @@ export function migrateDesktopConfiguration(configuration: unknown): unknown {
           ...syncServer,
         },
       }
-  if (!Object.hasOwn(record, 'todo')) {
-    return {
-      ...withSyncServer,
-      todo: desktopConfigurationDefinition.defaults.todo,
-    }
+  const storedTodo = record.todo
+  const todo = typeof storedTodo === 'object' && storedTodo !== null && !Array.isArray(storedTodo)
+    ? storedTodo as Record<string, unknown>
+    : {}
+  if (Object.keys(desktopConfigurationDefinition.defaults.todo).every(key => Object.hasOwn(todo, key)))
+    return withSyncServer
+  return {
+    ...withSyncServer,
+    todo: {
+      ...desktopConfigurationDefinition.defaults.todo,
+      ...todo,
+    },
   }
-  const todo = record.todo
-  if (typeof todo === 'object'
-    && todo !== null
-    && !Array.isArray(todo)
-    && !Object.hasOwn(todo, 'recurringTaskCompletionAction')) {
-    return {
-      ...withSyncServer,
-      todo: {
-        ...todo,
-        autoCompleteParentTasks: desktopConfigurationDefinition.defaults.todo.autoCompleteParentTasks,
-        recurringTaskCompletionAction: desktopConfigurationDefinition.defaults.todo.recurringTaskCompletionAction,
-      },
-    }
-  }
-  if (typeof todo === 'object'
-    && todo !== null
-    && !Array.isArray(todo)
-    && !Object.hasOwn(todo, 'autoCompleteParentTasks')) {
-    return {
-      ...withSyncServer,
-      todo: {
-        ...todo,
-        autoCompleteParentTasks: desktopConfigurationDefinition.defaults.todo.autoCompleteParentTasks,
-      },
-    }
-  }
-  return withSyncServer
 }

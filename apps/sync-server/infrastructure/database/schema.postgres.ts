@@ -67,7 +67,7 @@ export const syncDeviceTodoTokens = pgTable('sync_device_todo_tokens', {
   accountId: text('account_id').notNull(),
   deviceId: text('device_id').notNull(),
   deviceName: text('device_name').notNull(),
-  scopes: jsonb('scopes').$type<readonly 'todos:read'[]>().notNull(),
+  scopes: jsonb('scopes').$type<readonly ('todos:read' | 'todos:calendar:read')[]>().notNull(),
   createdAt: bigint('created_at', { mode: 'number' }).notNull(),
   expiresAt: bigint('expires_at', { mode: 'number' }).notNull(),
   revokedAt: bigint('revoked_at', { mode: 'number' }),

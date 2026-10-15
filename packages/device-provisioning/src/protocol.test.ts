@@ -1,4 +1,4 @@
-import type { PublicConfigEnvelope } from './protocol'
+import type { PublicConfigEnvelope, TodoSchedule } from './protocol'
 
 import { readFile } from 'node:fs/promises'
 
@@ -8,8 +8,11 @@ import {
   crc32,
   decodeFrame,
   decodeFrameSequence,
+  decodeTodoSnapshot,
   encodeFrames,
+  encodeTodoSnapshot,
   encodeTodoSyncRequest,
+  isTodoSnapshot,
   parseApplyConfigEnvelope,
   parseApplyStatusEnvelope,
   parseDeviceInfoEnvelope,
@@ -108,6 +111,74 @@ describe('provisioning protocol', () => {
     const request = parseTodoSyncRequest(encodeTodoSyncRequest({ operation: 'todo.sync', protocolVersion: 1, requestId: 'todo-time-1', snapshot: { generatedAt: '2026-09-30T00:00:00.000Z', timeZoneOffsetMinutes: 480, items: [], revision: 'empty' } }))
     expect(request.snapshot.timeZoneOffsetMinutes).toBe(480)
     expect(() => parseTodoSyncRequest(encodeTodoSyncRequest({ operation: 'todo.sync', protocolVersion: 1, requestId: 'todo-time-2', snapshot: { generatedAt: '2026-09-30T00:00:00.000Z', timeZoneOffsetMinutes: 1_000, items: [], revision: 'empty' } }))).toThrow()
+  })
+
+  it('validates TODO schedule shapes and calendar values at the protocol boundary', () => {
+    const request = (schedule: TodoSchedule) => encodeTodoSyncRequest({
+      operation: 'todo.sync',
+      protocolVersion: 1,
+      requestId: 'todo-schedule-1',
+      snapshot: {
+        generatedAt: '2026-09-30T00:00:00.000Z',
+        items: [{
+          id: 'todo-1',
+          noteTitle: 'Note',
+          parentId: null,
+          revision: 'item-1',
+          schedule,
+          status: 'todo',
+          text: 'Task',
+          topicTitle: 'Topic',
+        }],
+        revision: 'snapshot-1',
+      },
+    })
+
+    expect(parseTodoSyncRequest(request({ kind: 'none' })).snapshot.items[0]?.schedule).toEqual({ kind: 'none' })
+    expect(parseTodoSyncRequest(request({ kind: 'deadline', date: '2026-02-28', time: '09:30' }))).toBeDefined()
+    expect(parseTodoSyncRequest(request({
+      kind: 'span',
+      start: '2026-09-30T09:00',
+      end: '2026-09-30T10:00',
+      allDay: false,
+    }))).toBeDefined()
+
+    const invalidSchedules: TodoSchedule[] = [
+      { kind: 'deadline', date: '2026-02-30', time: null },
+      { kind: 'deadline', date: '2026-09-30', time: '25:00' },
+      { kind: 'span', start: '2026-09-30T09:00', end: '2026-09-30T08:00', allDay: false },
+      { kind: 'span', start: '2026-09-30T09:00', end: '2026-09-30T09:00', allDay: false },
+      { kind: 'span', start: '2026-02-30T09:00', end: '2026-09-30T10:00', allDay: false },
+    ]
+    for (const schedule of invalidSchedules) {
+      expect(() => parseTodoSyncRequest(request(schedule))).toThrow()
+    }
+  })
+
+  it('preserves all Todo schedules through snapshot encoding', () => {
+    const schedules: TodoSchedule[] = [
+      { kind: 'none' },
+      { kind: 'deadline', date: '2026-10-15', time: null },
+      { kind: 'deadline', date: '2026-10-15', time: '12:00' },
+      { kind: 'span', allDay: false, start: '2026-10-15T09:00', end: '2026-10-15T10:00' },
+      { kind: 'span', allDay: true, start: '2026-10-15T00:00', end: '2026-10-16T00:00' },
+    ]
+    const snapshot = {
+      generatedAt: '2026-10-15T00:00:00.000Z',
+      revision: 'schedules',
+      items: schedules.map((schedule, index) => ({
+        id: `task-${index}`,
+        noteTitle: 'Note',
+        parentId: null,
+        revision: 'r1',
+        schedule,
+        status: 'todo' as const,
+        text: 'Task',
+        topicTitle: 'Topic',
+      })),
+    }
+    expect(decodeTodoSnapshot(encodeTodoSnapshot(snapshot))).toEqual(snapshot)
+    expect(isTodoSnapshot({ ...snapshot, items: [{ ...snapshot.items[0], schedule: { kind: 'none', date: '2026-10-15' } }] })).toBe(false)
   })
 
   it('models public configuration without readable password material', () => {

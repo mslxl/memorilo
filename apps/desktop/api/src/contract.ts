@@ -8,6 +8,7 @@ import type {
   TodoCalendarSubscription,
   TodoReminder,
   TodoRepeatRule,
+  TodoSchedule,
   TodoTask,
   TodoTaskPage,
   TodoTaskStatus,
@@ -242,6 +243,7 @@ export type DesktopTodoTask = TodoTask
 export type DesktopTodoTaskPage = TodoTaskPage
 export type DesktopTodoReminder = TodoReminder
 export type DesktopTodoRepeatRule = TodoRepeatRule
+export type DesktopTodoSchedule = TodoSchedule
 export type DesktopTodoCalendarEvent = TodoCalendarEvent
 export interface DesktopTodoCalendarSubscription extends TodoCalendarSubscription {
   builtIn: boolean
@@ -249,11 +251,8 @@ export interface DesktopTodoCalendarSubscription extends TodoCalendarSubscriptio
 export type ListDesktopTodoTasksInput = ListTodoTasksInput
 
 export interface UpdateDesktopTodoTaskInput {
-  allDay?: boolean
+  schedule?: DesktopTodoSchedule
   blockId: string
-  dueDate?: string | null
-  dueTime?: string | null
-  endAt?: string | null
   nextDueDate?: string | null
   noteId: string
   onlyThis?: boolean
@@ -261,23 +260,23 @@ export interface UpdateDesktopTodoTaskInput {
   reminders?: readonly DesktopTodoReminder[] | null
   repeatRule?: DesktopTodoRepeatRule | null
   status?: DesktopTodoTaskStatus
-  startAt?: string | null
   text?: string
   topicId: string
 }
 
 export interface CreateDesktopTodoTaskInput {
-  allDay?: boolean
-  dueDate: string
-  dueTime?: string | null
-  endAt?: string | null
-  startAt?: string | null
+  schedule?: DesktopTodoSchedule
   text: string
 }
 
 export interface SubscribeDesktopTodoCalendarInput {
   title: string
   url: string
+}
+
+export interface DesktopTodoCalendarFeed {
+  expiresAt: number | null
+  url: string | null
 }
 
 export interface RestoreDesktopReviewItemInput {
@@ -632,6 +631,18 @@ export type DesktopTopicSearchHit = DesktopTopicSearchHitBase & DesktopNoteSearc
 
 export type DesktopNoteSearchHit = DesktopNoteTitleSearchHit | DesktopTopicSearchHit
 
+export type DesktopApplicationMenu = 'file' | 'edit' | 'view' | 'window'
+
+export interface ShowDesktopApplicationMenuInput {
+  anchor: { x: number, y: number }
+  menu: DesktopApplicationMenu
+}
+
+export interface DesktopTitlebarAppearance {
+  backgroundColor: string
+  symbolColor: string
+}
+
 export interface DesktopApi {
   addShelfSource: (input: AddShelfSourceInput) => Promise<ShelfSource>
   checkAssets: () => Promise<DesktopAssetCheckResult>
@@ -699,10 +710,13 @@ export interface DesktopApi {
   setNoteFavorite: (input: SetDesktopNoteFavoriteInput) => Promise<DesktopNoteFavoriteState>
   selectBookContext: (input: { noteId: string, readingId: string, topicId: string }) => Promise<OpenDesktopBookContextResult>
   showColumnVisibilityMenu: (input: ShowDesktopColumnVisibilityMenuInput) => Promise<DesktopColumnVisibilityMenuSelection | null>
+  showApplicationMenu: (input: ShowDesktopApplicationMenuInput) => Promise<null>
+  setTitlebarAppearance: (input: DesktopTitlebarAppearance) => Promise<null>
   updateShelfSource: (input: UpdateShelfSourceInput) => Promise<ShelfSource>
 }
 
 export interface RuntimeInfo {
+  applicationIcon?: string | null
   platform: string
   version: string
 }

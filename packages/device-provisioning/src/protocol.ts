@@ -1,4 +1,4 @@
-import { decodeMemoriloProto, encodeMemoriloProto } from '@memorilo/sync-protocol'
+import { decodeMemoriloProto, encodeMemoriloProto, todoScheduleFromProto, todoScheduleToProto } from '@memorilo/sync-protocol'
 
 export const PROTOCOL_VERSION = 1
 
@@ -76,17 +76,20 @@ export interface TodoSnapshot {
 }
 
 export interface TodoSnapshotItem {
-  allDay: boolean
-  dueDate: string | null
-  dueTime: string | null
   id: string
   noteTitle: string
   parentId: string | null
   revision: string
+  schedule: TodoSchedule
   status: 'todo' | 'in-progress' | 'done'
   text: string
   topicTitle: string
 }
+
+export type TodoSchedule
+  = | { kind: 'none' }
+    | { date: string, kind: 'deadline', time: string | null }
+    | { allDay: boolean, end: string, kind: 'span', start: string }
 
 export interface TodoSyncRequest {
   operation: 'todo.sync'
@@ -109,9 +112,7 @@ function todoSnapshotToProto(snapshot: TodoSnapshot): Record<string, unknown> {
   return {
     generatedAt: snapshot.generatedAt,
     items: snapshot.items.map(item => ({
-      allDay: item.allDay,
-      dueDate: item.dueDate ?? undefined,
-      dueTime: item.dueTime ?? undefined,
+      schedule: todoScheduleToProto(item.schedule),
       id: item.id,
       noteTitle: item.noteTitle,
       parentId: item.parentId ?? undefined,
@@ -130,9 +131,7 @@ function todoSnapshotFromProto(value: Record<string, any>): TodoSnapshot {
     generatedAt: String(value.generatedAt),
     ...(value.timeZoneOffsetMinutes === undefined ? {} : { timeZoneOffsetMinutes: Number(value.timeZoneOffsetMinutes) }),
     items: (value.items ?? []).map((item: Record<string, any>) => ({
-      allDay: Boolean(item.allDay),
-      dueDate: item.dueDate === undefined ? null : String(item.dueDate),
-      dueTime: item.dueTime === undefined ? null : String(item.dueTime),
+      schedule: todoScheduleFromProto(item.schedule),
       id: String(item.id),
       noteTitle: String(item.noteTitle),
       parentId: item.parentId === undefined ? null : String(item.parentId),
@@ -150,14 +149,13 @@ export function encodeTodoSnapshot(snapshot: TodoSnapshot): Uint8Array {
 }
 
 export function decodeTodoSnapshot(bytes: Uint8Array): TodoSnapshot {
-  let value: Record<string, any>
+  let snapshot: TodoSnapshot
   try {
-    value = decodeMemoriloProto('TodoSnapshot', bytes)
+    snapshot = todoSnapshotFromProto(decodeMemoriloProto('TodoSnapshot', bytes))
   }
   catch {
     throw new ProvisioningProtocolError('invalid-request')
   }
-  const snapshot = todoSnapshotFromProto(value)
   if (!isTodoSnapshot(snapshot))
     throw new ProvisioningProtocolError('invalid-request')
   return snapshot
@@ -180,7 +178,13 @@ export function parseTodoSyncRequest(bytes: Uint8Array): TodoSyncRequest {
   catch {
     throw new ProvisioningProtocolError('invalid-request')
   }
-  const snapshot = value.snapshot === undefined ? undefined : todoSnapshotFromProto(value.snapshot)
+  let snapshot: TodoSnapshot | undefined
+  try {
+    snapshot = value.snapshot === undefined ? undefined : todoSnapshotFromProto(value.snapshot)
+  }
+  catch {
+    throw new ProvisioningProtocolError('invalid-request')
+  }
   if (value.operation !== 'todo.sync'
     || value.protocolVersion !== PROTOCOL_VERSION
     || typeof value.requestId !== 'string'
@@ -481,16 +485,71 @@ export function isTodoSnapshot(value: unknown): value is TodoSnapshot {
     return false
   }
   return value.items.every(item => isRecord(item)
-    && typeof item.allDay === 'boolean'
-    && (item.dueDate === null || typeof item.dueDate === 'string')
-    && (item.dueTime === null || typeof item.dueTime === 'string')
     && typeof item.id === 'string'
     && typeof item.noteTitle === 'string'
     && (item.parentId === null || typeof item.parentId === 'string')
     && typeof item.revision === 'string'
+    && isValidTodoSchedule(item.schedule)
     && (item.status === 'todo' || item.status === 'in-progress' || item.status === 'done')
     && typeof item.text === 'string'
     && typeof item.topicTitle === 'string')
+}
+
+function isValidTodoSchedule(value: unknown): value is TodoSchedule {
+  if (!isRecord(value) || typeof value.kind !== 'string')
+    return false
+  if (value.kind === 'none')
+    return hasExactKeys(value, ['kind'])
+  if (value.kind === 'deadline') {
+    return hasExactKeys(value, ['kind', 'date', 'time'])
+      && isValidDate(value.date)
+      && (value.time === null || isValidTime(value.time))
+  }
+  if (value.kind === 'span') {
+    return hasExactKeys(value, ['kind', 'start', 'end', 'allDay'])
+      && isValidDateTime(value.start)
+      && isValidDateTime(value.end)
+      && value.end > value.start
+      && typeof value.allDay === 'boolean'
+  }
+  return false
+}
+
+function hasExactKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
+  const actualKeys = Object.keys(value)
+  return actualKeys.length === keys.length && keys.every(key => actualKeys.includes(key))
+}
+
+function isValidDate(value: unknown): value is string {
+  if (typeof value !== 'string')
+    return false
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/u.exec(value)
+  if (match === null)
+    return false
+  const year = Number(match[1])
+  const month = Number(match[2])
+  const day = Number(match[3])
+  if (month < 1 || month > 12 || day < 1)
+    return false
+  const leapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0)
+  const daysInMonth = [31, leapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+  return day <= daysInMonth[month - 1]!
+}
+
+function isValidTime(value: unknown): value is string {
+  if (typeof value !== 'string' || !/^\d{2}:\d{2}$/u.test(value))
+    return false
+  const hour = Number(value.slice(0, 2))
+  const minute = Number(value.slice(3, 5))
+  return hour < 24 && minute < 60
+}
+
+function isValidDateTime(value: unknown): value is string {
+  return typeof value === 'string'
+    && value.length === 16
+    && value[10] === 'T'
+    && isValidDate(value.slice(0, 10))
+    && isValidTime(value.slice(11))
 }
 
 export function encodeFrames(

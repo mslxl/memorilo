@@ -459,6 +459,11 @@ export type TodoReminder
   = | { kind: 'offset', minutes: number }
     | { kind: 'time', time: string }
 
+export type TodoSchedule
+  = | { kind: 'none' }
+    | { date: JournalDate, kind: 'deadline', time: string | null }
+    | { allDay: boolean, end: string, kind: 'span', start: string }
+
 export type TodoRepeatMode = 'due' | 'completion' | 'custom'
 export type TodoRepeatUnit = 'day' | 'week' | 'month' | 'year' | 'holiday' | 'lunar'
 export type TodoRepeatHolidayPolicy = 'allow' | 'skip' | 'next-workday'
@@ -498,27 +503,20 @@ export interface ListTodoTasksInput {
 }
 
 export interface UpdateTodoTaskInput {
-  allDay?: boolean
+  schedule?: TodoSchedule
   blockId: string
-  dueDate?: JournalDate | null
-  dueTime?: string | null
-  endAt?: string | null
   noteId: string
   reminderMinutes?: number | null
   reminders?: readonly TodoReminder[] | null
   repeatRule?: TodoRepeatRule | null
-  startAt?: string | null
   status?: TodoTaskStatus
   text?: string
   topicId: string
 }
 
 export interface TodoTask {
-  allDay: boolean
+  schedule: TodoSchedule
   blockId: string
-  dueDate: JournalDate | null
-  dueTime: string | null
-  endAt: string | null
   elapsedMs: number
   journalDate: JournalDate | null
   noteId: string
@@ -530,7 +528,6 @@ export interface TodoTask {
   repeatRule: TodoRepeatRule | null
   reminderMinutes: number | null
   reminders: readonly TodoReminder[] | null
-  startAt: string | null
   startedAt: number | null
   status: TodoTaskStatus
   text: string

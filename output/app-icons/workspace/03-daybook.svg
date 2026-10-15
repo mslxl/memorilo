@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <title>Memorilo - Daybook</title>
+  <desc>A leafy day planner with a completed task, representing notes, schedules, and personal growth.</desc>
+  <rect x="64" y="64" width="896" height="896" rx="198" fill="#F5F0E6"/>
+  <rect x="285" y="335" width="454" height="428" rx="52" fill="#46644F"/>
+  <path d="M389 289V376" fill="none" stroke="#46644F" stroke-width="44" stroke-linecap="round"/>
+  <path d="M635 353C552 352 513 306 509 232C593 223 641 275 635 353Z" fill="#46644F"/>
+  <path d="M635 331C635 255 685 219 767 226C758 303 712 340 635 331Z" fill="#A9BE92"/>
+  <path d="M635 301V377" fill="none" stroke="#46644F" stroke-width="28" stroke-linecap="round"/>
+  <path d="M315 449H709" fill="none" stroke="#F5F0E6" stroke-width="24"/>
+  <path d="M405 587L481 659L624 523" fill="none" stroke="#F5F0E6" stroke-width="48" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

@@ -203,13 +203,11 @@ pub struct TodoSnapshot {
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TodoSnapshotItem {
-    pub all_day: bool,
-    pub due_date: Option<String>,
-    pub due_time: Option<String>,
     pub id: String,
     pub note_title: String,
     pub parent_id: Option<String>,
     pub revision: String,
+    pub schedule: TodoSchedule,
     pub status: SnapshotStatus,
     pub text: String,
     pub topic_title: String,
@@ -221,10 +219,17 @@ pub fn decode_protobuf_snapshot(bytes: &[u8]) -> Result<TodoSnapshot, TodoSnapsh
     }
     let value = crate::proto::memorilo::sync::v1::TodoSnapshot::decode(bytes)
         .map_err(|_| TodoSnapshotError::InvalidJson)?;
+    snapshot_from_proto(value)
+}
+
+pub(crate) fn snapshot_from_proto(value: crate::proto::memorilo::sync::v1::TodoSnapshot) -> Result<TodoSnapshot, TodoSnapshotError> {
     let items = value.items.into_iter().map(|item| Ok(TodoSnapshotItem {
-        all_day: item.all_day,
-        due_date: item.due_date,
-        due_time: item.due_time,
+        schedule: match item.schedule.and_then(|schedule| schedule.body) {
+            Some(crate::proto::memorilo::sync::v1::todo_schedule::Body::None(_)) => TodoSchedule::None,
+            Some(crate::proto::memorilo::sync::v1::todo_schedule::Body::Deadline(value)) => TodoSchedule::Deadline { date: value.date, time: value.time },
+            Some(crate::proto::memorilo::sync::v1::todo_schedule::Body::Span(value)) => TodoSchedule::Span { all_day: value.all_day, start: value.start, end: value.end },
+            None => return Err(TodoSnapshotError::InvalidJson),
+        },
         id: item.id,
         note_title: item.note_title,
         parent_id: item.parent_id,
@@ -253,9 +258,13 @@ pub fn encode_protobuf_snapshot(snapshot: &TodoSnapshot) -> Vec<u8> {
         generated_at: snapshot.generated_at.clone(),
         time_zone_offset_minutes: snapshot.time_zone_offset_minutes.map(i32::from),
         items: snapshot.items.iter().map(|item| crate::proto::memorilo::sync::v1::TodoItem {
-            all_day: item.all_day,
-            due_date: item.due_date.clone(),
-            due_time: item.due_time.clone(),
+            schedule: Some(crate::proto::memorilo::sync::v1::TodoSchedule {
+                body: Some(match &item.schedule {
+                    TodoSchedule::None => crate::proto::memorilo::sync::v1::todo_schedule::Body::None(crate::proto::memorilo::sync::v1::TodoUnscheduled {}),
+                    TodoSchedule::Deadline { date, time } => crate::proto::memorilo::sync::v1::todo_schedule::Body::Deadline(crate::proto::memorilo::sync::v1::TodoDeadline { date: date.clone(), time: time.clone() }),
+                    TodoSchedule::Span { all_day, start, end } => crate::proto::memorilo::sync::v1::todo_schedule::Body::Span(crate::proto::memorilo::sync::v1::TodoSpan { all_day: *all_day, start: start.clone(), end: end.clone() }),
+                }),
+            }),
             id: item.id.clone(),
             note_title: item.note_title.clone(),
             parent_id: item.parent_id.clone(),
@@ -266,6 +275,14 @@ pub fn encode_protobuf_snapshot(snapshot: &TodoSnapshot) -> Vec<u8> {
         }).collect(),
         revision: snapshot.revision.clone(),
     }.encode_to_vec()
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(tag = "kind", rename_all = "lowercase")]
+pub enum TodoSchedule {
+    None,
+    Deadline { date: String, time: Option<String> },
+    Span { all_day: bool, end: String, start: String },
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -478,17 +495,18 @@ pub fn validate_snapshot(snapshot: &TodoSnapshot) -> Result<(), TodoSnapshotErro
                 index,
             });
         }
-        if item.due_date.as_ref().is_some_and(|date| !valid_date(date)) {
-            return Err(TodoSnapshotError::InvalidField {
-                field: "dueDate",
-                index,
-            });
-        }
-        if item.due_time.as_ref().is_some_and(|time| !valid_time(time)) {
-            return Err(TodoSnapshotError::InvalidField {
-                field: "dueTime",
-                index,
-            });
+        match &item.schedule {
+            TodoSchedule::None => {}
+            TodoSchedule::Deadline { date, time } => {
+                if !valid_date(date) || time.as_ref().is_some_and(|value| !valid_time(value)) {
+                    return Err(TodoSnapshotError::InvalidField { field: "schedule", index });
+                }
+            }
+            TodoSchedule::Span { start, end, .. } => {
+                if !valid_datetime(start) || !valid_datetime(end) || end <= start {
+                    return Err(TodoSnapshotError::InvalidField { field: "schedule", index });
+                }
+            }
         }
         if !ids.insert(item.id.as_str()) {
             return Err(TodoSnapshotError::DuplicateId);
@@ -529,11 +547,11 @@ fn map_model(snapshot: &TodoSnapshot) -> TodoModel {
             .map(|item| TodoItem {
                 id: TodoId(item.id.clone()),
                 title: item.text.clone(),
-                due: item
-                    .due_time
-                    .clone()
-                    .or_else(|| item.due_date.clone())
-                    .unwrap_or_default(),
+                due: match &item.schedule {
+                    TodoSchedule::None => String::new(),
+                    TodoSchedule::Deadline { date, time } => time.clone().map_or_else(|| date.clone(), |value| format!("{date}T{value}")),
+                    TodoSchedule::Span { start, .. } => start.clone(),
+                },
                 status: match item.status {
                     SnapshotStatus::Todo => Status::Open,
                     SnapshotStatus::InProgress => Status::Doing,
@@ -601,6 +619,10 @@ fn valid_time(value: &str) -> bool {
     hour < 24 && minute < 60
 }
 
+fn valid_datetime(value: &str) -> bool {
+    value.len() == 16 && valid_date(&value[..10]) && value.as_bytes().get(10) == Some(&b'T') && valid_time(&value[11..])
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -611,17 +633,30 @@ mod tests {
             time_zone_offset_minutes: Some(480),
             revision: revision.into(),
             items: vec![TodoSnapshotItem {
-                all_day: true,
-                due_date: Some("2026-09-05".into()),
-                due_time: None,
                 id: "opaque-1".into(),
                 note_title: "Note".into(),
                 parent_id: None,
                 revision: revision.into(),
+                schedule: TodoSchedule::Deadline { date: "2026-09-05".into(), time: None },
                 status: SnapshotStatus::Todo,
                 text: text.into(),
                 topic_title: "Topic".into(),
             }],
+        }
+    }
+
+    #[test]
+    fn protobuf_preserves_all_schedule_variants() {
+        for schedule in [
+            TodoSchedule::None,
+            TodoSchedule::Deadline { date: "2026-10-15".into(), time: None },
+            TodoSchedule::Deadline { date: "2026-10-15".into(), time: Some("12:00".into()) },
+            TodoSchedule::Span { all_day: false, start: "2026-10-15T09:00".into(), end: "2026-10-15T10:00".into() },
+            TodoSchedule::Span { all_day: true, start: "2026-10-15T00:00".into(), end: "2026-10-16T00:00".into() },
+        ] {
+            let mut value = snapshot("schedules", "Task");
+            value.items[0].schedule = schedule;
+            assert_eq!(decode_protobuf_snapshot(&encode_protobuf_snapshot(&value)), Ok(value));
         }
     }
 
@@ -703,11 +738,11 @@ mod tests {
     #[test]
     fn rejects_invalid_dates_duplicate_ids_and_cycles() {
         let mut invalid = snapshot("a", "text");
-        invalid.items[0].due_date = Some("2026-02-30".into());
+        invalid.items[0].schedule = TodoSchedule::Deadline { date: "2026-02-30".into(), time: None };
         assert_eq!(
             validate_snapshot(&invalid),
             Err(TodoSnapshotError::InvalidField {
-                field: "dueDate",
+                field: "schedule",
                 index: 0
             })
         );

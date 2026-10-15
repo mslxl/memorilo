@@ -58,7 +58,7 @@ export function TodoPlanningTask({
         </span>
       </button>
       <div {...stylex.props(styles.actions)}>
-        <TodoTaskActions calendarEvents={calendarEvents} calendarSubscriptions={calendarSubscriptions} onUpdateTask={onUpdateTask} t={t} task={task} triggerContent={<TodoTaskMetadata allDay={task.allDay} compact dueDate={task.dueDate} dueTime={task.dueTime} endAt={task.endAt} elapsed={elapsed} locale={locale} now={now} startAt={task.startAt} t={t} />} />
+        <TodoTaskActions calendarEvents={calendarEvents} calendarSubscriptions={calendarSubscriptions} onUpdateTask={onUpdateTask} t={t} task={task} triggerContent={<TodoTaskMetadata compact elapsed={elapsed} locale={locale} now={now} schedule={task.schedule} t={t} />} />
       </div>
     </div>
   )

@@ -105,7 +105,7 @@ describe('device local management client', () => {
   it('pushes and reads bounded read-only TODO snapshots', async () => {
     const snapshot = {
       generatedAt: '2026-09-05T00:00:00Z',
-      items: [{ allDay: true, dueDate: '2026-09-05', dueTime: null, id: 'task-1', noteTitle: 'Note', parentId: null, revision: 'item-r1', status: 'todo' as const, text: 'Buy milk', topicTitle: 'Topic' }],
+      items: [{ id: 'task-1', noteTitle: 'Note', parentId: null, revision: 'item-r1', schedule: { date: '2026-09-05', kind: 'deadline' as const, time: null }, status: 'todo' as const, text: 'Buy milk', topicTitle: 'Topic' }],
       revision: 'snapshot-r1',
     }
     const request = vi.fn(async (_url: Parameters<typeof fetch>[0], init?: RequestInit) => init?.method === 'POST'

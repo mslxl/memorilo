@@ -1,5 +1,5 @@
 import type { ConfigurationStore } from '@memorilo/config'
-import type { DesktopSyncServerStatus } from '@memorilo/desktop-api'
+import type { DesktopSyncServerStatus, DesktopTodoCalendarFeed } from '@memorilo/desktop-api'
 import type { DesktopFetchRequest, DesktopFetchResponse } from '@memorilo/desktop-api/transport'
 import type { DesktopConfiguration } from '@memorilo/desktop-config'
 import type { EditorStorage, LearningStorage } from '@memorilo/editor-storage'
@@ -62,6 +62,11 @@ export async function createDesktopServices(
   p2p: P2pApplication,
   getSyncServerStatus: () => DesktopSyncServerStatus,
   installSyncServerCredential: (credential: string) => Promise<void>,
+  todoCalendarFeed: {
+    get: () => Promise<DesktopTodoCalendarFeed>
+    issue: () => Promise<DesktopTodoCalendarFeed>
+    revoke: () => Promise<void>
+  },
   assetSync?: Pick<DesktopAssetSync, 'recordLocalDelete' | 'recordLocalPut'>,
 ) {
   const scope = createResourceScope('Desktop services', { closeMode: 'dependent' })
@@ -146,6 +151,7 @@ export async function createDesktopServices(
       },
       whiteboardLibrary: createWhiteboardLibraryHandlers(whiteboardLibrary),
       p2p: createP2pHandlers(p2p, getSyncServerStatus, installSyncServerCredential),
+      todoCalendarFeed,
     }
     await scope.acquire({
       acquire: () => registerMemoriloProtocol({

@@ -122,10 +122,8 @@ export async function buildSnapshot(tasks: readonly TodoTask[], now = new Date()
   const selectedIds = new Set(selectedTasks.map(task => task.blockId))
   const items = selectedTasks
     .map(task => ({
-      allDay: task.allDay,
-      dueDate: task.dueDate,
-      dueTime: task.dueTime,
       id: task.blockId,
+      schedule: task.schedule,
       noteTitle: task.noteTitle,
       parentId: (() => {
         const parentId = task.todoParentId ?? task.parentId
@@ -148,11 +146,9 @@ export async function buildSnapshot(tasks: readonly TodoTask[], now = new Date()
 function taskRevision(task: TodoTask): string {
   return createHash('sha256')
     .update(JSON.stringify({
-      allDay: task.allDay,
       blockId: task.blockId,
-      dueDate: task.dueDate,
-      dueTime: task.dueTime,
       parentId: task.todoParentId ?? task.parentId,
+      schedule: task.schedule,
       status: task.status,
       text: task.text,
     }))

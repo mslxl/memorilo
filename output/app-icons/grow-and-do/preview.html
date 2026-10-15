@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Memorilo - Flat icon studies</title>
+<style>
+  :root { color-scheme: light; --ink: #26372c; --muted: #667066; --line: #d3d5c9; }
+  * { box-sizing: border-box; }
+  body { margin: 0; color: var(--ink); background: #f2efe7; font-family: "Avenir Next", "Segoe UI", sans-serif; }
+  main { max-width: 1660px; padding: 56px 40px; margin: auto; }
+  header { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; padding-bottom: 28px; border-bottom: 1px solid var(--line); }
+  h1 { margin: 0 0 14px; font: 56px/.95 Georgia, serif; letter-spacing: -2px; }
+  header p { margin: 0; color: var(--muted); font-size: 12px; letter-spacing: 1.5px; line-height: 1.6; }
+  header a { color: var(--ink); font-size: 13px; text-underline-offset: 4px; }
+  .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; padding: 34px 0; }
+  article { padding: 24px; background: #fffdfa; border: 1px solid #ddd9d0; border-radius: 20px; }
+  .number { font-size: 12px; letter-spacing: 2px; color: var(--muted); }
+  .hero { margin: 8px 0 14px; }
+  .hero img { display: block; width: 100%; height: auto; }
+  h2 { margin: 0 0 10px; font: 27px/1.1 Georgia, serif; letter-spacing: -.5px; }
+  article p { color: var(--muted); font-size: 13px; line-height: 1.6; min-height: 42px; margin: 0 0 16px; }
+  .samples { display: flex; gap: 10px; }
+  .sample { min-width: 0; flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; height: 94px; border-radius: 12px; }
+  .sample img { flex-shrink: 0; }
+  .light { background: #edeae3; }
+  .dark { background: #262b28; }
+  .links { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 20px; }
+  .links a { color: var(--ink); font-size: 12px; text-underline-offset: 4px; }
+  a:focus-visible { outline: 2px solid #286747; outline-offset: 5px; border-radius: 2px; }
+  footer { font-size: 13px; line-height: 1.8; color: var(--muted); }
+  @media (max-width: 1200px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 600px) { main { padding: 32px 20px; } header { align-items: flex-start; flex-direction: column; } h1 { font-size: 46px; } .grid { grid-template-columns: 1fr; } article { padding: 24px; } }
+</style>
+<main>
+  <header><div><h1>Memorilo</h1><p>GROW &amp; DO / REFINEMENTS / READ / CAPTURE / PLAN / DO / LEARN</p></div><a href="comparison.png">Open comparison image</a></header>
+  <section class="grid" aria-label="Four application icon alternatives">
+  <article>
+    <span class="number">REFERENCE / PREVIOUS B</span>
+    <div class="hero"><img src="00-reference.png" alt="Previous B" width="1024" height="1024"></div>
+    <h2>Previous B</h2>
+    <p>Reference from the previous round.</p>
+    <div class="samples">
+      <div class="sample light"><img src="00-reference-32.png" alt="" width="32" height="32"><img src="00-reference-64.png" alt="" width="64" height="64"></div>
+      <div class="sample dark"><img src="00-reference-32.png" alt="" width="32" height="32"><img src="00-reference-64.png" alt="" width="64" height="64"></div>
+    </div>
+    <div class="links"><a href="00-reference.svg">SVG source</a><a href="00-reference.png">1024px PNG</a></div>
+  </article>
+
+  <article>
+    <span class="number">B1 / REDUCED</span>
+    <div class="hero"><img src="01-single-leaf.png" alt="Single Leaf" width="1024" height="1024"></div>
+    <h2>Single Leaf</h2>
+    <p>Less foliage. A quieter page.</p>
+    <div class="samples">
+      <div class="sample light"><img src="01-single-leaf-32.png" alt="" width="32" height="32"><img src="01-single-leaf-64.png" alt="" width="64" height="64"></div>
+      <div class="sample dark"><img src="01-single-leaf-32.png" alt="" width="32" height="32"><img src="01-single-leaf-64.png" alt="" width="64" height="64"></div>
+    </div>
+    <div class="links"><a href="01-single-leaf.svg">SVG source</a><a href="01-single-leaf.png">1024px PNG</a></div>
+  </article>
+
+  <article>
+    <span class="number">B2 / INTEGRATED</span>
+    <div class="hero"><img src="02-page-flow.png" alt="Page Flow" width="1024" height="1024"></div>
+    <h2>Page Flow</h2>
+    <p>Progress becomes the page edge.</p>
+    <div class="samples">
+      <div class="sample light"><img src="02-page-flow-32.png" alt="" width="32" height="32"><img src="02-page-flow-64.png" alt="" width="64" height="64"></div>
+      <div class="sample dark"><img src="02-page-flow-32.png" alt="" width="32" height="32"><img src="02-page-flow-64.png" alt="" width="64" height="64"></div>
+    </div>
+    <div class="links"><a href="02-page-flow.svg">SVG source</a><a href="02-page-flow.png">1024px PNG</a></div>
+  </article>
+
+  <article>
+    <span class="number">B3 / COMBINED</span>
+    <div class="hero"><img src="03-leaf-vein.png" alt="Leaf Vein" width="1024" height="1024"></div>
+    <h2>Leaf Vein</h2>
+    <p>Growth and action share one shape.</p>
+    <div class="samples">
+      <div class="sample light"><img src="03-leaf-vein-32.png" alt="" width="32" height="32"><img src="03-leaf-vein-64.png" alt="" width="64" height="64"></div>
+      <div class="sample dark"><img src="03-leaf-vein-32.png" alt="" width="32" height="32"><img src="03-leaf-vein-64.png" alt="" width="64" height="64"></div>
+    </div>
+    <div class="links"><a href="03-leaf-vein.svg">SVG source</a><a href="03-leaf-vein.png">1024px PNG</a></div>
+  </article></section>
+  <footer>Flat SVG artwork. Solid colors only. No gradients or shadows. Small previews show each icon at 32px and 64px on light and dark surfaces.<br>SVG sources and PNG exports are included. These are design candidates; the application configuration has not been changed.</footer>
+</main>
+</html>

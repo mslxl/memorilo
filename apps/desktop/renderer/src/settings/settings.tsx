@@ -12,6 +12,7 @@ import { Fragment, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { useDesktopConfiguration } from '../shared/configuration'
+import { getPlatform } from '../shared/platform'
 import { AssetSettings } from './asset-settings'
 import { CalendarSettings } from './calendar-settings'
 import { DatabaseSettings } from './database-settings'
@@ -128,6 +129,7 @@ const fieldLabelKeys: Readonly<Record<string, string>> = {
   'backup.retentionCount': 'backupRetention',
   'language': 'language',
   'reduceMotion': 'reduceMotion',
+  'redrawTitlebar': 'redrawTitlebar',
   'editor.cursor.animationLength': 'cursorAnimationLength',
   'editor.cursor.shortAnimationLength': 'cursorTypingAnimation',
   'editor.cursor.trailSize': 'cursorTrailSize',
@@ -166,6 +168,11 @@ const fieldLabelKeys: Readonly<Record<string, string>> = {
   'todo.enabled': 'todoEnabled',
   'todo.autoCompleteParentTasks': 'autoCompleteParentTasks',
   'todo.blankTaskDurationMinutes': 'blankTaskDurationMinutes',
+  'todo.calendarFeedAfterDays': 'calendarFeedAfterDays',
+  'todo.calendarFeedBeforeDays': 'calendarFeedBeforeDays',
+  'todo.calendarFeedCompleted': 'calendarFeedCompleted',
+  'todo.calendarFeedTimeZone': 'calendarFeedTimeZone',
+  'todo.calendarFeedUndated': 'calendarFeedUndated',
   'todo.timelineWorkdayStartMinutes': 'timelineWorkdayStartMinutes',
   'todo.timelineWorkdayEndMinutes': 'timelineWorkdayEndMinutes',
   'todo.keepDetailOpenWhenTaskLeavesView': 'keepTodoDetailOpen',
@@ -187,6 +194,7 @@ const fieldLabelKeys: Readonly<Record<string, string>> = {
 }
 
 const fieldDescriptionKeys: Readonly<Record<string, string>> = {
+  'redrawTitlebar': 'redrawTitlebarDescription',
   'backup.enabled': 'backupEnabledDescription',
   'backup.intervalMinutes': 'backupIntervalDescription',
   'backup.retentionCount': 'backupRetentionDescription',
@@ -207,6 +215,11 @@ const fieldDescriptionKeys: Readonly<Record<string, string>> = {
   'todo.enabled': 'todoEnabledDescription',
   'todo.autoCompleteParentTasks': 'autoCompleteParentTasksDescription',
   'todo.blankTaskDurationMinutes': 'blankTaskDurationMinutesDescription',
+  'todo.calendarFeedAfterDays': 'calendarFeedAfterDaysDescription',
+  'todo.calendarFeedBeforeDays': 'calendarFeedBeforeDaysDescription',
+  'todo.calendarFeedCompleted': 'calendarFeedCompletedDescription',
+  'todo.calendarFeedTimeZone': 'calendarFeedTimeZoneDescription',
+  'todo.calendarFeedUndated': 'calendarFeedUndatedDescription',
   'todo.timelineWorkdayStartMinutes': 'timelineWorkdayStartMinutesDescription',
   'todo.timelineWorkdayEndMinutes': 'timelineWorkdayEndMinutesDescription',
   'todo.keepDetailOpenWhenTaskLeavesView': 'keepTodoDetailOpenDescription',
@@ -293,6 +306,9 @@ const optionLabelKeys: Readonly<Record<string, string>> = {
   'traditional': 'outdentTraditional',
   'url': 'networkImagePasteUrl',
   'wireframe': 'cursorVfxWireframe',
+  'show': 'show',
+  'hide': 'hide',
+  'today': 'today',
   'zh-CN': 'chinese',
   'sunday': 'sunday',
   'move-next-to-today': 'recurringTaskMoveNextToToday',
@@ -304,6 +320,7 @@ const optionLabelKeys: Readonly<Record<string, string>> = {
 const unitLabelKeys: Readonly<Record<string, string>> = {
   backups: 'backups',
   cards: 'cards',
+  days: 'days',
   hour: 'hour',
   minutes: 'minutes',
 }
@@ -493,7 +510,12 @@ function ThemeGallery({ store }: { store: ConfigurationStore<DesktopConfiguratio
 export function Settings({ store }: { store: ConfigurationStore<DesktopConfiguration> }) {
   const { t } = useTranslation('settings')
   const configuration = useDesktopConfiguration()
-  const localizedSections = desktopConfigurationDefinition.sections.map(section => localizeSection(section, t))
+  const platform = getPlatform()
+  const supportsRedrawnTitlebar = platform === 'windows' || platform === 'linux'
+  const localizedSections = desktopConfigurationDefinition.sections.map(section => localizeSection({
+    ...section,
+    fields: section.fields.filter(field => field.path !== 'redrawTitlebar' || supportsRedrawnTitlebar),
+  }, t))
   const categories = buildSettingsCategories(localizedSections, t, configuration.learning.enabled)
   const [activeCategoryId, setActiveCategoryId] = useState<SettingsCategoryId>('general')
   const shouldReduceMotion = useReducedMotion()

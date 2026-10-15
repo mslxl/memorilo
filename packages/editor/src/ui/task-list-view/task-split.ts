@@ -51,14 +51,10 @@ function initializeTaskAt(transaction: Transaction, position: number): boolean {
   transaction.setNodeMarkup(position, undefined, {
     ...node.attrs,
     ...EMPTY_TASK_ATTRS,
-    dueDate: null,
-    allDay: false,
-    dueTime: null,
-    endAt: null,
+    schedule: { kind: 'none' },
     reminderMinutes: null,
     reminders: null,
     repeatRule: null,
-    startAt: null,
   })
   return true
 }

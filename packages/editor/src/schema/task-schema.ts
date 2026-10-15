@@ -11,13 +11,20 @@ export interface TaskTimingAttrs {
 }
 
 export interface TaskScheduleAttrs {
-  allDay: boolean
-  dueTime: string | null
-  endAt: string | null
+  schedule: TaskSchedule
   reminderMinutes: number | null
   reminders: readonly TaskReminder[] | null
-  startAt: string | null
 }
+
+/**
+ * The explicit schedule carried by a Todo. `none` means that the Todo has no
+ * user supplied calendar placement; consumers may apply their own policy for
+ * displaying it (the ICS feed uses its request day when configured to do so).
+ */
+export type TaskSchedule
+  = | { kind: 'none' }
+    | { date: string, kind: 'deadline', time: string | null }
+    | { allDay: boolean, end: string, kind: 'span', start: string }
 
 export type TaskReminder
   = | { kind: 'offset', minutes: number }
@@ -97,6 +104,29 @@ const taskDateTimePattern = /^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d$/u
 
 export function parseTaskTime(value: unknown): string | null {
   return typeof value === 'string' && taskTimePattern.test(value) ? value : null
+}
+
+export function parseTaskSchedule(value: unknown): TaskSchedule | null {
+  if (typeof value !== 'object' || value === null || Array.isArray(value))
+    return null
+  const candidate = value as Record<string, unknown>
+  if (candidate.kind === 'none')
+    return Object.keys(candidate).length === 1 ? { kind: 'none' } : null
+  if (candidate.kind === 'deadline') {
+    const date = parseTaskDate(candidate.date)
+    const time = candidate.time === null ? null : parseTaskTime(candidate.time)
+    if (date === null || (candidate.time !== null && time === null))
+      return null
+    return { date, kind: 'deadline', time }
+  }
+  if (candidate.kind === 'span') {
+    const start = parseTaskDateTime(candidate.start)
+    const end = parseTaskDateTime(candidate.end)
+    if (start === null || end === null || end <= start || typeof candidate.allDay !== 'boolean')
+      return null
+    return { allDay: candidate.allDay, end, kind: 'span', start }
+  }
+  return null
 }
 
 export function parseTaskDateTime(value: unknown): string | null {
@@ -188,10 +218,10 @@ export function parseTaskRepeatRule(value: unknown): TaskRepeatRule | null {
     return null
   if (calendarId !== undefined && (typeof calendarId !== 'string' || calendarId.length === 0))
     return null
-  const parsedAnchorDate = anchorDate === undefined ? undefined : parseTaskDueDate(anchorDate)
+  const parsedAnchorDate = anchorDate === undefined ? undefined : parseTaskDate(anchorDate)
   if (parsedAnchorDate === null)
     return null
-  const parsedEndDate = endDate === undefined ? undefined : parseTaskDueDate(endDate)
+  const parsedEndDate = endDate === undefined ? undefined : parseTaskDate(endDate)
   if (parsedEndDate === null)
     return null
   if (holidayPolicy !== undefined && holidayPolicy !== 'allow' && holidayPolicy !== 'skip' && holidayPolicy !== 'next-workday')
@@ -261,7 +291,7 @@ export function parseTaskRepeatRule(value: unknown): TaskRepeatRule | null {
   }
 }
 
-export function parseTaskDueDate(value: unknown): string | null {
+export function parseTaskDate(value: unknown): string | null {
   return typeof value === 'string' && journalDatePattern.test(value) ? value : null
 }
 
@@ -322,45 +352,23 @@ export function defineTaskAttrs(): Extension {
         return Number.isFinite(parsed) ? parsed : null
       },
     }),
-    defineNodeAttr<'list', 'dueDate', string | null>({
+    defineNodeAttr<'list', 'schedule', TaskSchedule>({
       type: 'list',
-      attr: 'dueDate',
-      default: null,
+      attr: 'schedule',
+      default: { kind: 'none' },
       splittable: false,
-      toDOM: value => (value ? ['data-task-due-date', value] : null),
-      parseDOM: element => parseTaskDueDate(element.getAttribute('data-task-due-date')),
-    }),
-    defineNodeAttr<'list', 'allDay', boolean>({
-      type: 'list',
-      attr: 'allDay',
-      default: false,
-      splittable: false,
-      toDOM: value => (value ? ['data-task-all-day', 'true'] : null),
-      parseDOM: element => element.getAttribute('data-task-all-day') === 'true',
-    }),
-    defineNodeAttr<'list', 'dueTime', string | null>({
-      type: 'list',
-      attr: 'dueTime',
-      default: null,
-      splittable: false,
-      toDOM: value => (value ? ['data-task-due-time', value] : null),
-      parseDOM: element => parseTaskTime(element.getAttribute('data-task-due-time')),
-    }),
-    defineNodeAttr<'list', 'startAt', string | null>({
-      type: 'list',
-      attr: 'startAt',
-      default: null,
-      splittable: false,
-      toDOM: value => (value ? ['data-task-start-at', value] : null),
-      parseDOM: element => parseTaskDateTime(element.getAttribute('data-task-start-at')),
-    }),
-    defineNodeAttr<'list', 'endAt', string | null>({
-      type: 'list',
-      attr: 'endAt',
-      default: null,
-      splittable: false,
-      toDOM: value => (value ? ['data-task-end-at', value] : null),
-      parseDOM: element => parseTaskDateTime(element.getAttribute('data-task-end-at')),
+      toDOM: value => ['data-task-schedule', JSON.stringify(value)],
+      parseDOM: (element) => {
+        const raw = element.getAttribute('data-task-schedule')
+        if (raw === null)
+          return { kind: 'none' }
+        try {
+          return parseTaskSchedule(JSON.parse(raw)) ?? { kind: 'none' }
+        }
+        catch {
+          return { kind: 'none' }
+        }
+      },
     }),
     defineNodeAttr<'list', 'reminderMinutes', number | null>({
       type: 'list',

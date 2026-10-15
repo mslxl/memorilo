@@ -191,26 +191,26 @@ function taskDateValue(date: string): Date {
   return value.startOf('day').toDate()
 }
 
-export type TodoTaskDueState = 'overdue' | 'upcoming'
+export type TodoTaskScheduleState = 'overdue' | 'upcoming'
 
-export function taskDueState(dueDate: string, now: number): TodoTaskDueState {
+export function taskScheduleState(scheduleDate: string, now: number): TodoTaskScheduleState {
   if (!Number.isFinite(now))
     throw new TypeError('Todo clock must be a finite number')
-  const due = taskDateValue(dueDate)
+  const scheduled = taskDateValue(scheduleDate)
   const today = new Date(now)
   today.setHours(0, 0, 0, 0)
-  return due.getTime() < today.getTime() ? 'overdue' : 'upcoming'
+  return scheduled.getTime() < today.getTime() ? 'overdue' : 'upcoming'
 }
 
-export function formatTaskDueDate(dueDate: string, locale: string, now: number): string {
-  const due = taskDateValue(dueDate)
+export function formatTaskScheduleDate(scheduleDate: string, locale: string, now: number): string {
+  const scheduled = taskDateValue(scheduleDate)
   const today = new Date(now)
   const options: Intl.DateTimeFormatOptions = {
     day: 'numeric',
     month: 'short',
-    ...(due.getFullYear() === today.getFullYear() ? {} : { year: 'numeric' }),
+    ...(scheduled.getFullYear() === today.getFullYear() ? {} : { year: 'numeric' }),
   }
-  return new Intl.DateTimeFormat(locale, options).format(due)
+  return new Intl.DateTimeFormat(locale, options).format(scheduled)
 }
 
 export function groupTodoTasks(tasks: readonly DesktopTodoTask[]): Readonly<Record<DesktopTodoTaskStatus, readonly DesktopTodoTask[]>> {
@@ -224,11 +224,11 @@ export function groupTodoTasks(tasks: readonly DesktopTodoTask[]): Readonly<Reco
   return grouped
 }
 
-export function taskPlanningDate(task: Pick<DesktopTodoTask, 'dueDate' | 'journalDate' | 'startedAt'>): string | null {
-  if (task.dueDate !== null)
-    return task.dueDate
-  if (task.journalDate !== null)
-    return task.journalDate
+export function taskPlanningDate(task: Pick<DesktopTodoTask, 'schedule' | 'journalDate' | 'startedAt'>): string | null {
+  if (task.schedule.kind === 'deadline')
+    return task.schedule.date
+  if (task.schedule.kind === 'span')
+    return task.schedule.start.slice(0, 10)
   if (task.startedAt === null)
     return null
   return dayjs(task.startedAt).format('YYYY-MM-DD')
@@ -308,12 +308,12 @@ export function summarizeTodoListTasks(tasks: readonly DesktopTodoTask[], today:
   return { counts, notes: [...notes.values()] }
 }
 
-export function taskOccurrenceDate(task: Pick<DesktopTodoTask, 'dueDate' | 'journalDate' | 'startedAt'>, today = dayjs().format('YYYY-MM-DD')): string {
-  return task.dueDate ?? taskPlanningDate(task) ?? today
+export function taskOccurrenceDate(task: Pick<DesktopTodoTask, 'schedule' | 'journalDate' | 'startedAt'>, today = dayjs().format('YYYY-MM-DD')): string {
+  return taskPlanningDate(task) ?? today
 }
 
 export function taskRepeatBaseDate(
-  task: Pick<DesktopTodoTask, 'dueDate' | 'journalDate' | 'startedAt'>,
+  task: Pick<DesktopTodoTask, 'schedule' | 'journalDate' | 'startedAt'>,
   rule: DesktopTodoRepeatRule,
   completedOn: string,
 ): string {

@@ -36,11 +36,7 @@ interface TopicBlockParentRow {
 }
 
 interface TodoTaskRow {
-  all_day: number | null
   block_id: string
-  due_date: string | null
-  due_time: string | null
-  end_at: string | null
   elapsed_ms: number | null
   journal_date: string | null
   note_id: string
@@ -48,9 +44,9 @@ interface TodoTaskRow {
   note_title: string
   parent_block_id: string | null
   repeat_rule: string | null
+  schedule: string | null
   reminder_minutes: number | null
   reminders: string | null
-  start_at: string | null
   started_at: number | null
   status: string | null
   text: string
@@ -176,16 +172,9 @@ function projectTodoTaskRow(
   attributes: Record<string, unknown>,
   todoParentId: string | null,
 ): TodoTaskRow {
-  const allDay = attributes.allDay === true
-    ? 1
-    : attributes.allDay === false || attributes.allDay === undefined ? 0 : attributes.allDay as number
   return {
-    all_day: allDay,
     block_id: row.block_id,
-    due_date: (attributes.dueDate ?? null) as string | null,
-    due_time: (attributes.dueTime ?? null) as string | null,
     elapsed_ms: (attributes.elapsedMs ?? null) as number | null,
-    end_at: (attributes.endAt ?? null) as string | null,
     journal_date: row.journal_date,
     note_favorite: row.note_favorite_row_id === null ? 0 : 1,
     note_id: row.note_id,
@@ -194,7 +183,7 @@ function projectTodoTaskRow(
     reminder_minutes: (attributes.reminderMinutes ?? null) as number | null,
     reminders: serializedAttribute(attributes, 'reminders'),
     repeat_rule: serializedAttribute(attributes, 'repeatRule'),
-    start_at: (attributes.startAt ?? null) as string | null,
+    schedule: serializedAttribute(attributes, 'schedule'),
     started_at: (attributes.startedAt ?? null) as number | null,
     status: (attributes.status ?? null) as string | null,
     task_row_id: row.task_row_id,
@@ -212,19 +201,8 @@ function toTodoTask(row: TodoTaskRow): TodoTask {
     throw new TypeError(`Stored Todo task ${row.block_id} has an invalid identity`)
   if (row.note_favorite !== 0 && row.note_favorite !== 1)
     throw new TypeError(`Stored Todo task ${row.block_id} has an invalid note favorite flag`)
-  if (row.all_day !== null && row.all_day !== 0 && row.all_day !== 1)
-    throw new TypeError(`Stored Todo task ${row.block_id} has an invalid all-day flag`)
   if (row.journal_date !== null && !/^\d{4}-\d{2}-\d{2}$/u.test(row.journal_date))
     throw new TypeError(`Stored Todo task ${row.block_id} has an invalid journal date`)
-  const dueDate = row.due_date === null ? null : row.due_date
-  if (dueDate !== null && !/^\d{4}-\d{2}-\d{2}$/u.test(dueDate))
-    throw new TypeError(`Stored Todo task ${row.block_id} has an invalid due date`)
-  if (row.due_time !== null && !/^(?:[01]\d|2[0-3]):[0-5]\d$/u.test(row.due_time))
-    throw new TypeError(`Stored Todo task ${row.block_id} has an invalid due time`)
-  if (row.start_at !== null && !/^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d$/u.test(row.start_at))
-    throw new TypeError(`Stored Todo task ${row.block_id} has an invalid start time`)
-  if (row.end_at !== null && !/^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d$/u.test(row.end_at))
-    throw new TypeError(`Stored Todo task ${row.block_id} has an invalid end time`)
   if (row.reminder_minutes !== null
     && (!Number.isSafeInteger(row.reminder_minutes) || row.reminder_minutes < 0 || row.reminder_minutes > 10080)) {
     throw new TypeError(`Stored Todo task ${row.block_id} has an invalid reminder`)
@@ -305,12 +283,45 @@ function toTodoTask(row: TodoTaskRow): TodoTask {
     }
     repeatRule = structuredClone(candidate) as unknown as TodoRepeatRule
   }
+  let schedule: TodoTask['schedule']
+  if (row.schedule !== null) {
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(row.schedule)
+    }
+    catch (error) {
+      throw new TypeError(`Stored Todo task ${row.block_id} has invalid schedule`, { cause: error })
+    }
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed))
+      throw new TypeError(`Stored Todo task ${row.block_id} has invalid schedule`)
+    const candidate = parsed as Record<string, unknown>
+    if (candidate.kind === 'none') {
+      schedule = { kind: 'none' }
+    }
+    else if (candidate.kind === 'deadline'
+      && typeof candidate.date === 'string'
+      && /^\d{4}-\d{2}-\d{2}$/u.test(candidate.date)
+      && (candidate.time === null || (typeof candidate.time === 'string' && /^(?:[01]\d|2[0-3]):[0-5]\d$/u.test(candidate.time)))) {
+      schedule = { date: candidate.date, kind: 'deadline', time: candidate.time as string | null }
+    }
+    else if (candidate.kind === 'span'
+      && typeof candidate.start === 'string'
+      && typeof candidate.end === 'string'
+      && typeof candidate.allDay === 'boolean'
+      && /^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d$/u.test(candidate.start)
+      && /^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d$/u.test(candidate.end)
+      && candidate.end > candidate.start) {
+      schedule = { allDay: candidate.allDay, end: candidate.end, kind: 'span', start: candidate.start }
+    }
+    else {
+      throw new TypeError(`Stored Todo task ${row.block_id} has invalid schedule`)
+    }
+  }
+  else {
+    throw new TypeError(`Stored Todo task ${row.block_id} is missing a schedule`)
+  }
   return {
-    allDay: row.all_day === 1,
     blockId: row.block_id,
-    dueDate,
-    dueTime: row.due_time,
-    endAt: row.end_at,
     elapsedMs: readFiniteNumber(row.elapsed_ms, 'elapsedMs', false),
     journalDate: row.journal_date,
     noteId: row.note_id,
@@ -319,9 +330,9 @@ function toTodoTask(row: TodoTaskRow): TodoTask {
     parentId: row.parent_block_id,
     todoParentId: row.todo_parent_id,
     repeatRule,
+    schedule,
     reminderMinutes: row.reminder_minutes,
     reminders: readReminders(row.reminders, row.block_id),
-    startAt: row.start_at,
     startedAt: readFiniteNumber(row.started_at, 'startedAt', true),
     status: row.status,
     text: row.text,

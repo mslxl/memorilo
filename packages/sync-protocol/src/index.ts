@@ -44,7 +44,11 @@ message ObjectPutRequest { string type = 1; string protocol = 2; string device_i
 message ObjectResponse { string type = 1; optional string code = 2; }
 message ObjectFrame { oneof body { ObjectPutRequest put = 1; ObjectResponse response = 2; } }
 enum TodoStatus { TODO_STATUS_UNSPECIFIED = 0; TODO_STATUS_TODO = 1; TODO_STATUS_IN_PROGRESS = 2; TODO_STATUS_DONE = 3; }
-message TodoItem { bool all_day = 1; optional string due_date = 2; optional string due_time = 3; string id = 4; string note_title = 5; optional string parent_id = 6; string revision = 7; TodoStatus status = 8; string text = 9; string topic_title = 10; }
+message TodoUnscheduled {}
+message TodoDeadline { string date = 1; optional string time = 2; }
+message TodoSpan { bool all_day = 1; string start = 2; string end = 3; }
+message TodoSchedule { oneof body { TodoUnscheduled none = 1; TodoDeadline deadline = 2; TodoSpan span = 3; } }
+message TodoItem { reserved 1, 2, 3; string id = 4; string note_title = 5; optional string parent_id = 6; string revision = 7; TodoStatus status = 8; string text = 9; string topic_title = 10; TodoSchedule schedule = 11; }
 message TodoSnapshot { string generated_at = 1; optional int32 time_zone_offset_minutes = 2; repeated TodoItem items = 3; string revision = 4; }
 message TodoSyncRequest { string operation = 1; uint32 protocol_version = 2; string request_id = 3; TodoSnapshot snapshot = 4; }
 message TodoSyncResponse { string operation = 1; string request_id = 2; string status = 3; optional string error = 4; }
@@ -93,4 +97,27 @@ export function decodeMemoriloProto(name: string, bytes: Uint8Array): Record<str
     return result
   }
   return stripSyntheticMarkers(decoded) as Record<string, unknown>
+}
+
+export type TodoScheduleValue
+  = | { kind: 'none' }
+    | { date: string, kind: 'deadline', time: string | null }
+    | { allDay: boolean, end: string, kind: 'span', start: string }
+
+export function todoScheduleToProto(schedule: TodoScheduleValue): Record<string, unknown> {
+  switch (schedule.kind) {
+    case 'none': return { none: {} }
+    case 'deadline': return { deadline: { date: schedule.date, time: schedule.time ?? undefined } }
+    case 'span': return { span: { allDay: schedule.allDay, start: schedule.start, end: schedule.end } }
+  }
+}
+
+export function todoScheduleFromProto(value: Record<string, any> | undefined): TodoScheduleValue {
+  if (value?.none !== undefined)
+    return { kind: 'none' }
+  if (value?.deadline !== undefined)
+    return { kind: 'deadline', date: String(value.deadline.date ?? ''), time: value.deadline.time === undefined ? null : String(value.deadline.time) }
+  if (value?.span !== undefined)
+    return { kind: 'span', allDay: Boolean(value.span.allDay), start: String(value.span.start ?? ''), end: String(value.span.end ?? '') }
+  throw new TypeError('Missing Todo schedule')
 }

@@ -1,20 +1,23 @@
-import type { TaskReminder, TaskRepeatRule, TaskStatus } from '../schema/task-schema'
-import { parseTaskDateTime, parseTaskDueDate, parseTaskReminderMinutes, parseTaskReminders, parseTaskRepeatRule, parseTaskTime, transitionTaskAttrs } from '../schema/task-schema'
+import type { TaskReminder, TaskRepeatRule, TaskSchedule, TaskStatus } from '../schema/task-schema'
+import { parseTaskDate, parseTaskReminderMinutes, parseTaskReminders, parseTaskRepeatRule, parseTaskSchedule, transitionTaskAttrs } from '../schema/task-schema'
 import { resetTaskForNextOccurrence } from './task-completion'
 
 export interface TaskActionUpdate {
-  allDay?: boolean
-  dueDate?: string | null
-  dueTime?: string | null
-  endAt?: string | null
+  schedule?: TaskSchedule
   nextDueDate?: string | null
   onlyThis?: boolean
   reminderMinutes?: number | null
   reminders?: readonly TaskReminder[] | null
   repeatRule?: TaskRepeatRule | null
-  startAt?: string | null
   status?: TaskStatus
   text?: string
+}
+
+function taskSchedule(value: TaskSchedule): TaskSchedule {
+  const parsed = parseTaskSchedule(value)
+  if (parsed === null)
+    throw new TypeError('Task schedule is invalid')
+  return parsed
 }
 
 export interface TaskActionMutation {
@@ -28,15 +31,7 @@ export interface TaskActionPlan {
 }
 
 function taskDate(value: string | null, name: string): string | null {
-  return parseTaskValue(value, parseTaskDueDate, `${name} must use YYYY-MM-DD format`)
-}
-
-function taskTime(value: string | null, name: string): string | null {
-  return parseTaskValue(value, parseTaskTime, `${name} must use HH:mm format`)
-}
-
-function taskDateTime(value: string | null, name: string): string | null {
-  return parseTaskValue(value, parseTaskDateTime, `${name} must use YYYY-MM-DDTHH:mm format`)
+  return parseTaskValue(value, parseTaskDate, `${name} must use YYYY-MM-DD format`)
 }
 
 function taskReminderMinutes(value: number | null): number | null {
@@ -60,28 +55,15 @@ function parseTaskValue<Input, Output>(
   return parsed
 }
 
-function validateTaskSpan(startAt: string | null | undefined, endAt: string | null | undefined, dueDate: string | null | undefined): void {
-  if (startAt === undefined && endAt === undefined)
-    return
-  if (startAt !== null && startAt !== undefined && endAt !== null && endAt !== undefined && endAt <= startAt)
-    throw new RangeError('Task end time must be after its start time')
-  if (dueDate !== null && dueDate !== undefined && startAt !== null && startAt !== undefined && startAt.slice(0, 10) !== dueDate)
-    throw new RangeError('Task start time must use the task due date')
-  if (dueDate !== null && dueDate !== undefined && endAt !== null && endAt !== undefined && endAt.slice(0, 10) < dueDate)
-    throw new RangeError('Task end time cannot be before its due date')
-}
-
 export function planTaskAction(
   sourceAttrs: Readonly<Record<string, unknown>>,
   sourceText: string,
   input: TaskActionUpdate,
 ): TaskActionPlan {
-  const dueDate = input.dueDate === undefined ? undefined : taskDate(input.dueDate, 'Task due date')
-  if (input.allDay !== undefined && typeof input.allDay !== 'boolean')
-    throw new TypeError('Task all-day flag must be a boolean')
-  const dueTime = input.dueTime === undefined ? undefined : taskTime(input.dueTime, 'Task due time')
-  const startAt = input.startAt === undefined ? undefined : taskDateTime(input.startAt, 'Task start time')
-  const endAt = input.endAt === undefined ? undefined : taskDateTime(input.endAt, 'Task end time')
+  const explicitSchedule = input.schedule === undefined ? undefined : taskSchedule(input.schedule)
+  const sourceSchedule = parseTaskSchedule(sourceAttrs.schedule)
+  if (sourceSchedule === null)
+    throw new TypeError('Stored task schedule is invalid')
   const reminderMinutes = input.reminderMinutes === undefined ? undefined : taskReminderMinutes(input.reminderMinutes)
   const reminders = input.reminders === undefined ? undefined : taskReminders(input.reminders)
   const nextDueDate = input.nextDueDate === undefined
@@ -92,15 +74,14 @@ export function planTaskAction(
     : parseTaskRepeatRule(input.repeatRule)
   if (input.repeatRule !== undefined && input.repeatRule !== null && repeatRule === null)
     throw new TypeError('Task repeat rule is invalid')
-  validateTaskSpan(startAt, endAt, dueDate)
+  const schedule = explicitSchedule ?? sourceSchedule
+  const occurrenceDate = schedule.kind === 'deadline'
+    ? schedule.date
+    : schedule.kind === 'span' ? schedule.start.slice(0, 10) : null
 
   const nextAttrs = {
     ...sourceAttrs,
-    ...(input.allDay === undefined ? {} : { allDay: input.allDay }),
-    ...(dueDate === undefined ? {} : { dueDate }),
-    ...(dueTime === undefined ? {} : { dueTime }),
-    ...(startAt === undefined ? {} : { startAt }),
-    ...(endAt === undefined ? {} : { endAt }),
+    schedule,
     ...(reminderMinutes === undefined ? {} : { reminderMinutes }),
     ...(reminders === undefined ? {} : { reminders }),
     ...(repeatRule === undefined ? {} : { repeatRule }),
@@ -133,13 +114,10 @@ export function planTaskAction(
         attrs: {
           ...resetTaskForNextOccurrence({
             ...sourceAttrs,
-            allDay: nextAttrs.allDay,
-            dueTime: nextAttrs.dueTime,
-            endAt: nextAttrs.endAt,
+            schedule: nextAttrs.schedule,
             reminderMinutes: nextAttrs.reminderMinutes,
             reminders: nextAttrs.reminders,
-            startAt: nextAttrs.startAt,
-          }, dueDate ?? null),
+          }, occurrenceDate),
           repeatRule: null,
         },
         text: input.text ?? sourceText,

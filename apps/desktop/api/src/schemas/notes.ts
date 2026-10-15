@@ -16,6 +16,7 @@ import type {
   DesktopTodoCalendarEvent,
   DesktopTodoCalendarSubscription,
   DesktopTodoRepeatRule,
+  DesktopTodoSchedule,
   DesktopTodoTask,
   DesktopTodoTaskPage,
   DesktopTopicBlockSearchHit,
@@ -37,6 +38,11 @@ export const JournalDateSchema: EffectSchema.Codec<JournalDate> = Schema.String.
 
 export const TaskTimeSchema = Schema.String.check(Schema.isPattern(/^(?:[01]\d|2[0-3]):[0-5]\d$/u))
 export const TaskDateTimeSchema = Schema.String.check(Schema.isPattern(/^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d$/u))
+export const TaskScheduleSchema: EffectSchema.Codec<DesktopTodoSchedule> = Schema.Union([
+  Schema.Struct({ kind: Schema.Literal('none') }),
+  Schema.Struct({ date: JournalDateSchema, kind: Schema.Literal('deadline'), time: nullable(TaskTimeSchema) }),
+  Schema.Struct({ allDay: Schema.Boolean, end: TaskDateTimeSchema, kind: Schema.Literal('span'), start: TaskDateTimeSchema }),
+]) as EffectSchema.Codec<DesktopTodoSchedule>
 export const TaskReminderMinutesSchema = Schema.Int.check(Schema.isBetween({ maximum: 10080, minimum: 0 }))
 export const TaskReminderSchema = Schema.Union([
   Schema.Struct({ kind: Schema.Literal('offset'), minutes: TaskReminderMinutesSchema }),
@@ -194,11 +200,8 @@ export const DesktopTopicBlockSearchHitsSchema: EffectSchema.Codec<readonly Desk
 )
 
 export const DesktopTodoTaskSchema: EffectSchema.Codec<DesktopTodoTask> = Schema.Struct({
-  allDay: Schema.Boolean,
+  schedule: TaskScheduleSchema,
   blockId: Schema.NonEmptyString,
-  dueDate: nullable(JournalDateSchema),
-  dueTime: nullable(TaskTimeSchema),
-  endAt: nullable(TaskDateTimeSchema),
   elapsedMs: NonNegativeIntegerSchema,
   journalDate: nullable(JournalDateSchema),
   noteId: Schema.NonEmptyString,
@@ -231,7 +234,6 @@ export const DesktopTodoTaskSchema: EffectSchema.Codec<DesktopTodoTask> = Schema
   }) as EffectSchema.Codec<DesktopTodoRepeatRule | null>),
   reminderMinutes: nullable(TaskReminderMinutesSchema),
   reminders: nullable(Schema.Array(TaskReminderSchema)),
-  startAt: nullable(TaskDateTimeSchema),
   startedAt: nullable(NonNegativeIntegerSchema),
   status: Schema.Literals(['todo', 'doing', 'done']),
   text: Schema.String,
@@ -245,11 +247,7 @@ export const DesktopTodoTaskPageSchema: EffectSchema.Codec<DesktopTodoTaskPage> 
 })
 
 export const CreateDesktopTodoTaskInputSchema = Schema.Struct({
-  allDay: Schema.optionalKey(Schema.Boolean),
-  dueDate: JournalDateSchema,
-  dueTime: Schema.optionalKey(nullable(TaskTimeSchema)),
-  endAt: Schema.optionalKey(nullable(TaskDateTimeSchema)),
-  startAt: Schema.optionalKey(nullable(TaskDateTimeSchema)),
+  schedule: Schema.optionalKey(TaskScheduleSchema),
   text: Schema.String,
 })
 

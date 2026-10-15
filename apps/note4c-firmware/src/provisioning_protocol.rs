@@ -5,8 +5,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::persistence::{AlmanacConfig, SelectionPolicy, WeatherConfig};
 use crate::todo_sync::TodoView;
-use crate::todo_sync::{MAX_SNAPSHOT_BYTES, TodoSnapshot, validate_snapshot};
-use crate::proto::memorilo::sync::v1::{TodoItem as ProtoTodoItem, TodoStatus as ProtoTodoStatus, TodoSyncRequest};
+use crate::todo_sync::{MAX_SNAPSHOT_BYTES, TodoSnapshot, snapshot_from_proto};
+use crate::proto::memorilo::sync::v1::TodoSyncRequest;
+#[cfg(test)]
+use crate::proto::memorilo::sync::v1::TodoItem as ProtoTodoItem;
 
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const CONFIG_SCHEMA_VERSION: u16 = 2;
@@ -51,38 +53,8 @@ pub fn parse_todo_request(bytes: &[u8]) -> Result<TodoRequest, ProtocolErrorCode
     {
         return Err(ProtocolErrorCode::InvalidRequest);
     }
-    let items = snapshot.items.into_iter().map(todo_item_from_proto).collect::<Result<Vec<_>, _>>()?;
-    let snapshot = TodoSnapshot {
-        generated_at: snapshot.generated_at,
-        time_zone_offset_minutes: snapshot.time_zone_offset_minutes.map(|offset| offset as i16),
-        items,
-        revision: snapshot.revision,
-    };
-    if validate_snapshot(&snapshot).is_err() {
-        return Err(ProtocolErrorCode::InvalidRequest);
-    }
+    let snapshot = snapshot_from_proto(snapshot).map_err(|_| ProtocolErrorCode::InvalidRequest)?;
     Ok(TodoRequest { operation: request.operation, protocol_version: PROTOCOL_VERSION, request_id: request.request_id, snapshot })
-}
-
-fn todo_item_from_proto(item: ProtoTodoItem) -> Result<crate::todo_sync::TodoSnapshotItem, ProtocolErrorCode> {
-    let status = match ProtoTodoStatus::try_from(item.status).map_err(|_| ProtocolErrorCode::InvalidRequest)? {
-        ProtoTodoStatus::Todo => crate::todo_sync::SnapshotStatus::Todo,
-        ProtoTodoStatus::InProgress => crate::todo_sync::SnapshotStatus::InProgress,
-        ProtoTodoStatus::Done => crate::todo_sync::SnapshotStatus::Done,
-        ProtoTodoStatus::Unspecified => return Err(ProtocolErrorCode::InvalidRequest),
-    };
-    Ok(crate::todo_sync::TodoSnapshotItem {
-        all_day: item.all_day,
-        due_date: item.due_date,
-        due_time: item.due_time,
-        id: item.id,
-        note_title: item.note_title,
-        parent_id: item.parent_id,
-        revision: item.revision,
-        status,
-        text: item.text,
-        topic_title: item.topic_title,
-    })
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -618,7 +590,7 @@ mod tests {
             snapshot: Some(crate::proto::memorilo::sync::v1::TodoSnapshot {
                 generated_at: "2026-09-30T00:00:00.000Z".into(), time_zone_offset_minutes: None,
                 items: vec![ProtoTodoItem {
-                    all_day: true, due_date: None, due_time: None, id: "item-1".into(),
+                    schedule: Some(crate::proto::memorilo::sync::v1::TodoSchedule { body: Some(crate::proto::memorilo::sync::v1::todo_schedule::Body::None(crate::proto::memorilo::sync::v1::TodoUnscheduled {})) }), id: "item-1".into(),
                     note_title: "Note".into(), parent_id: None, revision: "item-r1".into(),
                     status: 0, text: "Task".into(), topic_title: "Topic".into(),
                 }], revision: "snapshot-r1".into(),

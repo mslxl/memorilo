@@ -64,9 +64,10 @@ export type {
   EditorExportMark,
   EditorExportNode,
   EditorTaskStatus,
+  HtmlContentRendererOptions,
   TypstContentRendererOptions,
 } from './export'
-export { editorTaskStatus, renderEditorContent, renderTypstContent, renderTypstTask, typstTaskPrelude } from './export'
+export { editorTaskStatus, renderEditorContent, renderHtmlContent, renderTypstContent, renderTypstTask, typstTaskPrelude } from './export'
 export type {
   EditorImageOcclusionIntegration,
   ImageOcclusionCardProjection,

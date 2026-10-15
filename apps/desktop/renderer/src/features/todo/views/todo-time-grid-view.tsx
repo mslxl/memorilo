@@ -25,30 +25,51 @@ function remembered(key: string, fallback: number, min: number, max: number): nu
 }
 
 function taskStart(task: DesktopTodoTask): string | null {
-  if (task.startAt)
-    return task.startAt
-  if (task.dueDate && task.dueTime)
-    return `${task.dueDate}T${task.dueTime}:00`
-  return task.dueDate
+  if (task.schedule.kind === 'span')
+    return task.schedule.start
+  if (task.schedule.kind === 'deadline' && task.schedule.time)
+    return `${task.schedule.date}T${task.schedule.time}:00`
+  return task.schedule.kind === 'deadline' ? task.schedule.date : null
 }
 
 function taskEnd(task: DesktopTodoTask): string | null {
-  return task.endAt ?? null
+  return task.schedule.kind === 'span' ? task.schedule.end : null
 }
 
-function dateFromEvent(event: { id: string, start: Date | null, end: Date | null, allDay: boolean }): UpdateDesktopTodoTaskInput | null {
+function dateFromEvent(
+  event: { id: string, start: Date | null, end: Date | null, allDay: boolean },
+  task: DesktopTodoTask,
+): UpdateDesktopTodoTaskInput | null {
   if (event.start === null)
     return null
   const start = dayjs(event.start)
   const end = event.end === null ? null : dayjs(event.end)
+  const startDateTime = start.format('YYYY-MM-DDTHH:mm')
+  if (task.schedule.kind === 'span') {
+    if (event.allDay) {
+      const endDate = end ?? start.add(1, 'day')
+      return {
+        schedule: { allDay: true, end: `${endDate.format('YYYY-MM-DD')}T00:00`, kind: 'span', start: `${start.format('YYYY-MM-DD')}T00:00` },
+        blockId: event.id,
+        noteId: '',
+        text: undefined,
+        topicId: '',
+      }
+    }
+    return {
+      schedule: { allDay: false, end: (end ?? dayjs(task.schedule.end)).format('YYYY-MM-DDTHH:mm'), kind: 'span', start: startDateTime },
+      blockId: event.id,
+      noteId: '',
+      text: undefined,
+      topicId: '',
+    }
+  }
   return {
-    allDay: event.allDay,
+    schedule: event.allDay
+      ? { date: start.format('YYYY-MM-DD'), kind: 'deadline' as const, time: null }
+      : { date: start.format('YYYY-MM-DD'), kind: 'deadline' as const, time: start.format('HH:mm') },
     blockId: event.id,
-    dueDate: start.format('YYYY-MM-DD'),
-    dueTime: event.allDay ? null : start.format('HH:mm'),
-    endAt: event.allDay || end === null ? null : end.format('YYYY-MM-DDTHH:mm'),
     noteId: '',
-    startAt: event.allDay ? null : start.format('YYYY-MM-DDTHH:mm'),
     text: undefined,
     topicId: '',
   }
@@ -89,7 +110,7 @@ export function TodoTimeGridView({
     if (!start)
       return null
     return {
-      allDay: task.allDay || !task.startAt,
+      allDay: task.schedule.kind === 'span' ? task.schedule.allDay : task.schedule.kind === 'deadline' && task.schedule.time === null,
       backgroundColor: task.status === 'done' ? 'var(--todo-done)' : 'var(--todo-task)',
       borderColor: 'transparent',
       extendedProps: { task },
@@ -123,11 +144,11 @@ export function TodoTimeGridView({
     const duration = settings.blankTaskDurationMinutes
     const end = duration > 0 ? start.add(duration, 'minute') : null
     await onCreateTask({
-      allDay: info.allDay,
-      dueDate: start.format('YYYY-MM-DD'),
-      dueTime: info.allDay ? null : start.format('HH:mm'),
-      endAt: end?.format('YYYY-MM-DDTHH:mm') ?? null,
-      startAt: info.allDay ? null : start.format('YYYY-MM-DDTHH:mm'),
+      schedule: info.allDay
+        ? { allDay: true, end: (end ?? start.add(1, 'day')).format('YYYY-MM-DDT00:00'), kind: 'span' as const, start: start.format('YYYY-MM-DDT00:00') }
+        : end
+          ? { allDay: false, end: end.format('YYYY-MM-DDTHH:mm'), kind: 'span' as const, start: start.format('YYYY-MM-DDTHH:mm') }
+          : { date: start.format('YYYY-MM-DD'), kind: 'deadline' as const, time: start.format('HH:mm') },
       text: '',
     })
   }
@@ -135,7 +156,7 @@ export function TodoTimeGridView({
     const task = info.event.extendedProps.task as DesktopTodoTask | undefined
     if (!task)
       return
-    const input = dateFromEvent(info.event)
+    const input = dateFromEvent(info.event, task)
     if (!input)
       return
     await onUpdateTask({ ...input, blockId: task.blockId, noteId: task.noteId, topicId: task.topicId, text: task.text })

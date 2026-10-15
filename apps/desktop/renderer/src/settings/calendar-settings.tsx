@@ -1,4 +1,4 @@
-import type { DesktopTodoCalendarSubscription } from '@memorilo/desktop-api'
+import type { DesktopTodoCalendarFeed, DesktopTodoCalendarSubscription } from '@memorilo/desktop-api'
 import type { CSSProperties, FormEvent } from 'react'
 import { Dialog } from '@memorilo/ui'
 import * as stylex from '@stylexjs/stylex'
@@ -81,6 +81,11 @@ export function CalendarSettings() {
   const [operation, setOperation] = useState<'add' | 'refresh' | 'remove' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [addError, setAddError] = useState<string | null>(null)
+  const [feed, setFeed] = useState<DesktopTodoCalendarFeed | null>(null)
+  const [feedLoading, setFeedLoading] = useState(() => typeof window.desktop !== 'undefined')
+  const [feedOperation, setFeedOperation] = useState<'issue' | 'revoke' | null>(null)
+  const [feedError, setFeedError] = useState<string | null>(null)
+  const [feedCopied, setFeedCopied] = useState(false)
   const selected = useMemo(
     () => subscriptions.find(subscription => subscription.id === selectedId) ?? null,
     [selectedId, subscriptions],
@@ -114,6 +119,41 @@ export function CalendarSettings() {
       active = false
     }
   }, [applySnapshot])
+
+  useEffect(() => {
+    if (typeof window.desktop === 'undefined')
+      return
+    let active = true
+    const loadFeed = () => window.desktop!.todoCalendarFeed.get()
+    void loadFeed()
+      .then((next) => {
+        if (active)
+          setFeed(next)
+      })
+      .catch((cause: unknown) => {
+        if (active)
+          setFeedError(errorMessage(cause))
+      })
+      .finally(() => {
+        if (active)
+          setFeedLoading(false)
+      })
+    const unsubscribe = window.desktop.subscribeConfiguration(() => {
+      void loadFeed()
+        .then((next) => {
+          if (active)
+            setFeed(next)
+        })
+        .catch((cause: unknown) => {
+          if (active)
+            setFeedError(errorMessage(cause))
+        })
+    })
+    return () => {
+      active = false
+      unsubscribe()
+    }
+  }, [])
 
   const reload = useCallback(async () => {
     const snapshot = await reloadTodoCalendarSnapshot()
@@ -182,6 +222,54 @@ export function CalendarSettings() {
     }
     finally {
       setOperation(null)
+    }
+  }
+
+  const issueFeed = async () => {
+    if (feedOperation !== null)
+      return
+    setFeedError(null)
+    setFeedCopied(false)
+    setFeedOperation('issue')
+    try {
+      setFeed(await window.desktop.todoCalendarFeed.issue())
+    }
+    catch (cause) {
+      setFeedError(errorMessage(cause))
+    }
+    finally {
+      setFeedOperation(null)
+    }
+  }
+
+  const revokeFeed = async () => {
+    if (feedOperation !== null)
+      return
+    setFeedError(null)
+    setFeedCopied(false)
+    setFeedOperation('revoke')
+    try {
+      await window.desktop.todoCalendarFeed.revoke()
+      setFeed({ expiresAt: null, url: null })
+    }
+    catch (cause) {
+      setFeedError(errorMessage(cause))
+    }
+    finally {
+      setFeedOperation(null)
+    }
+  }
+
+  const copyFeed = async () => {
+    if (feed?.url === null || feed?.url === undefined)
+      return
+    try {
+      await navigator.clipboard.writeText(feed.url)
+      setFeedCopied(true)
+      window.setTimeout(() => setFeedCopied(false), 1500)
+    }
+    catch (cause) {
+      setFeedError(errorMessage(cause))
     }
   }
 
@@ -280,6 +368,36 @@ export function CalendarSettings() {
           )
         : null}
       {error !== null ? <p {...stylex.props(styles.error)} role="alert">{t('calendarOperationFailed', { message: error })}</p> : null}
+      <section {...stylex.props(styles.feedSection)} aria-labelledby="todo-calendar-feed-heading">
+        <h2 id="todo-calendar-feed-heading" {...stylex.props(settingsShellStyles.sectionTitle)}>{t('calendarFeedTitle')}</h2>
+        <div {...stylex.props(styles.feedPanel)} data-window-no-drag="">
+          {feedLoading
+            ? <p {...stylex.props(styles.feedHint)} role="status">{t('calendarFeedLoading')}</p>
+            : feed?.url
+              ? (
+                  <>
+                    <label {...stylex.props(styles.field)}>
+                      <span>{t('calendarFeedUrl')}</span>
+                      <input {...stylex.props(styles.input, styles.feedUrl)} readOnly value={feed.url} />
+                    </label>
+                    <p {...stylex.props(styles.feedHint)}>{t('calendarFeedOptionsNotice')}</p>
+                    {feed.expiresAt !== null ? <p {...stylex.props(styles.feedHint)}>{t('calendarFeedExpires', { date: new Intl.DateTimeFormat(i18n.resolvedLanguage ?? i18n.language, { dateStyle: 'medium' }).format(feed.expiresAt) })}</p> : null}
+                    <div {...stylex.props(styles.feedActions)}>
+                      <button {...stylex.props(styles.secondaryButton)} disabled={feedOperation !== null} type="button" onClick={() => void copyFeed()}>{feedCopied ? t('calendarFeedCopied') : t('calendarFeedCopy')}</button>
+                      <button {...stylex.props(styles.primaryButton)} disabled={feedOperation !== null} type="button" onClick={() => void issueFeed()}>{feedOperation === 'issue' ? t('calendarFeedWorking') : t('calendarFeedRotate')}</button>
+                      <button {...stylex.props(styles.secondaryButton)} disabled={feedOperation !== null} type="button" onClick={() => void revokeFeed()}>{feedOperation === 'revoke' ? t('calendarFeedWorking') : t('calendarFeedRevoke')}</button>
+                    </div>
+                  </>
+                )
+              : (
+                  <>
+                    <p {...stylex.props(styles.feedHint)}>{t('calendarFeedNotConfigured')}</p>
+                    <button {...stylex.props(styles.primaryButton)} disabled={feedOperation !== null} type="button" onClick={() => void issueFeed()}>{feedOperation === 'issue' ? t('calendarFeedWorking') : t('calendarFeedCreate')}</button>
+                  </>
+                )}
+          {feedError !== null ? <p {...stylex.props(styles.error)} role="alert">{t('calendarOperationFailed', { message: feedError })}</p> : null}
+        </div>
+      </section>
     </section>
   )
 }

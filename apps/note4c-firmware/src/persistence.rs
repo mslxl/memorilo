@@ -1043,13 +1043,11 @@ mod tests {
             time_zone_offset_minutes: Some(480),
             items: (0..2048)
                 .map(|index| crate::todo_sync::TodoSnapshotItem {
-                    all_day: true,
-                    due_date: None,
-                    due_time: None,
                     id: format!("snapshot-{index}"),
                     note_title: "note".into(),
                     parent_id: None,
                     revision: "revision".into(),
+                    schedule: crate::todo_sync::TodoSchedule::None,
                     status: crate::todo_sync::SnapshotStatus::Todo,
                     text: "a".repeat(160),
                     topic_title: "topic".into(),

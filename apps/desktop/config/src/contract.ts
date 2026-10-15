@@ -89,6 +89,11 @@ export interface DesktopSyncServerConfiguration {
 export interface DesktopTodoConfiguration {
   autoCompleteParentTasks: boolean
   blankTaskDurationMinutes: number
+  calendarFeedAfterDays: number
+  calendarFeedBeforeDays: number
+  calendarFeedCompleted: 'hide' | 'show'
+  calendarFeedTimeZone: string
+  calendarFeedUndated: 'hide' | 'today'
   enabled: boolean
   keepDetailOpenWhenTaskLeavesView: boolean
   recurringTaskCompletionAction: DesktopRecurringTaskCompletionAction
@@ -128,6 +133,7 @@ export interface DesktopConfiguration {
   readerAnnotationCopyFormat: DesktopReaderAnnotationCopyFormat
   readerEpubPresentationMode: DesktopReaderEpubPresentationMode
   readerPageMode: DesktopReaderPageMode
+  redrawTitlebar: boolean
   reduceMotion: boolean
   shortcuts: DesktopShortcutConfiguration
   syncServer: DesktopSyncServerConfiguration

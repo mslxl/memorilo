@@ -4,12 +4,9 @@ import { buildSnapshot, createTodoDevicePushService } from './todo-device-push-s
 
 function task(overrides: Partial<TodoTask> = {}): TodoTask {
   return {
-    allDay: true,
+    schedule: { date: '2026-09-05', kind: 'deadline', time: null },
     blockId: 'task-1',
-    dueDate: '2026-09-05',
-    dueTime: null,
     elapsedMs: 0,
-    endAt: null,
     journalDate: '2026-09-05',
     noteFavorite: false,
     noteId: 'note-1',
@@ -18,7 +15,6 @@ function task(overrides: Partial<TodoTask> = {}): TodoTask {
     repeatRule: null,
     reminderMinutes: null,
     reminders: null,
-    startAt: null,
     startedAt: null,
     status: 'todo',
     text: 'Buy milk',

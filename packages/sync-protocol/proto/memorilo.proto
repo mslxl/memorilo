@@ -351,10 +351,26 @@ enum TodoStatus {
   TODO_STATUS_DONE = 3;
 }
 
-message TodoItem {
+message TodoUnscheduled {}
+message TodoDeadline {
+  string date = 1;
+  optional string time = 2;
+}
+message TodoSpan {
   bool all_day = 1;
-  optional string due_date = 2;
-  optional string due_time = 3;
+  string start = 2;
+  string end = 3;
+}
+message TodoSchedule {
+  oneof body {
+    TodoUnscheduled none = 1;
+    TodoDeadline deadline = 2;
+    TodoSpan span = 3;
+  }
+}
+
+message TodoItem {
+  reserved 1, 2, 3;
   string id = 4;
   string note_title = 5;
   optional string parent_id = 6;
@@ -362,6 +378,7 @@ message TodoItem {
   TodoStatus status = 8;
   string text = 9;
   string topic_title = 10;
+  TodoSchedule schedule = 11;
 }
 
 message TodoSnapshot {

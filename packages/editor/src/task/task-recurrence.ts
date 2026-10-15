@@ -241,6 +241,10 @@ export function previewTaskRecurrenceDates(
   if (through.isBefore(from, 'day'))
     return []
   const events = options.calendarEvents ?? []
+  // Completion anchored rules do not have a future occurrence until the
+  // current item is completed and the next item is persisted.
+  if (rule.mode === 'completion')
+    return []
   const occurrence = dateValue(occurrenceDate)
   const start = rule.mode === 'custom' && rule.anchorDate !== undefined
     ? dateValue(rule.anchorDate)

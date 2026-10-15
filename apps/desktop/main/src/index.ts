@@ -5,8 +5,10 @@ import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 
 import { memoriloProtocol } from '@memorilo/desktop-api/transport'
+import { desktopCustomTitlebarArgument } from '@memorilo/desktop-preload'
 import { app, BrowserWindow, dialog, ipcMain, protocol, screen, shell } from 'electron'
 
+import { applicationIconPath } from './app-icon-paths'
 import { applyPendingRestore } from './backup/restore-state'
 import { createDesktopRuntime } from './desktop-runtime'
 import { flushRendererNotes } from './lifecycle/note-save-handshake'
@@ -19,10 +21,12 @@ import { acquireSingleInstance, showPrimaryWindow } from './single-instance'
 import { applicationDataDirectory, mainDatabasePath } from './storage/workspace-paths'
 import { initialPanelToggleState, panelBlur, settleTrayInteraction, trayClick, trayMouseDown } from './tray/panel-toggle-state'
 import { createTrayController } from './tray/tray-controller'
+import { mainWindowChromeOptions, usesCustomWindowChrome } from './windows/main-window-chrome'
 
 let desktopRuntime: DesktopRuntime | null = null
 let trayController: ReturnType<typeof createTrayController> | null = null
 let mainWindow: BrowserWindow | null = null
+let redrawMainTitlebar = true
 let panelWindow: BrowserWindow | null = null
 let panelReady = false
 let panelToggleState = initialPanelToggleState
@@ -73,26 +77,24 @@ function shouldShowWindow(): boolean {
     && !process.argv.includes('--daemon')
 }
 
-function createWindow() {
+function createWindow(redrawTitlebar = redrawMainTitlebar) {
   if (mainWindow !== null && !mainWindow.isDestroyed())
     return
   const rendererUrl = process.env.ELECTRON_RENDERER_URL
-  const macOSWindowOptions = process.platform === 'darwin'
-    ? {
-        titleBarStyle: 'hiddenInset' as const,
-        trafficLightPosition: { x: 20, y: 20 },
-      }
-    : {}
+  redrawMainTitlebar = redrawTitlebar
+  const customTitlebar = usesCustomWindowChrome(process.platform, redrawTitlebar)
   const window = new BrowserWindow({
     autoHideMenuBar: false,
     backgroundColor: '#ffffff',
     height: 800,
+    icon: applicationIconPath,
     minHeight: 640,
     minWidth: 720,
     show: false,
     title: 'Memorilo',
-    ...macOSWindowOptions,
+    ...mainWindowChromeOptions(process.platform, redrawTitlebar),
     webPreferences: {
+      additionalArguments: customTitlebar ? [desktopCustomTitlebarArgument] : [],
       backgroundThrottling: shouldShowWindow(),
       contextIsolation: true,
       nodeIntegration: false,
@@ -102,6 +104,10 @@ function createWindow() {
     width: 1200,
   })
   mainWindow = window
+  // Keep the application menu attached for native roles and accelerators;
+  // its visible entry points live in the custom Windows/Linux title bar.
+  if (customTitlebar)
+    window.setMenuBarVisibility(false)
 
   if (shouldShowWindow())
     window.once('ready-to-show', () => window.show())
@@ -142,6 +148,7 @@ function createPanel(): BrowserWindow {
     backgroundColor: '#ffffff',
     frame: false,
     height: 560,
+    icon: applicationIconPath,
     resizable: false,
     roundedCorners: true,
     show: false,
@@ -274,6 +281,8 @@ function openMainWindow(): void {
 }
 
 async function startApplication(): Promise<void> {
+  if (process.platform === 'darwin')
+    app.dock?.setIcon(applicationIconPath)
   const dataDirectory = applicationDataDirectory(app.getPath('userData'), resolve(mainDirectory, '../../../../.dev'), app.isPackaged)
   const database = mainDatabasePath(dataDirectory)
   const restore = await applyPendingRestore(database)

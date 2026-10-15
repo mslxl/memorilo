@@ -1,6 +1,6 @@
 import type { TFunction } from 'i18next'
 import type { CSSProperties, Ref } from 'react'
-import type { TaskReminder, TaskRepeatRule, TaskStatus } from '../schema/task-schema'
+import type { TaskReminder, TaskRepeatRule, TaskSchedule, TaskStatus } from '../schema/task-schema'
 import type { TaskActionUpdate } from './task-action-model'
 import type { TaskCalendarEvent, TaskCalendarSubscription } from './task-calendar'
 import type { TaskRepeatPickerMode } from './task-repeat-picker'
@@ -31,15 +31,11 @@ import { TaskRepeatPicker } from './task-repeat-picker'
 import { TaskTimePicker } from './task-time-picker'
 
 export interface TaskActionTask {
-  allDay: boolean
-  dueDate: string | null
-  dueTime: string | null
-  endAt: string | null
+  schedule: TaskSchedule
   occurrenceDate: string
   reminderMinutes: number | null
   reminders: readonly TaskReminder[] | null
   repeatRule: TaskRepeatRule | null
-  startAt: string | null
   status: TaskStatus
   text: string
 }
@@ -88,18 +84,18 @@ export function TaskActionPanel({
   visible = true,
 }: TaskActionPanelProps) {
   const headingId = useId()
-  const baseDate = task.dueDate ?? task.occurrenceDate
-  const [mode, setMode] = useState<'date' | 'span'>(() => task.startAt !== null || task.endAt !== null ? 'span' : 'date')
-  const [allDay, setAllDay] = useState(() => task.allDay)
+  const baseDate = task.schedule.kind === 'deadline' ? task.schedule.date : task.schedule.kind === 'span' ? task.schedule.start.slice(0, 10) : task.occurrenceDate
+  const [mode, setMode] = useState<'date' | 'span'>(() => task.schedule.kind === 'span' ? 'span' : 'date')
+  const [allDay, setAllDay] = useState(() => task.schedule.kind === 'span' && task.schedule.allDay)
   // Keep the fallback occurrence date for calendar/repeat calculations, but do
   // not turn it into an explicit due date until the user selects one.
-  const [selectedDate, setSelectedDate] = useState<string | null>(() => task.dueDate)
-  const [activeMonth, setActiveMonth] = useState(() => dayjs(task.dueDate ?? task.occurrenceDate).startOf('month'))
-  const [dueTime, setDueTime] = useState(() => task.dueTime ?? '')
-  const [startAt, setStartAt] = useState(() => task.startAt ?? dateTimeValue(baseDate, '09:00'))
-  const [endAt, setEndAt] = useState(() => task.endAt ?? dateTimeValue(baseDate, '10:00'))
-  const [allDayStartDate, setAllDayStartDate] = useState(() => task.startAt?.slice(0, 10) ?? baseDate)
-  const [allDayEndDate, setAllDayEndDate] = useState(() => task.endAt?.slice(0, 10) ?? baseDate)
+  const [selectedDate, setSelectedDate] = useState<string | null>(() => task.schedule.kind === 'deadline' ? task.schedule.date : null)
+  const [activeMonth, setActiveMonth] = useState(() => dayjs(baseDate).startOf('month'))
+  const [deadlineTime, setDeadlineTime] = useState(() => task.schedule.kind === 'deadline' ? task.schedule.time ?? '' : '')
+  const [spanStart, setSpanStart] = useState(() => task.schedule.kind === 'span' ? task.schedule.start : dateTimeValue(baseDate, '09:00'))
+  const [spanEnd, setSpanEnd] = useState(() => task.schedule.kind === 'span' ? task.schedule.end : dateTimeValue(baseDate, '10:00'))
+  const [allDayStartDate, setAllDayStartDate] = useState(() => task.schedule.kind === 'span' ? task.schedule.start.slice(0, 10) : baseDate)
+  const [allDayEndDate, setAllDayEndDate] = useState(() => task.schedule.kind === 'span' ? task.schedule.end.slice(0, 10) : baseDate)
   const [reminders, setReminders] = useState<readonly TaskReminder[]>(() => taskReminders(task))
   const [repeatPickerOpen, setRepeatPickerOpen] = useState(false)
   const [timePickerOpen, setTimePickerOpen] = useState(false)
@@ -177,27 +173,13 @@ export function TaskActionPanel({
 
   const scheduleUpdate = (): TaskActionUpdate => {
     if (mode === 'span') {
-      const effectiveStart = allDay ? dateTimeValue(allDayStartDate, startAt.slice(11) || '09:00') : startAt
-      const effectiveEnd = allDay ? dateTimeValue(allDayEndDate, endAt.slice(11) || '10:00') : endAt
+      const effectiveStart = allDay ? dateTimeValue(allDayStartDate, spanStart.slice(11) || '09:00') : spanStart
+      const effectiveEnd = allDay ? dateTimeValue(allDayEndDate, spanEnd.slice(11) || '10:00') : spanEnd
       if (effectiveStart.length === 0 || effectiveEnd.length === 0 || effectiveEnd <= effectiveStart)
         throw new RangeError(t('timeSpanError'))
-      return {
-        allDay,
-        dueDate: effectiveStart.slice(0, 10),
-        dueTime: null,
-        endAt: effectiveEnd,
-        reminders,
-        startAt: effectiveStart,
-      }
+      return { reminders, schedule: { allDay, end: effectiveEnd, kind: 'span', start: effectiveStart } }
     }
-    return {
-      allDay: false,
-      dueDate: selectedDate,
-      dueTime: selectedDate === null || dueTime.length === 0 ? null : dueTime,
-      endAt: null,
-      reminders,
-      startAt: null,
-    }
+    return { reminders, schedule: selectedDate === null ? { kind: 'none' } : { date: selectedDate, kind: 'deadline', time: deadlineTime.length === 0 ? null : deadlineTime } }
   }
 
   const save = () => {
@@ -235,14 +217,10 @@ export function TaskActionPanel({
 
   const clear = () => {
     void update({
-      dueDate: null,
-      allDay: false,
-      dueTime: null,
-      endAt: null,
+      schedule: { kind: 'none' },
       reminderMinutes: null,
       reminders: null,
       repeatRule: null,
-      startAt: null,
     })
   }
 
@@ -251,8 +229,8 @@ export function TaskActionPanel({
     if (date !== null)
       setActiveMonth(dayjs(date).startOf('month'))
     if (mode === 'span' && date !== null) {
-      setStartAt(current => `${date}T${current.slice(11)}`)
-      setEndAt(current => `${date}T${current.slice(11)}`)
+      setSpanStart(current => `${date}T${current.slice(11)}`)
+      setSpanEnd(current => `${date}T${current.slice(11)}`)
       setAllDayStartDate(date)
       setAllDayEndDate(date)
     }
@@ -262,7 +240,7 @@ export function TaskActionPanel({
     const today = dayjs().startOf('day')
     if (key === 'noDate') {
       selectDate(null)
-      setDueTime('')
+      setDeadlineTime('')
       return
     }
     const date = key === 'today'
@@ -274,7 +252,7 @@ export function TaskActionPanel({
           : today
     selectDate(date.format('YYYY-MM-DD'))
     if (key === 'tonight')
-      setDueTime('20:00')
+      setDeadlineTime('20:00')
   }
 
   return (
@@ -386,11 +364,11 @@ export function TaskActionPanel({
                       <>
                         <label {...stylex.props(styles.field)}>
                           {t('spanStart')}
-                          <TextField xstyle={styles.dateTimeInput} disabled={updating} type="datetime-local" value={startAt} onChange={event => setStartAt(event.target.value)} />
+                          <TextField xstyle={styles.dateTimeInput} disabled={updating} type="datetime-local" value={spanStart} onChange={event => setSpanStart(event.target.value)} />
                         </label>
                         <label {...stylex.props(styles.field)}>
                           {t('spanEnd')}
-                          <TextField xstyle={styles.dateTimeInput} disabled={updating} type="datetime-local" value={endAt} onChange={event => setEndAt(event.target.value)} />
+                          <TextField xstyle={styles.dateTimeInput} disabled={updating} type="datetime-local" value={spanEnd} onChange={event => setSpanEnd(event.target.value)} />
                         </label>
                       </>
                     )}
@@ -416,7 +394,7 @@ export function TaskActionPanel({
         >
           <Clock3 aria-hidden="true" size={15} strokeWidth={1.7} />
           <span>{t('time')}</span>
-          <span {...stylex.props(styles.settingValue)}>{mode === 'span' ? (allDay ? t('allDay') : `${startAt.slice(11)} – ${endAt.slice(11)}`) : dueTime || t('notSet')}</span>
+          <span {...stylex.props(styles.settingValue)}>{mode === 'span' ? (allDay ? t('allDay') : `${spanStart.slice(11)} – ${spanEnd.slice(11)}`) : deadlineTime || t('notSet')}</span>
           <ChevronRight aria-hidden="true" size={14} />
         </button>
         {timePickerOpen && mode === 'date'
@@ -425,12 +403,12 @@ export function TaskActionPanel({
                 <TaskTimePicker
                   floatingStyle={timeFloatingStyles}
                   floatingOwnerId={id}
-                  onChange={setDueTime}
-                  onClear={() => setDueTime('')}
+                  onChange={setDeadlineTime}
+                  onClear={() => setDeadlineTime('')}
                   onClose={() => setTimePickerOpen(false)}
                   onFloatingRef={timeRefs.setFloating}
                   t={t}
-                  value={dueTime}
+                  value={deadlineTime}
                 />
               </FloatingPortal>
             )

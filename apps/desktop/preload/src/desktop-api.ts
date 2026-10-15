@@ -35,6 +35,7 @@ export function createDesktopApi(
     subscribePairing: () => () => undefined,
     uploadGalleryAsset: async () => undefined,
   },
+  customTitlebarEnabled = false,
 ): DesktopApi {
   const p2p = services.p2p ?? {
     approvePairing: async () => { throw new Error('P2P sync is unavailable') },
@@ -54,13 +55,20 @@ export function createDesktopApi(
     removeDevice: async () => { throw new Error('P2P sync is unavailable') },
     updateDeviceName: async () => { throw new Error('P2P sync is unavailable') },
   }
+  const todoCalendarFeed = services.todoCalendarFeed ?? {
+    get: async () => ({ expiresAt: null, url: null }),
+    issue: async () => { throw new Error('Todo calendar feed is unavailable') },
+    revoke: async () => { throw new Error('Todo calendar feed is unavailable') },
+  }
   return {
+    customTitlebarEnabled: customTitlebarEnabled && (platform === 'windows' || platform === 'linux'),
     deviceProvisioning,
     loadWhiteboardLibrary: () => services.whiteboardLibrary.load(),
     platform,
     request: request => services.transport.fetch(request),
     saveWhiteboardLibrary: data => services.whiteboardLibrary.save(data),
     p2p,
+    todoCalendarFeed,
     subscribeConfiguration,
     subscribeLearningUpdates,
     subscribeNoteSaveRequests,

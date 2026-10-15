@@ -90,7 +90,7 @@ async function createFixture(action?: RecurringTaskCompletionAction) {
         attributes: {
           checked: false,
           collapsed: false,
-          dueDate: '2026-08-18',
+          schedule: { date: '2026-08-18', kind: 'deadline', time: null },
           elapsedMs: 25,
           kind: 'task',
           order: null,
@@ -151,7 +151,7 @@ describe('recurring task completion persistence', () => {
     expect(sourceRoot?.attrs).toMatchObject({
       blockId: expect.not.stringMatching(fixture.sourceId),
       checked: false,
-      dueDate: '2026-08-19',
+      schedule: { date: '2026-08-19', kind: 'deadline', time: null },
       repeatRule,
       status: 'todo',
     })
@@ -201,7 +201,7 @@ describe('recurring task completion persistence', () => {
     expect(next?.attrs).toMatchObject({
       blockId: expect.not.stringMatching(fixture.sourceId),
       checked: false,
-      dueDate: '2026-08-19',
+      schedule: { date: '2026-08-19', kind: 'deadline', time: null },
       repeatRule,
       status: 'todo',
     })

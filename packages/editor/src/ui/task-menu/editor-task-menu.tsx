@@ -12,7 +12,7 @@ import { TextSelection } from 'prosekit/pm/state'
 import { useEditor } from 'prosekit/react'
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { parseTaskDateTime, parseTaskDueDate, parseTaskReminderMinutes, parseTaskReminders, parseTaskRepeatRule, parseTaskTime } from '../../schema'
+import { parseTaskDate, parseTaskReminderMinutes, parseTaskReminders, parseTaskRepeatRule, parseTaskSchedule } from '../../schema'
 import { planTaskAction } from '../../task/task-action-model'
 import { TaskActionPanel } from '../../task/task-action-panel'
 import { TaskOccurrencePanel } from '../../task/task-occurrence-panel'
@@ -41,23 +41,12 @@ function taskNodeAt(editor: Editor<BasicExtension>, blockId: string, defaultDate
   editor.state.doc.descendants((node, position) => {
     if (node.type.name !== 'list' || node.attrs.kind !== 'task' || node.attrs.blockId !== blockId)
       return true
-    const dueDate = node.attrs.dueDate === null ? null : parseTaskDueDate(node.attrs.dueDate)
-    if (node.attrs.dueDate !== null && dueDate === null)
-      throw new TypeError(`Task ${blockId} has an invalid due date`)
-    if (node.attrs.allDay !== true && node.attrs.allDay !== false && node.attrs.allDay !== undefined)
-      throw new TypeError(`Task ${blockId} has an invalid all-day flag`)
+    const schedule = parseTaskSchedule(node.attrs.schedule)
+    if (schedule === null)
+      throw new TypeError(`Task ${blockId} has an invalid schedule`)
     const repeatRule = node.attrs.repeatRule === null ? null : parseTaskRepeatRule(node.attrs.repeatRule)
     if (node.attrs.repeatRule !== null && repeatRule === null)
       throw new TypeError(`Task ${blockId} has an invalid repeat rule`)
-    const dueTime = node.attrs.dueTime === null ? null : parseTaskTime(node.attrs.dueTime)
-    if (node.attrs.dueTime !== null && dueTime === null)
-      throw new TypeError(`Task ${blockId} has an invalid due time`)
-    const startAt = node.attrs.startAt === null ? null : parseTaskDateTime(node.attrs.startAt)
-    if (node.attrs.startAt !== null && startAt === null)
-      throw new TypeError(`Task ${blockId} has an invalid start time`)
-    const endAt = node.attrs.endAt === null ? null : parseTaskDateTime(node.attrs.endAt)
-    if (node.attrs.endAt !== null && endAt === null)
-      throw new TypeError(`Task ${blockId} has an invalid end time`)
     const reminderMinutes = node.attrs.reminderMinutes === null ? null : parseTaskReminderMinutes(node.attrs.reminderMinutes)
     if (node.attrs.reminderMinutes !== null && reminderMinutes === null)
       throw new TypeError(`Task ${blockId} has an invalid reminder`)
@@ -71,16 +60,12 @@ function taskNodeAt(editor: Editor<BasicExtension>, blockId: string, defaultDate
       node,
       position,
       task: {
-        allDay: node.attrs.allDay === true,
-        dueDate,
-        dueTime,
-        endAt,
-        occurrenceDate: dueDate ?? defaultDate,
+        occurrenceDate: schedule.kind === 'deadline' ? schedule.date : schedule.kind === 'span' ? schedule.start.slice(0, 10) : defaultDate,
         reminderMinutes,
         reminders,
         repeatRule,
+        schedule,
         status: node.attrs.status,
-        startAt,
         text,
       },
       text,
@@ -173,7 +158,7 @@ export function EditorTaskMenu({ adapters, taskDate }: {
   const targetRef = useRef<TaskMenuTarget | null>(null)
   const [target, setTarget] = useState<TaskMenuTarget | null>(null)
   const [calendarSnapshot, setCalendarSnapshot] = useState<TaskCalendarSnapshot | null>(null)
-  const defaultDate = taskDate === undefined ? dayjs().format('YYYY-MM-DD') : parseTaskDueDate(taskDate)
+  const defaultDate = taskDate === undefined ? dayjs().format('YYYY-MM-DD') : parseTaskDate(taskDate)
   if (defaultDate === null)
     throw new TypeError('Editor taskDate must use YYYY-MM-DD format')
   const {
@@ -345,7 +330,7 @@ export function EditorTaskMenu({ adapters, taskDate }: {
       {target.kind === 'schedule'
         ? (
             <TaskActionPanel
-              key={`${target.blockId}:${task.allDay}:${task.dueDate ?? ''}:${task.dueTime ?? ''}:${task.startAt ?? ''}:${task.endAt ?? ''}:${task.reminderMinutes ?? ''}:${JSON.stringify(task.reminders)}:${JSON.stringify(task.repeatRule)}`}
+              key={`${target.blockId}:${JSON.stringify(task.schedule)}:${task.reminderMinutes ?? ''}:${JSON.stringify(task.reminders)}:${JSON.stringify(task.repeatRule)}`}
               calendarEvents={snapshot.events}
               calendarSubscriptions={snapshot.subscriptions}
               id={menuId}
@@ -370,7 +355,7 @@ export function EditorTaskMenu({ adapters, taskDate }: {
           )
         : (
             <TaskOccurrencePanel
-              key={`${target.blockId}:${task.dueDate ?? ''}:${JSON.stringify(task.repeatRule)}:${task.text}`}
+              key={`${target.blockId}:${JSON.stringify(task.schedule)}:${JSON.stringify(task.repeatRule)}:${task.text}`}
               calendarEvents={snapshot.events}
               id={menuId}
               panelRef={floatingRef}

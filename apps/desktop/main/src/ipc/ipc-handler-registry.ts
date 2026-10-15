@@ -27,6 +27,7 @@ type ContextualHandlerFor<Method> = Method extends (...args: infer Arguments) =>
   : never
 
 export interface DesktopIpcHandlers {
+  readonly todoCalendarFeed: NonNullable<DesktopIpcClient['todoCalendarFeed']>
   readonly transport: {
     readonly fetch: ContextualHandlerFor<DesktopIpcClient['transport']['fetch']>
   }

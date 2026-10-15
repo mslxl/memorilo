@@ -17,7 +17,7 @@ import { journalSummary } from '../journals/journal-model'
 import { journalQueryKeys } from '../journals/query-keys'
 import { createEditorNoteSessionCache } from '../notes/note-runtime'
 import { todoQueryKeys } from '../todo/query-keys'
-import { filterTodoListTasks, formatTaskDueDate, sortTodoTasks, todoTaskQueryOptions } from '../todo/todo-model'
+import { filterTodoListTasks, formatTaskScheduleDate, sortTodoTasks, todoTaskQueryOptions } from '../todo/todo-model'
 import { panelStyles } from './panel-page.stylex'
 import './panel-editor-overrides.stylex'
 
@@ -144,11 +144,14 @@ function TodoPanel() {
                 <div {...stylex.props(panelStyles.taskList)}>
                   {todayTasks.map((task) => {
                     const pending = completing.has(task.blockId)
-                    const due = task.dueDate === null
+                    const scheduleDate = task.schedule.kind === 'deadline'
+                      ? task.schedule.date
+                      : task.schedule.kind === 'span' ? task.schedule.start.slice(0, 10) : null
+                    const due = scheduleDate === null
                       ? null
                       : [
-                          formatTaskDueDate(task.dueDate, i18n.resolvedLanguage ?? i18n.language, Date.now()),
-                          task.dueTime,
+                          formatTaskScheduleDate(scheduleDate, i18n.resolvedLanguage ?? i18n.language, Date.now()),
+                          task.schedule.kind === 'deadline' ? task.schedule.time : task.schedule.kind === 'span' && !task.schedule.allDay ? task.schedule.start.slice(11) : null,
                         ].filter(Boolean).join(' · ')
                     const taskText = task.text.trim() || t('untitledTask')
                     return (

@@ -85,14 +85,10 @@ function selectedTaskReducer(
   const input = action.input
   return {
     ...current,
-    ...(input.allDay === undefined ? {} : { allDay: input.allDay }),
-    ...(input.dueDate === undefined ? {} : { dueDate: input.dueDate }),
-    ...(input.dueTime === undefined ? {} : { dueTime: input.dueTime }),
-    ...(input.endAt === undefined ? {} : { endAt: input.endAt }),
+    ...(input.schedule === undefined ? {} : { schedule: input.schedule }),
     ...(input.reminderMinutes === undefined ? {} : { reminderMinutes: input.reminderMinutes }),
     ...(input.reminders === undefined ? {} : { reminders: input.reminders }),
     ...(input.repeatRule === undefined ? {} : { repeatRule: input.repeatRule }),
-    ...(input.startAt === undefined ? {} : { startAt: input.startAt }),
     ...(input.status === undefined ? {} : { status: input.status }),
     ...(input.text === undefined ? {} : { text: input.text }),
   }

@@ -11,7 +11,7 @@ import { createHash, randomUUID, timingSafeEqual } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import { extname, join } from 'node:path'
 import { encodeSyncServerCredentialBundle } from '@memorilo/sync'
-import { encodeMemoriloProto } from '@memorilo/sync-protocol'
+import { encodeMemoriloProto, todoScheduleToProto } from '@memorilo/sync-protocol'
 import { decodePairingPayload, verifyPairingResponse } from '@memorilo/sync/node'
 import { Effect } from 'effect'
 import { Hono } from 'hono'
@@ -109,6 +109,42 @@ function deviceTodoErrorStatus(error: DeviceTodoError): 400 | 401 | 403 | 500 | 
   }
 }
 
+function feedDateInTimeZone(timestamp: number, timeZone: string): string {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    day: '2-digit',
+    month: '2-digit',
+    timeZone,
+    year: 'numeric',
+  }).formatToParts(new Date(timestamp))
+  const values = new Map(parts.map(part => [part.type, part.value]))
+  return `${values.get('year')}-${values.get('month')}-${values.get('day')}`
+}
+
+function shiftFeedDate(date: string, days: number): string {
+  const value = new Date(`${date}T00:00:00Z`)
+  value.setUTCDate(value.getUTCDate() + days)
+  return value.toISOString().slice(0, 10)
+}
+
+function validFeedTimeZone(value: string): boolean {
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: value }).format()
+    return true
+  }
+  catch {
+    return false
+  }
+}
+
+function feedDays(value: string | undefined, fallback: number): number | null {
+  if (value === undefined)
+    return fallback
+  if (!/^\d{1,4}$/u.test(value))
+    return null
+  const days = Number(value)
+  return Number.isSafeInteger(days) && days >= 0 && days <= 3660 ? days : null
+}
+
 export function createSyncServerApp(config: SyncServerConfig, services: SyncServerAppServices): SyncServerApp {
   const app = new Hono<SyncServerEnvironment>()
   const now = services.now ?? Date.now
@@ -136,6 +172,25 @@ export function createSyncServerApp(config: SyncServerConfig, services: SyncServ
       return account
     const csrfError = await requireCsrf(context, account)
     return csrfError ?? account
+  }
+  const authenticateSyncDevice = async (context: Context<SyncServerEnvironment>) => {
+    const token = context.req.header('authorization')?.startsWith('Bearer ')
+      ? context.req.header('authorization')!.slice(7)
+      : ''
+    if (token.length === 0)
+      return null
+    const credential = await auth.findDeviceCredential(hashDeviceCredential(token))
+    const timestamp = now()
+    if (credential === null
+      || credential.revokedAt !== null
+      || credential.expiresAt <= timestamp
+      || !credential.scopes.includes('sync')) {
+      return null
+    }
+    const state = await repository.getAccountState(credential.accountId)
+    if (state === null || state.membershipEpoch !== credential.membershipEpoch)
+      return null
+    return credential
   }
   const rateLimiter = services.rateLimiter ?? createRateLimiter(services.now)
   const deviceTodo = services.deviceTodo
@@ -221,6 +276,11 @@ export function createSyncServerApp(config: SyncServerConfig, services: SyncServ
       context.header('retry-after', String(Math.max(1, Math.ceil((decision.resetAt - now()) / 1000))))
       return context.json({ code: 'rate_limited' }, 429)
     }
+    await next()
+  })
+  app.use('/calendar/*', async (context, next) => {
+    if (services.isReady?.() === false)
+      return context.json({ code: 'server_draining' }, 503)
     await next()
   })
   const limitAuthentication = async (context: Context<SyncServerEnvironment>, next: Next): Promise<Response | void> => {
@@ -483,6 +543,34 @@ export function createSyncServerApp(config: SyncServerConfig, services: SyncServ
       scopes: result.value.credential.scopes,
     }, 201)
   })
+  app.post('/api/devices/todo-calendar-token', async (context) => {
+    const account = await requireAccountWithCsrf(context)
+    if (account instanceof Response)
+      return account
+    if (!deviceTodo)
+      return context.json({ code: 'device_todo_unavailable' }, 503)
+    let body: { deviceId?: unknown, deviceName?: unknown }
+    try {
+      body = await context.req.json<{ deviceId?: unknown, deviceName?: unknown }>()
+    }
+    catch {
+      return context.json({ code: 'invalid_request' }, 400)
+    }
+    const result = await runDeviceTodo(deviceTodo.issueCalendarToken({
+      accountId: account.accountId,
+      deviceId: typeof body.deviceId === 'string' ? body.deviceId : '',
+      deviceName: typeof body.deviceName === 'string' ? body.deviceName : '',
+    }))
+    if (!result.ok)
+      return context.json({ code: result.error.code }, deviceTodoErrorStatus(result.error))
+    await recordAudit({ accountId: account.accountId, action: 'device.todo-calendar-token.issue', actorId: account.accountId, actorType: 'browser', details: { deviceId: result.value.credential.deviceId }, outcome: 'success', remoteAddress: context.get('remoteAddress'), requestId: context.get('requestId') })
+    return context.json({
+      credential: result.value.token,
+      device: { deviceId: result.value.credential.deviceId, deviceName: result.value.credential.deviceName },
+      expiresAt: result.value.credential.expiresAt,
+      scopes: result.value.credential.scopes,
+    }, 201)
+  })
   app.get('/api/devices/todo-tokens', async (context) => {
     const account = await browserAuth.current(context.req.raw)
     if (!account)
@@ -509,6 +597,57 @@ export function createSyncServerApp(config: SyncServerConfig, services: SyncServ
     const result = await runDeviceTodo(deviceTodo.revokeToken(account.accountId, context.req.param('deviceId')))
     if (!result.ok)
       return context.json({ code: result.error.code }, deviceTodoErrorStatus(result.error))
+    return result.value ? context.json({ revoked: true }) : context.json({ code: 'device_not_found' }, 404)
+  })
+  app.post('/api/devices/todo-calendar-tokens/:deviceId/revoke', async (context) => {
+    const account = await requireAccountWithCsrf(context)
+    if (account instanceof Response)
+      return account
+    if (!deviceTodo)
+      return context.json({ code: 'device_todo_unavailable' }, 503)
+    const result = await runDeviceTodo(deviceTodo.revokeCalendarToken({ accountId: account.accountId, deviceId: context.req.param('deviceId') }))
+    if (!result.ok)
+      return context.json({ code: result.error.code }, deviceTodoErrorStatus(result.error))
+    return result.value ? context.json({ revoked: true }) : context.json({ code: 'device_not_found' }, 404)
+  })
+  app.post('/api/device/v1/todo-calendar-token', async (context) => {
+    const credential = await authenticateSyncDevice(context)
+    if (credential === null)
+      return context.json({ code: 'unauthorized' }, 401)
+    if (!deviceTodo)
+      return context.json({ code: 'device_todo_unavailable' }, 503)
+    let body: { deviceName?: unknown }
+    try {
+      body = await context.req.json<{ deviceName?: unknown }>()
+    }
+    catch {
+      return context.json({ code: 'invalid_request' }, 400)
+    }
+    const result = await runDeviceTodo(deviceTodo.issueCalendarToken({
+      accountId: credential.accountId,
+      deviceId: credential.deviceId,
+      deviceName: typeof body.deviceName === 'string' ? body.deviceName : credential.deviceName,
+    }))
+    if (!result.ok)
+      return context.json({ code: result.error.code }, deviceTodoErrorStatus(result.error))
+    await recordAudit({ accountId: credential.accountId, action: 'device.todo-calendar-token.issue', actorId: credential.deviceId, actorType: 'device', details: { deviceId: credential.deviceId }, outcome: 'success', remoteAddress: context.get('remoteAddress'), requestId: context.get('requestId') })
+    return context.json({
+      credential: result.value.token,
+      device: { deviceId: result.value.credential.deviceId, deviceName: result.value.credential.deviceName },
+      expiresAt: result.value.credential.expiresAt,
+      scopes: result.value.credential.scopes,
+    }, 201)
+  })
+  app.post('/api/device/v1/todo-calendar-token/revoke', async (context) => {
+    const credential = await authenticateSyncDevice(context)
+    if (credential === null)
+      return context.json({ code: 'unauthorized' }, 401)
+    if (!deviceTodo)
+      return context.json({ code: 'device_todo_unavailable' }, 503)
+    const result = await runDeviceTodo(deviceTodo.revokeCalendarToken({ accountId: credential.accountId, deviceId: credential.deviceId }))
+    if (!result.ok)
+      return context.json({ code: result.error.code }, deviceTodoErrorStatus(result.error))
+    await recordAudit({ accountId: credential.accountId, action: 'device.todo-calendar-token.revoke', actorId: credential.deviceId, actorType: 'device', details: { deviceId: credential.deviceId }, outcome: 'success', remoteAddress: context.get('remoteAddress'), requestId: context.get('requestId') })
     return result.value ? context.json({ revoked: true }) : context.json({ code: 'device_not_found' }, 404)
   })
   app.get('/api/device/v1/todos', async (context) => {
@@ -542,9 +681,7 @@ export function createSyncServerApp(config: SyncServerConfig, services: SyncServ
     const body = encodeMemoriloProto('TodoSnapshot', {
       generatedAt: result.value.generatedAt,
       items: result.value.items.map(item => ({
-        allDay: item.allDay,
-        dueDate: item.dueDate ?? undefined,
-        dueTime: item.dueTime ?? undefined,
+        schedule: todoScheduleToProto(item.schedule),
         id: item.id,
         noteTitle: item.noteTitle,
         parentId: item.parentId ?? undefined,
@@ -556,6 +693,61 @@ export function createSyncServerApp(config: SyncServerConfig, services: SyncServ
       revision: result.value.revision,
     })
     return new Response(new Uint8Array(body).buffer, { status: 200, headers: { 'cache-control': 'private, max-age=0', 'content-type': 'application/x-protobuf', 'etag': tag } })
+  })
+  app.get('/calendar/:feedPath', async (context) => {
+    if (!deviceTodo)
+      return context.json({ code: 'device_todo_unavailable' }, 503)
+    const feedPath = context.req.param('feedPath')
+    if (!feedPath.endsWith('.ics'))
+      return context.json({ code: 'not_found' }, 404)
+    const token = feedPath.slice(0, -'.ics'.length)
+    if (token.length === 0)
+      return context.json({ code: 'unauthorized' }, 401)
+    const rateLimitKey = createHash('sha256').update(token).digest('hex')
+    const decision = rateLimiter.check('todo-calendar-feed', rateLimitKey, 60, rateLimitWindowMs)
+    context.header('ratelimit-limit', String(decision.limit))
+    context.header('ratelimit-remaining', String(decision.remaining))
+    context.header('ratelimit-reset', String(Math.ceil(decision.resetAt / 1000)))
+    if (!decision.allowed) {
+      context.header('retry-after', String(Math.max(1, Math.ceil((decision.resetAt - now()) / 1000))))
+      return context.json({ code: 'rate_limited' }, 429)
+    }
+    const timeZone = context.req.query('tz') ?? 'UTC'
+    if (!validFeedTimeZone(timeZone))
+      return context.json({ code: 'invalid_request' }, 400)
+    const beforeDays = feedDays(context.req.query('beforeDays'), 30)
+    const afterDays = feedDays(context.req.query('afterDays'), 365)
+    if (beforeDays === null || afterDays === null)
+      return context.json({ code: 'invalid_request' }, 400)
+    const completed = context.req.query('completed') ?? 'hide'
+    const undated = context.req.query('undated') ?? 'today'
+    if (completed !== 'hide' && completed !== 'show')
+      return context.json({ code: 'invalid_request' }, 400)
+    if (undated !== 'hide' && undated !== 'today')
+      return context.json({ code: 'invalid_request' }, 400)
+    const undatedDate = feedDateInTimeZone(now(), timeZone)
+    const options = {
+      afterDays,
+      beforeDays,
+      completed,
+      from: shiftFeedDate(undatedDate, -beforeDays),
+      through: shiftFeedDate(undatedDate, afterDays),
+      timeZone,
+      undated,
+      undatedDate,
+    } as const
+    const result = await runDeviceTodo(deviceTodo.calendar({ options, token }))
+    if (!result.ok)
+      return context.json({ code: result.error.code }, deviceTodoErrorStatus(result.error))
+    const etag = `"${createHash('sha256').update(JSON.stringify({ options, revision: result.value.revision })).digest('hex')}"`
+    const headers = new Headers({
+      'cache-control': 'private, max-age=0',
+      'content-type': 'text/calendar; charset=utf-8',
+      etag,
+    })
+    if (context.req.header('if-none-match') === etag)
+      return new Response(null, { headers, status: 304 })
+    return new Response(result.value.body, { headers, status: 200 })
   })
   app.post('/api/devices/pairing', async (context) => {
     const account = await requireAccountWithCsrf(context)

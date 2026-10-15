@@ -1,10 +1,11 @@
-export type { TaskReminder, TaskRepeatRule, TaskScheduleAttrs, TaskStatus, TaskTimingAttrs } from './task-schema'
+export type { TaskReminder, TaskRepeatRule, TaskSchedule, TaskScheduleAttrs, TaskStatus, TaskTimingAttrs } from './task-schema'
 export {
+  parseTaskDate,
   parseTaskDateTime,
-  parseTaskDueDate,
   parseTaskReminderMinutes,
   parseTaskReminders,
   parseTaskRepeatRule,
+  parseTaskSchedule,
   parseTaskTime,
   readTaskStatus,
   transitionTaskAttrs,

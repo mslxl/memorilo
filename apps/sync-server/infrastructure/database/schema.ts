@@ -67,7 +67,7 @@ export const syncDeviceTodoTokens = sqliteTable('sync_device_todo_tokens', {
   accountId: text('account_id').notNull(),
   deviceId: text('device_id').notNull(),
   deviceName: text('device_name').notNull(),
-  scopes: text('scopes', { mode: 'json' }).$type<readonly 'todos:read'[]>().notNull(),
+  scopes: text('scopes', { mode: 'json' }).$type<readonly ('todos:read' | 'todos:calendar:read')[]>().notNull(),
   createdAt: integer('created_at').notNull(),
   expiresAt: integer('expires_at').notNull(),
   revokedAt: integer('revoked_at'),

@@ -4,11 +4,8 @@ import { filterTodoListTasks, formatTaskDuration, groupTodoTasks, summarizeTodoL
 
 function task(overrides: Partial<DesktopTodoTask> = {}): DesktopTodoTask {
   return {
-    allDay: false,
+    schedule: { kind: 'none' },
     blockId: 'task',
-    dueDate: null,
-    dueTime: null,
-    endAt: null,
     elapsedMs: 0,
     journalDate: null,
     noteFavorite: false,
@@ -18,7 +15,6 @@ function task(overrides: Partial<DesktopTodoTask> = {}): DesktopTodoTask {
     reminderMinutes: null,
     reminders: null,
     repeatRule: null,
-    startAt: null,
     startedAt: null,
     status: 'todo',
     text: 'Task',
@@ -42,9 +38,9 @@ describe('todo list timing', () => {
 
   it('groups board tasks by persisted status without changing order', () => {
     const grouped = groupTodoTasks([
-      { allDay: false, blockId: 'done-1', dueDate: null, dueTime: null, endAt: null, elapsedMs: 1, journalDate: null, noteFavorite: false, noteId: 'n', noteTitle: 'N', parentId: null, reminderMinutes: null, reminders: null, repeatRule: null, startAt: null, startedAt: null, status: 'done', text: 'First', topicId: 't', topicTitle: 'T' },
-      { allDay: false, blockId: 'todo-1', dueDate: null, dueTime: null, endAt: null, elapsedMs: 2, journalDate: null, noteFavorite: false, noteId: 'n', noteTitle: 'N', parentId: null, reminderMinutes: null, reminders: null, repeatRule: null, startAt: null, startedAt: null, status: 'todo', text: 'Second', topicId: 't', topicTitle: 'T' },
-      { allDay: false, blockId: 'done-2', dueDate: null, dueTime: null, endAt: null, elapsedMs: 3, journalDate: null, noteFavorite: false, noteId: 'n', noteTitle: 'N', parentId: null, reminderMinutes: null, reminders: null, repeatRule: null, startAt: null, startedAt: null, status: 'done', text: 'Third', topicId: 't', topicTitle: 'T' },
+      task({ blockId: 'done-1', elapsedMs: 1, status: 'done', text: 'First' }),
+      task({ blockId: 'todo-1', elapsedMs: 2, status: 'todo', text: 'Second' }),
+      task({ blockId: 'done-2', elapsedMs: 3, status: 'done', text: 'Third' }),
     ])
     expect(grouped.todo.map(task => task.blockId)).toEqual(['todo-1'])
     expect(grouped.doing).toEqual([])
@@ -55,13 +51,13 @@ describe('todo list timing', () => {
 describe('todo list sidebar data', () => {
   const today = '2026-08-20'
   const tasks = [
-    task({ blockId: 'today', dueDate: today }),
-    task({ blockId: 'tomorrow', dueDate: '2026-08-21', status: 'doing' }),
-    task({ blockId: 'overdue', dueDate: '2026-08-19' }),
-    task({ blockId: 'next7', dueDate: '2026-08-26', noteId: 'note-b', noteTitle: 'Note B', noteFavorite: true }),
-    task({ blockId: 'outside', dueDate: '2026-08-27', noteId: 'note-c', noteTitle: 'Note C' }),
+    task({ blockId: 'today', schedule: { date: today, kind: 'deadline', time: null } }),
+    task({ blockId: 'tomorrow', schedule: { date: '2026-08-21', kind: 'deadline', time: null }, status: 'doing' }),
+    task({ blockId: 'overdue', schedule: { date: '2026-08-19', kind: 'deadline', time: null } }),
+    task({ blockId: 'next7', schedule: { date: '2026-08-26', kind: 'deadline', time: null }, noteId: 'note-b', noteTitle: 'Note B', noteFavorite: true }),
+    task({ blockId: 'outside', schedule: { date: '2026-08-27', kind: 'deadline', time: null }, noteId: 'note-c', noteTitle: 'Note C' }),
     task({ blockId: 'undated', noteId: 'note-b', noteTitle: 'Note B', noteFavorite: true }),
-    task({ blockId: 'completed', dueDate: today, status: 'done', noteId: 'note-c', noteTitle: 'Note C' }),
+    task({ blockId: 'completed', schedule: { date: today, kind: 'deadline', time: null }, status: 'done', noteId: 'note-c', noteTitle: 'Note C' }),
   ]
 
   it('filters smart views by planning date and excludes completed tasks', () => {

@@ -1,5 +1,6 @@
 const textDecoder = new TextDecoder()
 const textEncoder = new TextEncoder()
+const xlinkNamespace = 'http://www.w3.org/1999/xlink'
 const epubContentSecurityPolicy = [
   'default-src \'none\'',
   'script-src blob:',
@@ -196,6 +197,7 @@ async function rewriteHtml(
         || attributeName === 'srcdoc'
         || ((attributeName === 'href'
           || attributeName === 'xlink:href'
+          || (attribute.localName === 'href' && attribute.namespaceURI === xlinkNamespace)
           || attributeName === 'src'
           || attributeName === 'action'
           || attributeName === 'formaction')
@@ -216,23 +218,31 @@ async function rewriteHtml(
   csp.setAttribute('content', epubContentSecurityPolicy)
   head.prepend(csp)
 
-  const targets: Array<{ attribute: string, selector: string }> = [
+  const targets: Array<{ attribute: string, namespace?: string, selector: string }> = [
     { attribute: 'src', selector: 'audio[src], embed[src], iframe[src], img[src], input[src], source[src], track[src], video[src]' },
     { attribute: 'poster', selector: 'video[poster]' },
     { attribute: 'data', selector: 'object[data]' },
     { attribute: 'href', selector: 'image[href], use[href]' },
-    { attribute: 'xlink:href', selector: '[xlink\\:href]' },
+    // XML attribute selectors must match the namespace independently of its prefix.
+    { attribute: 'href', namespace: xlinkNamespace, selector: '[*|href]' },
   ]
   for (const target of targets) {
     for (const element of Array.from(document.querySelectorAll(target.selector))) {
-      const value = element.getAttribute(target.attribute)
+      const attribute = target.namespace
+        ? element.getAttributeNodeNS(target.namespace, target.attribute)
+        : element.getAttributeNode(target.attribute)
+      const value = attribute?.value
       if (!value)
         continue
       if (isActiveReference(value)) {
-        element.removeAttribute(target.attribute)
+        element.removeAttributeNode(attribute)
         continue
       }
-      element.setAttribute(target.attribute, await rewriteReference(value))
+      const rewritten = await rewriteReference(value)
+      if (target.namespace)
+        element.setAttributeNS(target.namespace, attribute.name, rewritten)
+      else
+        element.setAttribute(attribute.name, rewritten)
     }
   }
 

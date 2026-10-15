@@ -4,8 +4,11 @@ import { app, Notification, powerMonitor } from 'electron'
 const refreshIntervalMs = 30_000
 
 function scheduledTime(task: TodoTask): number | null {
-  const value = task.startAt
-    ?? (task.dueDate === null || task.dueTime === null ? null : `${task.dueDate}T${task.dueTime}`)
+  const value = task.schedule.kind === 'span'
+    ? task.schedule.start
+    : task.schedule.kind === 'deadline' && task.schedule.time !== null
+      ? `${task.schedule.date}T${task.schedule.time}`
+      : null
   if (value === null)
     return null
   const parsed = new Date(`${value}:00`)
@@ -14,7 +17,9 @@ function scheduledTime(task: TodoTask): number | null {
 
 function reminderTimes(task: TodoTask): readonly number[] {
   const scheduled = scheduledTime(task)
-  const date = task.startAt?.slice(0, 10) ?? task.dueDate
+  const date = task.schedule.kind === 'span'
+    ? task.schedule.start.slice(0, 10)
+    : task.schedule.kind === 'deadline' ? task.schedule.date : null
   const reminders = task.reminders
     ?? (task.reminderMinutes === null ? [] : [{ kind: 'offset' as const, minutes: task.reminderMinutes }])
   const times = reminders.flatMap((reminder) => {

@@ -1,5 +1,5 @@
 import type { CreateDesktopTopicInput } from '@memorilo/desktop-api'
-import type { JournalDate, TodoReminder, TodoRepeatRule, TodoTaskStatus } from '@memorilo/editor-storage'
+import type { JournalDate, TodoReminder, TodoRepeatRule, TodoSchedule, TodoTaskStatus } from '@memorilo/editor-storage'
 import type { ReviewCardProjection } from '@memorilo/editor/card'
 import type { TopicBlockEdit } from '@memorilo/editor/note'
 import type { RecurringTaskCompletionAction } from '@memorilo/editor/task'
@@ -103,11 +103,8 @@ export interface SaveNoteUpdatesInput {
 }
 
 export interface UpdateTodoTaskInput {
-  allDay?: boolean
+  schedule?: TodoSchedule
   blockId: string
-  dueDate?: JournalDate | null
-  dueTime?: string | null
-  endAt?: string | null
   nextDueDate?: JournalDate | null
   noteId: string
   onlyThis?: boolean
@@ -115,17 +112,12 @@ export interface UpdateTodoTaskInput {
   reminders?: readonly TodoReminder[] | null
   repeatRule?: TodoRepeatRule | null
   status?: TodoTaskStatus
-  startAt?: string | null
   text?: string
   topicId: string
 }
 
 export interface CreateTodoTaskInput {
-  allDay?: boolean
-  dueDate: JournalDate
-  dueTime?: string | null
-  endAt?: string | null
-  startAt?: string | null
+  schedule?: TodoSchedule
   text: string
 }
 

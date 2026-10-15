@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Memorilo - Flat icon studies</title>
+<style>
+  :root { color-scheme: light; --ink: #26372c; --muted: #667066; --line: #d3d5c9; }
+  * { box-sizing: border-box; }
+  body { margin: 0; color: var(--ink); background: #f2efe7; font-family: "Avenir Next", "Segoe UI", sans-serif; }
+  main { max-width: 1660px; padding: 56px 40px; margin: auto; }
+  header { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; padding-bottom: 28px; border-bottom: 1px solid var(--line); }
+  h1 { margin: 0 0 14px; font: 56px/.95 Georgia, serif; letter-spacing: -2px; }
+  header p { margin: 0; color: var(--muted); font-size: 12px; letter-spacing: 1.5px; line-height: 1.6; }
+  header a { color: var(--ink); font-size: 13px; text-underline-offset: 4px; }
+  .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; padding: 34px 0; }
+  article { padding: 24px; background: #fffdfa; border: 1px solid #ddd9d0; border-radius: 20px; }
+  .number { font-size: 12px; letter-spacing: 2px; color: var(--muted); }
+  .hero { margin: 8px 0 14px; }
+  .hero img { display: block; width: 100%; height: auto; }
+  h2 { margin: 0 0 10px; font: 27px/1.1 Georgia, serif; letter-spacing: -.5px; }
+  article p { color: var(--muted); font-size: 13px; line-height: 1.6; min-height: 42px; margin: 0 0 16px; }
+  .samples { display: flex; gap: 10px; }
+  .sample { min-width: 0; flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; height: 94px; border-radius: 12px; }
+  .sample img { flex-shrink: 0; }
+  .light { background: #edeae3; }
+  .dark { background: #262b28; }
+  .links { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 20px; }
+  .links a { color: var(--ink); font-size: 12px; text-underline-offset: 4px; }
+  a:focus-visible { outline: 2px solid #286747; outline-offset: 5px; border-radius: 2px; }
+  footer { font-size: 13px; line-height: 1.8; color: var(--muted); }
+  @media (max-width: 1200px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 600px) { main { padding: 32px 20px; } header { align-items: flex-start; flex-direction: column; } h1 { font-size: 46px; } .grid { grid-template-columns: 1fr; } article { padding: 24px; } }
+</style>
+<main>
+  <header><div><h1>Memorilo</h1><p>NOTES + TIME / INTEGRATED FORMS / READ / CAPTURE / PLAN / DO / LEARN</p></div><a href="comparison.png">Open comparison image</a></header>
+  <section class="grid" aria-label="Four application icon alternatives">
+  <article>
+    <span class="number">01 / BOOK + DATE CELLS</span>
+    <div class="hero"><img src="01-open-agenda.png" alt="Open Agenda" width="1024" height="1024"></div>
+    <h2>Open Agenda</h2>
+    <p>Open pages with a calendar rhythm.</p>
+    <div class="samples">
+      <div class="sample light"><img src="01-open-agenda-32.png" alt="" width="32" height="32"><img src="01-open-agenda-64.png" alt="" width="64" height="64"></div>
+      <div class="sample dark"><img src="01-open-agenda-32.png" alt="" width="32" height="32"><img src="01-open-agenda-64.png" alt="" width="64" height="64"></div>
+    </div>
+    <div class="links"><a href="01-open-agenda.svg">SVG source</a><a href="01-open-agenda.png">1024px PNG</a></div>
+  </article>
+
+  <article>
+    <span class="number">02 / CALENDAR + BOOK</span>
+    <div class="hero"><img src="02-calendar-pages.png" alt="Calendar Pages" width="1024" height="1024"></div>
+    <h2>Calendar Pages</h2>
+    <p>Reading and writing within your day.</p>
+    <div class="samples">
+      <div class="sample light"><img src="02-calendar-pages-32.png" alt="" width="32" height="32"><img src="02-calendar-pages-64.png" alt="" width="64" height="64"></div>
+      <div class="sample dark"><img src="02-calendar-pages-32.png" alt="" width="32" height="32"><img src="02-calendar-pages-64.png" alt="" width="64" height="64"></div>
+    </div>
+    <div class="links"><a href="02-calendar-pages.svg">SVG source</a><a href="02-calendar-pages.png">1024px PNG</a></div>
+  </article>
+
+  <article>
+    <span class="number">03 / NOTES + PLANS + TASKS</span>
+    <div class="hero"><img src="03-daily-folio.png" alt="Daily Folio" width="1024" height="1024"></div>
+    <h2>Daily Folio</h2>
+    <p>Notes and actions in an open planner.</p>
+    <div class="samples">
+      <div class="sample light"><img src="03-daily-folio-32.png" alt="" width="32" height="32"><img src="03-daily-folio-64.png" alt="" width="64" height="64"></div>
+      <div class="sample dark"><img src="03-daily-folio-32.png" alt="" width="32" height="32"><img src="03-daily-folio-64.png" alt="" width="64" height="64"></div>
+    </div>
+    <div class="links"><a href="03-daily-folio.svg">SVG source</a><a href="03-daily-folio.png">1024px PNG</a></div>
+  </article>
+
+  <article>
+    <span class="number">04 / TIME + OPEN PAGES</span>
+    <div class="hero"><img src="04-time-notes.png" alt="Time Notes" width="1024" height="1024"></div>
+    <h2>Time Notes</h2>
+    <p>Personal knowledge, with time in view.</p>
+    <div class="samples">
+      <div class="sample light"><img src="04-time-notes-32.png" alt="" width="32" height="32"><img src="04-time-notes-64.png" alt="" width="64" height="64"></div>
+      <div class="sample dark"><img src="04-time-notes-32.png" alt="" width="32" height="32"><img src="04-time-notes-64.png" alt="" width="64" height="64"></div>
+    </div>
+    <div class="links"><a href="04-time-notes.svg">SVG source</a><a href="04-time-notes.png">1024px PNG</a></div>
+  </article></section>
+  <footer>Flat SVG artwork. Solid colors only. No gradients or shadows. Small previews show each icon at 32px and 64px on light and dark surfaces.<br>SVG sources and PNG exports are included. These are design candidates; the application configuration has not been changed.</footer>
+</main>
+</html>

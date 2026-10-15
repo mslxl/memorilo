@@ -1,3 +1,5 @@
+import type { TodoSchedule } from '@memorilo/editor-storage'
+
 export type DesktopProvisioningTransport = 'bluetooth' | 'serial'
 
 export interface DesktopProvisioningDevice {
@@ -90,9 +92,7 @@ export interface DesktopDeviceGalleryUploadRequest extends DesktopDeviceGalleryU
 export type DesktopDeviceTodoStatusValue = 'todo' | 'in-progress' | 'done'
 
 export interface DesktopDeviceTodoItem {
-  readonly allDay: boolean
-  readonly dueDate: string | null
-  readonly dueTime: string | null
+  readonly schedule: TodoSchedule
   readonly id: string
   readonly noteTitle: string
   readonly parentId: string | null

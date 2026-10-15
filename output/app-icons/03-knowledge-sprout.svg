@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <title>Memorilo - Knowledge Sprout</title>
+  <desc>A book whose pages become new leaves, representing knowledge gained through incremental learning.</desc>
+  <defs>
+    <linearGradient id="tile" x1="180" y1="100" x2="870" y2="940" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#63836C"/>
+      <stop offset="1" stop-color="#304D3D"/>
+    </linearGradient>
+    <linearGradient id="pageLeft" x1="265" y1="523" x2="510" y2="736" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF6DD"/>
+      <stop offset="1" stop-color="#E4DAB9"/>
+    </linearGradient>
+    <linearGradient id="pageRight" x1="545" y1="520" x2="770" y2="717" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF9E7"/>
+      <stop offset="1" stop-color="#EEE4C7"/>
+    </linearGradient>
+    <linearGradient id="leaf" x1="445" y1="250" x2="600" y2="515" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#E2EBC0"/>
+      <stop offset="1" stop-color="#AEC696"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="175%">
+      <feDropShadow dx="0" dy="14" stdDeviation="15" flood-color="#162E21" flood-opacity=".25"/>
+    </filter>
+  </defs>
+  <rect x="64" y="64" width="896" height="896" rx="198" fill="url(#tile)"/>
+  <rect x="66" y="66" width="892" height="892" rx="196" fill="none" stroke="#A8B8A3" stroke-opacity=".4" stroke-width="4"/>
+  <g filter="url(#shadow)">
+    <path d="M510 563V442" fill="none" stroke="#CDDDB0" stroke-width="26" stroke-linecap="round"/>
+    <path d="M510 460C416 463 358 401 350 305C445 298 512 350 510 460Z" fill="url(#leaf)"/>
+    <path d="M510 414C508 320 566 269 670 272C665 367 612 422 510 414Z" fill="#E1E9BD"/>
+    <path d="M269 529Q396 491 512 568Q628 491 755 529V736Q628 701 512 774Q396 701 269 736Z" fill="#BEC9A8"/>
+    <path d="M269 505Q397 466 512 545V752Q396 677 269 712Z" fill="url(#pageLeft)"/>
+    <path d="M512 545Q627 466 755 505V712Q628 677 512 752Z" fill="url(#pageRight)"/>
+    <path d="M512 553V746" fill="none" stroke="#B9AD8D" stroke-width="7" stroke-linecap="round"/>
+    <path d="M280 509Q399 477 505 547" fill="none" stroke="#FFFFFF" stroke-opacity=".5" stroke-width="4"/>
+  </g>
+</svg>

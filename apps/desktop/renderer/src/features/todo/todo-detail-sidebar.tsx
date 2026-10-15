@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'react-toastify/unstyled'
 import { errorMessage } from '../../shared/error-message'
 import { todoDetailSidebarStyles as styles } from './todo-detail-sidebar.stylex'
-import { formatTaskDueDate, nextTodoStatus, todoStatusLabelKeys } from './todo-model'
+import { formatTaskScheduleDate, nextTodoStatus, todoStatusLabelKeys } from './todo-model'
 import { TodoTaskActions } from './todo-task-actions'
 import { todoTaskStatusIcons } from './todo-task-status'
 
@@ -30,15 +30,17 @@ function StatusIcon({ status }: { status: DesktopTodoTaskStatus }) {
 }
 
 function scheduleLabel(task: DesktopTodoTask, locale: string, t: TFunction): string {
-  const date = task.dueDate ?? task.startAt?.slice(0, 10) ?? null
+  const date = task.schedule.kind === 'deadline'
+    ? task.schedule.date
+    : task.schedule.kind === 'span' ? task.schedule.start.slice(0, 10) : null
   if (date === null)
     return t('notSet')
-  const formattedDate = formatTaskDueDate(date, locale, Date.now())
-  if (task.allDay)
+  const formattedDate = formatTaskScheduleDate(date, locale, Date.now())
+  if (task.schedule.kind === 'span' && task.schedule.allDay)
     return formattedDate
-  if (task.startAt !== null && task.endAt !== null)
-    return `${formattedDate} ${task.startAt.slice(11)}-${task.endAt.slice(11)}`
-  return task.dueTime === null ? formattedDate : `${formattedDate} ${task.dueTime}`
+  if (task.schedule.kind === 'span')
+    return `${formattedDate} ${task.schedule.start.slice(11)}-${task.schedule.end.slice(11)}`
+  return task.schedule.kind === 'deadline' && task.schedule.time !== null ? `${formattedDate} ${task.schedule.time}` : formattedDate
 }
 
 export function TodoDetailSidebar({

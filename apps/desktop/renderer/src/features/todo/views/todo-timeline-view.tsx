@@ -52,8 +52,12 @@ function timeMinutes(value: string | null | undefined): number | null {
 }
 
 function taskScheduleItem(task: DesktopTodoTask): ScheduleItem {
-  const startMinutes = task.allDay ? null : timeMinutes(task.startAt) ?? timeMinutes(task.dueTime)
-  const endMinutes = task.allDay ? null : timeMinutes(task.endAt) ?? (startMinutes === null ? null : startMinutes + 60)
+  const startMinutes = task.schedule.kind === 'span' && !task.schedule.allDay
+    ? timeMinutes(task.schedule.start)
+    : task.schedule.kind === 'deadline' ? timeMinutes(task.schedule.time) : null
+  const endMinutes = task.schedule.kind === 'span' && !task.schedule.allDay
+    ? timeMinutes(task.schedule.end) ?? (startMinutes === null ? null : startMinutes + 60)
+    : (startMinutes === null ? null : startMinutes + 60)
   return { endMinutes, kind: 'task', startMinutes, task }
 }
 

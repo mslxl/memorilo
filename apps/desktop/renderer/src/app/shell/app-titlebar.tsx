@@ -50,7 +50,11 @@ export function AppTitlebar({
   }), [])
 
   useEffect(() => {
-    document.title = page?.title ? `${page.title} ${t('appTitleSuffix')}` : t('appTitle')
+    const platform = getPlatform()
+    const customChrome = platform === 'windows' || platform === 'linux'
+    const appName = customChrome ? 'Memorilo' : t('appTitle')
+    const suffix = customChrome ? '— Memorilo' : t('appTitleSuffix')
+    document.title = page?.title ? `${page.title} ${suffix}` : appName
   }, [page?.title, t])
 
   const canGoBack = historyPosition.index > 0

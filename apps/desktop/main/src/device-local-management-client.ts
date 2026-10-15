@@ -347,9 +347,10 @@ function isTodoSnapshot(value: unknown): value is DesktopDeviceTodoSnapshot {
     return false
   }
   return value.items.every(item => isRecord(item)
-    && typeof item.allDay === 'boolean'
-    && (item.dueDate === null || typeof item.dueDate === 'string')
-    && (item.dueTime === null || typeof item.dueTime === 'string')
+    && isRecord(item.schedule)
+    && (item.schedule.kind === 'none'
+      || (item.schedule.kind === 'deadline' && typeof item.schedule.date === 'string' && (item.schedule.time === null || typeof item.schedule.time === 'string'))
+      || (item.schedule.kind === 'span' && typeof item.schedule.start === 'string' && typeof item.schedule.end === 'string' && typeof item.schedule.allDay === 'boolean'))
     && typeof item.id === 'string'
     && item.id.length > 0
     && item.id.length <= 256

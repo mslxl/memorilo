@@ -21,6 +21,7 @@ import type {
   DesktopProvisioningTransport,
   DesktopSyncServerEvent,
   DesktopSyncServerStatus,
+  DesktopTodoCalendarFeed,
   DesktopWhiteboardLibraryData,
 } from '@memorilo/desktop-api'
 import type {
@@ -32,7 +33,10 @@ export type * from '@memorilo/desktop-api'
 
 export type DesktopPlatform = 'macos' | 'windows' | 'linux' | 'other'
 
+export const desktopCustomTitlebarArgument = '--memorilo-custom-titlebar'
+
 export interface DesktopApi {
+  readonly customTitlebarEnabled: boolean
   readonly platform: DesktopPlatform
   deviceProvisioning: {
     cancelSelection: () => Promise<void>
@@ -82,6 +86,11 @@ export interface DesktopApi {
     requestPairing: (peerId: string) => Promise<DesktopP2pPairingRequest>
     removeDevice: (deviceId: string) => Promise<void>
     updateDeviceName: (deviceName: string) => Promise<void>
+  }
+  todoCalendarFeed: {
+    get: () => Promise<DesktopTodoCalendarFeed>
+    issue: () => Promise<DesktopTodoCalendarFeed>
+    revoke: () => Promise<void>
   }
   subscribeConfiguration: (listener: (configuration: DesktopConfiguration) => void) => () => void
   subscribeLearningUpdates: (listener: () => void) => () => void

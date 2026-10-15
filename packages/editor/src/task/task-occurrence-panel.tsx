@@ -75,10 +75,11 @@ export function TaskOccurrencePanel({
     const repeatRule = requireRepeatRule(task, 'Skipping an occurrence requires a repeat rule')
     const nextDate = nextTaskOccurrenceDate(task.occurrenceDate, repeatRule, calendarEvents)
     return taskRepeatContinuesOn(nextDate, repeatRule)
-      ? {
-          dueDate: nextDate,
-          repeatRule,
-        }
+      ? { schedule: task.schedule.kind === 'deadline'
+          ? { ...task.schedule, date: nextDate }
+          : task.schedule.kind === 'span'
+            ? { ...task.schedule, start: `${nextDate}${task.schedule.start.slice(10)}`, end: `${nextDate}${task.schedule.end.slice(10)}` }
+            : task.schedule, repeatRule }
       : {
           repeatRule: null,
           status: 'done',
@@ -88,15 +89,11 @@ export function TaskOccurrencePanel({
   const onlyThis = () => run(() => {
     const repeatRule = requireRepeatRule(task, 'Editing one occurrence requires a repeat rule')
     return {
-      dueDate: task.dueDate ?? task.occurrenceDate,
-      allDay: task.allDay,
-      dueTime: task.dueTime,
-      endAt: task.endAt,
+      schedule: task.schedule,
       nextDueDate: nextTaskOccurrenceDate(task.occurrenceDate, repeatRule, calendarEvents),
       onlyThis: true,
       reminderMinutes: task.reminderMinutes,
       reminders: task.reminders,
-      startAt: task.startAt,
       text,
     }
   })

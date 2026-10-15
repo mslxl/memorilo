@@ -37,3 +37,41 @@ TODOs through this API. The firmware integration must continue to treat the
 snapshot returned by `GET /api/device/v1/todos` as authoritative.
 
 Use TLS, a device-specific credential, and the narrowest scope required. Do not embed a Memorilo account password in firmware.
+
+## Todo calendar subscription
+
+Calendar clients subscribe to the read-only ICS resource directly. It is not a JSON API route:
+
+```http
+GET /calendar/<calendar-feed-secret>.ics?undated=today&completed=hide&tz=Asia%2FShanghai
+```
+
+The feed secret is issued once by the authenticated management endpoint:
+
+```http
+POST /api/devices/todo-calendar-token
+X-CSRF-Token: <browser-csrf-token>
+Content-Type: application/json
+
+{"deviceId":"desktop-1","deviceName":"Desktop"}
+```
+
+Rotate by issuing again for the same device, or revoke with
+`POST /api/devices/todo-calendar-tokens/:deviceId/revoke`. Rotation immediately
+invalidates the previous subscription URL.
+
+A paired desktop client uses its existing Sync Server device credential to manage
+the feed without browser cookies or CSRF:
+
+```http
+POST /api/device/v1/todo-calendar-token
+Authorization: Bearer <sync-device-credential>
+Content-Type: application/json
+
+{"deviceName":"Desktop"}
+```
+
+The client can revoke its own feed with
+`POST /api/device/v1/todo-calendar-token/revoke`. The desktop application keeps
+the returned calendar secret in the operating system credential store and only
+exposes the complete `/calendar/<secret>.ics` URL when the user requests it.

@@ -3,7 +3,7 @@ import type { DesktopWeekStart } from '@memorilo/desktop-config'
 import type { Dayjs } from 'dayjs'
 import type { TFunction } from 'i18next'
 import type { CSSProperties } from 'react'
-import { previewTaskRecurrenceDates } from '@memorilo/editor/task'
+import { projectTaskOccurrences } from '@memorilo/editor/task'
 import * as stylex from '@stylexjs/stylex'
 import dayjs from 'dayjs'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
@@ -84,19 +84,20 @@ function calendarSpanDoneRank(item: CalendarSpanItem): number {
 }
 
 function taskSpan(task: DesktopTodoTask): CalendarSpanItem | null {
-  if (task.startAt === null || task.endAt === null)
-    return null
-  const startDate = task.startAt.slice(0, 10)
-  const endDate = task.endAt.slice(0, 10)
-  if (endDate <= startDate)
-    return null
-  return {
-    endDate,
-    key: todoTaskKey(task),
-    kind: 'task',
-    startDate,
-    task,
+  if (task.schedule?.kind === 'span') {
+    const startDate = task.schedule.start.slice(0, 10)
+    const endDate = task.schedule.end.slice(0, 10)
+    if (endDate <= startDate)
+      return null
+    return {
+      endDate,
+      key: todoTaskKey(task),
+      kind: 'task',
+      startDate,
+      task,
+    }
   }
+  return null
 }
 
 function calendarEventLayout(events: readonly DesktopTodoCalendarEvent[]): CalendarEventLayout {
@@ -301,7 +302,7 @@ function CalendarTaskItem({
         <span {...stylex.props(styles.taskText, task.status === 'done' && styles.taskTextDone)}>{task.text}</span>
       </button>
       <div {...stylex.props(styles.taskActions)}>
-        <TodoTaskActions compact calendarEvents={calendarEvents} calendarSubscriptions={calendarSubscriptions} compactAlignment={compactAlignment} onUpdateTask={onUpdateTask} t={t} task={task} triggerContent={<span>{task.allDay ? t('allDay') : task.startAt?.slice(11) ?? task.dueTime ?? ''}</span>} />
+        <TodoTaskActions compact calendarEvents={calendarEvents} calendarSubscriptions={calendarSubscriptions} compactAlignment={compactAlignment} onUpdateTask={onUpdateTask} t={t} task={task} triggerContent={<span>{task.schedule.kind === 'span' ? (task.schedule.allDay ? t('allDay') : task.schedule.start.slice(11)) : task.schedule.kind === 'deadline' ? task.schedule.time ?? '' : ''}</span>} />
       </div>
     </div>
   )
@@ -391,18 +392,28 @@ export function TodoCalendarView({
           grouped.set(date, [item])
       }
       for (const task of tasks) {
-        const date = taskPlanningDate(task)
+        const date = task.schedule?.kind === 'deadline'
+          ? task.schedule.date
+          : task.schedule?.kind === 'span'
+            ? task.schedule.start.slice(0, 10)
+            : task.schedule?.kind === 'none'
+              ? today.format('YYYY-MM-DD')
+              : taskPlanningDate(task)
         if (date !== null && taskSpan(task) === null)
           add(date, { kind: 'task', task })
         if (!task.repeatRule || date === null)
           continue
-        const previewDates = previewTaskRecurrenceDates(date, task.repeatRule, {
+        const schedule = task.schedule
+        const occurrences = projectTaskOccurrences(schedule, task.repeatRule, {
           calendarEvents,
           from: days[0]?.format('YYYY-MM-DD') ?? month.startOf('month').format('YYYY-MM-DD'),
           through: days.at(-1)?.format('YYYY-MM-DD') ?? month.endOf('month').format('YYYY-MM-DD'),
+          undatedDate: today.format('YYYY-MM-DD'),
         })
-        for (const previewDate of previewDates)
-          add(previewDate, { date: previewDate, kind: 'prediction', task })
+        for (const occurrence of occurrences) {
+          if (occurrence.source === 'preview')
+            add(occurrence.occurrenceDate, { date: occurrence.occurrenceDate, kind: 'prediction', task })
+        }
       }
       const spanLayout = buildSpanSegments([
         ...eventLayout.spans,
@@ -418,7 +429,7 @@ export function TodoCalendarView({
       }
       return { days, eventsByDate, grouped, month, spanLayout }
     })
-  }, [activeMonth, calendarEvents, tasks, weekStart])
+  }, [activeMonth, calendarEvents, tasks, today, weekStart])
   const labels = weekdayLabels(locale, weekStart)
 
   useLayoutEffect(() => {

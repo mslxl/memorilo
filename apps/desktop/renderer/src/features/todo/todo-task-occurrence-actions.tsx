@@ -13,17 +13,13 @@ import { todoTaskOccurrenceActionStyles as styles } from './todo-task-occurrence
 
 export interface TodoTaskUpdateInput {
   blockId: string
-  allDay?: boolean
-  dueDate?: string | null
-  dueTime?: string | null
-  endAt?: string | null
+  schedule?: DesktopTodoTask['schedule']
   nextDueDate?: string | null
   noteId: string
   onlyThis?: boolean
   reminderMinutes?: number | null
   reminders?: DesktopTodoTask['reminders']
   repeatRule?: DesktopTodoTask['repeatRule']
-  startAt?: string | null
   status?: DesktopTodoTask['status']
   text?: string
   topicId: string
@@ -189,7 +185,7 @@ export function TodoTaskOccurrenceActions({
         ? (
             <FloatingPortal>
               <TaskOccurrencePanel
-                key={`${task.blockId}:${task.allDay}:${task.dueDate ?? ''}:${JSON.stringify(task.repeatRule)}:${task.text}`}
+                key={`${task.blockId}:${JSON.stringify(task.schedule)}:${JSON.stringify(task.repeatRule)}:${task.text}`}
                 calendarEvents={calendarEvents}
                 id={menuId}
                 panelRef={floatingRef}
@@ -199,15 +195,11 @@ export function TodoTaskOccurrenceActions({
                 }}
                 t={t}
                 task={{
-                  allDay: task.allDay,
-                  dueDate: task.dueDate,
-                  dueTime: task.dueTime,
-                  endAt: task.endAt,
                   occurrenceDate: taskOccurrenceDate(task),
                   reminderMinutes: task.reminderMinutes,
                   reminders: task.reminders,
                   repeatRule: task.repeatRule,
-                  startAt: task.startAt,
+                  schedule: task.schedule,
                   status: task.status,
                   text: task.text,
                 }}

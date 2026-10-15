@@ -1,7 +1,9 @@
 import type { MenuItemConstructorOptions } from 'electron'
 import type { DesktopRequestHandlers } from '../desktop-request-handlers'
+import { Effect } from 'effect'
 import { BrowserWindow, Menu } from 'electron'
 import { withDesktopRequestContext } from '../desktop-request-handlers'
+import { setTitlebarAppearance, showApplicationMenu } from '../windows/window-chrome-service'
 
 export interface ColumnVisibilityMenuItem {
   canToggle: boolean
@@ -63,6 +65,11 @@ function validateAnchor(anchor: ShowColumnVisibilityMenuInput['anchor']): void {
 
 export function createWindowHandlers(): DesktopRequestHandlers['window'] {
   return {
+    setTitlebarAppearance: withDesktopRequestContext((context, input) => Effect.runPromise(setTitlebarAppearance(context.sender, input))),
+    showApplicationMenu: withDesktopRequestContext((context, input) => {
+      validateAnchor(input.anchor)
+      return Effect.runPromise(showApplicationMenu(context.sender, input))
+    }),
     captureReaderRegion: withDesktopRequestContext(async (context, input: CaptureReaderRegionInput) => {
       validateCaptureRegion(input)
       const image = await context.sender.capturePage(input)

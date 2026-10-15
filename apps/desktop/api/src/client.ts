@@ -221,6 +221,8 @@ export function createDesktopApiClient(options: CreateDesktopApiClientOptions): 
     setNoteFavorite: input => rpc('notes', 'setNoteFavorite', input),
     selectBookContext: input => rpc('books', 'selectContext', input),
     showColumnVisibilityMenu: input => rpc('window', 'showColumnVisibilityMenu', input),
+    showApplicationMenu: input => rpc('window', 'showApplicationMenu', input),
+    setTitlebarAppearance: input => rpc('window', 'setTitlebarAppearance', input),
     updateShelfSource: input => rpc('shelf', 'updateSource', input),
   }
 }

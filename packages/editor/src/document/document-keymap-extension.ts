@@ -68,15 +68,11 @@ function convertDocumentBlockToOrdinary(state: EditorState, dispatch: DispatchTr
     })
     ordinaryAttrs = {
       ...attrs,
-      allDay: false,
-      dueDate: null,
-      dueTime: null,
+      schedule: { kind: 'none' },
       elapsedMs: 0,
-      endAt: null,
       reminderMinutes: null,
       reminders: null,
       repeatRule: null,
-      startAt: null,
       startedAt: null,
       status: null,
     }

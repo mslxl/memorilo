@@ -22,7 +22,7 @@ import type { NoteAuthoritativeRuntime } from './note-authoritative-runtime'
 import { randomUUID } from 'node:crypto'
 import { assertJournalDate, DuplicateNoteTitleError } from '@memorilo/editor-storage'
 import { createEditorNote, resolveJournalTopic } from '@memorilo/editor/note'
-import { parseTaskDueDate, parseTaskRepeatRule, transitionTaskAttrs } from '@memorilo/editor/schema'
+import { parseTaskRepeatRule, parseTaskSchedule, transitionTaskAttrs } from '@memorilo/editor/schema'
 import { nextTaskOccurrenceDate, planTaskAction, taskRepeatBaseDate, taskRepeatContinuesOn } from '@memorilo/editor/task'
 import { toError } from '@memorilo/effect-lifecycle'
 import { Effect } from 'effect'
@@ -126,15 +126,14 @@ export function createNoteApplicationCommands({
     const repeatRule = parseTaskRepeatRule(sourceAttrs.repeatRule)
     if (repeatRule === null)
       throw new TypeError(`Todo task ${sourceBlock.id} does not have a valid repeat rule`)
-    const dueDateValue = sourceAttrs.dueDate
-    const dueDate = dueDateValue === null || dueDateValue === undefined
-      ? null
-      : parseTaskDueDate(dueDateValue)
-    if (dueDateValue !== null && dueDateValue !== undefined && dueDate === null)
-      throw new TypeError(`Todo task ${sourceBlock.id} has an invalid due date`)
+    const sourceSchedule = parseTaskSchedule(sourceAttrs.schedule)
+    if (sourceSchedule === null)
+      throw new TypeError(`Todo task ${sourceBlock.id} has an invalid schedule`)
 
     const completedOn = today()
-    const occurrenceDate = dueDate ?? current.journalDate ?? completedOn
+    const occurrenceDate = sourceSchedule.kind === 'deadline'
+      ? sourceSchedule.date
+      : sourceSchedule.kind === 'span' ? sourceSchedule.start.slice(0, 10) : current.journalDate ?? completedOn
     const baseDate = taskRepeatBaseDate(occurrenceDate, repeatRule, completedOn)
     const calendarEvents = recurrenceNeedsCalendar(repeatRule)
       ? await storage.todoCalendars.listEvents(recurrenceCalendarRange(baseDate))
@@ -281,26 +280,25 @@ export function createNoteApplicationCommands({
   })
 
   const createTodoTask = (input: CreateTodoTaskInput) => serialize(async () => {
-    const opened = await runtime.openJournal(input.dueDate)
+    const targetDate = input.schedule?.kind === 'deadline'
+      ? input.schedule.date
+      : input.schedule?.kind === 'span' ? input.schedule.start.slice(0, 10) : today()
+    const opened = await runtime.openJournal(targetDate)
     const current = opened.current
-    const topic = resolveJournalTopic(current.note, { expectedNoteTitle: input.dueDate })
+    const topic = resolveJournalTopic(current.note, { expectedNoteTitle: targetDate })
     const blockId = randomUUID()
     const sourceVersion = current.note.getVersion()
     const attrs = {
-      allDay: input.allDay ?? false,
       blockId,
       checked: false,
-      dueDate: input.dueDate,
-      dueTime: input.dueTime ?? null,
       elapsedMs: 0,
-      endAt: input.endAt ?? null,
       kind: 'task' as const,
       repeatRule: null,
       reminderMinutes: null,
       reminders: null,
-      startAt: input.startAt ?? null,
       startedAt: null,
       status: 'todo' as const,
+      schedule: input.schedule ?? { kind: 'none' as const },
     }
     try {
       current.note.applyTopicBlockEdits({

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <title>Memorilo - Time Notes</title>
+  <desc>A balanced clock enclosing open pages, integrating time management with personal knowledge.</desc>
+  <rect x="64" y="64" width="896" height="896" rx="198" fill="#46644F"/>
+  <g transform="translate(0 -15)">
+  <g fill="none" stroke="#F7F0D7" stroke-width="40">
+    <circle cx="512" cy="512" r="224"/>
+    <path d="M448 402L512 466L576 402" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <g fill="none" stroke="#F7F0D7" stroke-width="20" stroke-linecap="round">
+    <path d="M512 308V334M308 512H334M690 512H716"/>
+  </g>
+  <g fill="#F7F0D7">
+    <path d="M374 548Q438 526 500 563V656Q438 618 374 640Z"/>
+    <path d="M374 548Q438 526 500 563V656Q438 618 374 640Z" transform="translate(1024 0) scale(-1 1)"/>
+  </g>
+  </g>
+</svg>

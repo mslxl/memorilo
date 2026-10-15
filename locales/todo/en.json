@@ -60,7 +60,7 @@
   "couldNotUpdateTask": "Couldn’t update task: {{message}}",
   "source": "{{note}} · {{topic}}",
   "elapsed": "{{duration}} elapsed",
-  "dueDate": "Due {{date}}",
+  "scheduledDate": "Scheduled {{date}}",
   "overdue": "Overdue · {{date}}",
   "timelineSubtitle": "Plan your day by time",
   "calendarSubtitle": "Tasks grouped by day",

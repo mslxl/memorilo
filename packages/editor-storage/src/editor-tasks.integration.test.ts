@@ -53,7 +53,7 @@ describe('todo task projection', () => {
     const note = await storage.notes.createNote({ title: 'Project' })
     await saveTasks(storage, note, [
       {
-        attributes: { elapsedMs: 0, startedAt: null, status: 'todo' },
+        attributes: { elapsedMs: 0, schedule: { kind: 'none' }, startedAt: null, status: 'todo' },
         id: 'todo-task',
         kind: 'task',
         ordinal: 0,
@@ -61,7 +61,7 @@ describe('todo task projection', () => {
         text: 'Plan the release',
       },
       {
-        attributes: { elapsedMs: 1200, startedAt: 1_700_000_000_000, status: 'doing' },
+        attributes: { elapsedMs: 1200, schedule: { kind: 'none' }, startedAt: 1_700_000_000_000, status: 'doing' },
         id: 'doing-task',
         kind: 'task',
         ordinal: 1,
@@ -69,7 +69,7 @@ describe('todo task projection', () => {
         text: 'Implement the release',
       },
       {
-        attributes: { elapsedMs: 5000, startedAt: null, status: 'done' },
+        attributes: { elapsedMs: 5000, schedule: { kind: 'none' }, startedAt: null, status: 'done' },
         id: 'done-task',
         kind: 'task',
         ordinal: 2,
@@ -95,6 +95,7 @@ describe('todo task projection', () => {
       noteId: note.id,
       noteFavorite: false,
       noteTitle: 'Project',
+      schedule: { kind: 'none' },
       startedAt: null,
       status: 'done',
       text: 'Ship the release',
@@ -117,7 +118,7 @@ describe('todo task projection', () => {
     const note = await storage.notes.createNote({ title: 'Nested Project' })
     await saveTasks(storage, note, [
       {
-        attributes: { elapsedMs: 0, startedAt: null, status: 'todo' },
+        attributes: { elapsedMs: 0, schedule: { kind: 'none' }, startedAt: null, status: 'todo' },
         id: 'root-task',
         kind: 'task',
         ordinal: 0,
@@ -133,7 +134,7 @@ describe('todo task projection', () => {
         text: 'Intermediate outline',
       },
       {
-        attributes: { elapsedMs: 0, startedAt: null, status: 'todo' },
+        attributes: { elapsedMs: 0, schedule: { kind: 'none' }, startedAt: null, status: 'todo' },
         id: 'nested-task',
         kind: 'task',
         ordinal: 0,
@@ -141,7 +142,7 @@ describe('todo task projection', () => {
         text: 'Nested task',
       },
       {
-        attributes: { elapsedMs: 0, startedAt: null, status: 'todo' },
+        attributes: { elapsedMs: 0, schedule: { kind: 'none' }, startedAt: null, status: 'todo' },
         id: 'grandchild-task',
         kind: 'task',
         ordinal: 0,
@@ -157,7 +158,7 @@ describe('todo task projection', () => {
         text: 'Standalone outline',
       },
       {
-        attributes: { elapsedMs: 0, startedAt: null, status: 'todo' },
+        attributes: { elapsedMs: 0, schedule: { kind: 'none' }, startedAt: null, status: 'todo' },
         id: 'standalone-task',
         kind: 'task',
         ordinal: 0,
@@ -179,7 +180,7 @@ describe('todo task projection', () => {
     const storage = await createStorage()
     const note = await storage.notes.createNote({ title: 'Mutable Project' })
     await saveTasks(storage, note, [{
-      attributes: { elapsedMs: 0, startedAt: null, status: 'todo' },
+      attributes: { elapsedMs: 0, schedule: { kind: 'none' }, startedAt: null, status: 'todo' },
       id: 'task',
       kind: 'task',
       ordinal: 0,

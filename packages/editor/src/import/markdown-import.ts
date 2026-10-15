@@ -162,16 +162,12 @@ function inlineNodes(
 
 function taskAttrs(checked: boolean): Record<string, unknown> {
   return {
-    allDay: false,
+    schedule: { kind: 'none' },
     checked,
-    dueDate: null,
-    dueTime: null,
     elapsedMs: 0,
-    endAt: null,
     reminderMinutes: null,
     reminders: null,
     repeatRule: null,
-    startAt: null,
     startedAt: null,
     status: checked ? 'done' : 'todo',
   }

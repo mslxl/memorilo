@@ -1,6 +1,6 @@
 import type { TopicBlockEdit, TopicBlockProjection } from '@memorilo/editor/note'
 import type { RecurringTaskCompletionAction } from '@memorilo/editor/task'
-import { parseTaskDueDate, parseTaskRepeatRule } from '@memorilo/editor/schema'
+import { parseTaskRepeatRule, parseTaskSchedule } from '@memorilo/editor/schema'
 import { planRecurringTaskOccurrences, resetTaskForNextOccurrence } from '@memorilo/editor/task'
 
 export interface TaskNodeJSON {
@@ -53,13 +53,13 @@ function nextDescendantAttrs(node: TaskNodeJSON): Readonly<Record<string, unknow
   const attrs = node.attrs ?? {}
   if (blockKind(node) !== 'task')
     return structuredClone(attrs)
-  const dueDateValue = attrs.dueDate
-  const dueDate = dueDateValue === null || dueDateValue === undefined
-    ? null
-    : parseTaskDueDate(dueDateValue)
-  if (dueDateValue !== null && dueDateValue !== undefined && dueDate === null)
-    throw new TypeError(`Recurring task descendant ${blockId(node)} has an invalid due date`)
-  return resetTaskForNextOccurrence(attrs, dueDate)
+  const schedule = parseTaskSchedule(attrs.schedule)
+  if (schedule === null)
+    throw new TypeError(`Recurring task descendant ${blockId(node)} has an invalid schedule`)
+  const date = schedule.kind === 'deadline'
+    ? schedule.date
+    : schedule.kind === 'span' ? schedule.start.slice(0, 10) : null
+  return resetTaskForNextOccurrence(attrs, date)
 }
 
 function insertSubtree(
