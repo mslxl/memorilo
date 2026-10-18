@@ -24,6 +24,7 @@ import { contextMenuStyles } from './context-menu.stylex'
 export function ContextMenuItem(props: {
   action?: EditorAction
   buttonRef?: Ref<HTMLButtonElement>
+  dataAction?: string
   disabled?: boolean
   expanded?: boolean
   hasSubmenu?: boolean
@@ -51,6 +52,7 @@ export function ContextMenuItem(props: {
       )}
       aria-expanded={props.hasSubmenu ? props.expanded : undefined}
       aria-haspopup={props.hasSubmenu ? 'menu' : undefined}
+      data-editor-action={props.dataAction}
       disabled={disabled}
       role="menuitem"
       type="button"
@@ -113,6 +115,7 @@ export function ImageInsertPanel({ point, uploader, onClose }: {
         xstyle={contextMenuStyles.imagePanel}
         aria-label={t('ui.insertImage')}
         aria-modal="false"
+        data-image-dialog=""
         role="dialog"
       >
         <div {...stylex.props(contextMenuStyles.imageHeader)}>
@@ -120,6 +123,7 @@ export function ImageInsertPanel({ point, uploader, onClose }: {
           <button
             {...stylex.props(contextMenuStyles.imageClose)}
             aria-label={t('ui.closeImageMenu')}
+            data-image-action="close"
             type="button"
             onClick={onClose}
           >

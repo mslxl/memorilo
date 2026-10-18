@@ -81,12 +81,12 @@ async function closeApplication(context: Awaited<ReturnType<typeof launchApplica
 }
 
 async function createNoteWithNestedTodo(page: Page, noteTitle: string): Promise<void> {
-  await page.getByRole('link', { name: 'Journals' }).waitFor()
+  await page.locator('a[href*="/journals"]').waitFor()
   await page.keyboard.press('Meta+P')
-  await page.getByRole('combobox', { name: 'Search commands and Notes' }).fill(noteTitle)
-  await page.getByRole('option').filter({ hasText: `Create Note “${noteTitle}”` }).click()
+  await page.locator('input[role=combobox][aria-autocomplete=list]').fill(noteTitle)
+  await page.locator('[role=listbox] [role=option][id$=\"-create-note\"]').click()
 
-  const editor = page.getByRole('textbox', { name: 'Editor content' })
+  const editor = page.locator('[data-editor-content]')
   const heading = editor.locator('[data-block-id]').first()
   await expect(heading).toBeVisible()
   await editor.focus()
@@ -102,7 +102,7 @@ async function createNoteWithNestedTodo(page: Page, noteTitle: string): Promise<
   })
   await page.keyboard.press('Enter')
   await page.keyboard.insertText('/todo')
-  await page.getByRole('option', { name: /^Task list/ }).click()
+  await page.locator('[role=option][data-slash-command="task-list"]').click()
   await expect(page.locator('[data-list-kind="task"]')).toHaveCount(1, { timeout: 15_000 })
   const firstTaskParagraph = page.locator('[data-list-kind="task"] > .list-content > p').first()
   await expect(firstTaskParagraph).toBeVisible({ timeout: 15_000 })
@@ -136,11 +136,11 @@ test.describe('Todo detail sidebar', () => {
         throw new Error('Todo root is missing a block id')
       const initialHash = await page.evaluate(() => globalThis.location.hash)
 
-      await page.getByRole('link', { name: 'Todo', exact: true }).click()
+      await page.locator('a[href*="/todo"]').click()
       await expect.poll(() => page.evaluate(() => globalThis.location.hash)).toMatch(/^#\/todo(?:\?|$)/)
-      await page.getByRole('button', { name: /Show details for Todo detail root/ }).click()
+      await page.locator(`[data-task-block-id="${rootBlockId}"]`).click()
 
-      const sidebar = page.getByRole('complementary', { name: 'Task details' })
+      const sidebar = page.locator('[data-task-detail-sidebar]')
       await expect(sidebar).toBeVisible()
       await expect.poll(() => page.evaluate(() => globalThis.location.hash)).toBe('#/todo')
       expect(await page.evaluate(() => globalThis.location.hash)).not.toBe(initialHash)
@@ -161,19 +161,19 @@ test.describe('Todo detail sidebar', () => {
       await expect(detailEditor).toContainText('Todo detail root edited')
       await expect(detailEditor).toContainText('Todo detail child edited')
 
-      const statusButton = sidebar.getByRole('button', { name: 'Change status from Todo to In Progress' })
+      const statusButton = sidebar.locator('[data-task-detail-action="status"]')
       await statusButton.click()
-      await expect(sidebar.getByRole('button', { name: 'Change status from In Progress to Done' })).toBeVisible()
+      await expect(statusButton).toBeVisible()
 
-      await sidebar.getByRole('button', { name: 'Schedule' }).click()
-      const schedule = page.getByRole('dialog', { name: 'Schedule' })
+      await sidebar.locator('[data-task-action-trigger="schedule"]').click()
+      const schedule = page.locator('[data-task-action-panel]')
       await expect(schedule).toBeVisible()
-      await schedule.getByRole('button', { name: 'Tomorrow', exact: true }).click()
-      await expect(schedule.getByRole('button', { name: /^Time/ })).toBeVisible()
-      await schedule.getByRole('button', { name: /^Time/ }).click({ force: true })
-      const timePicker = page.getByRole('dialog', { name: 'Time' })
-      await timePicker.getByLabel('Time').fill('13:30')
-      await schedule.getByRole('button', { name: 'Done', exact: true }).click({ force: true })
+      await schedule.locator('[data-task-quick-date="tomorrow"]').click()
+      await expect(schedule.locator('[data-task-setting="time"]')).toBeVisible()
+      await schedule.locator('[data-task-setting="time"]').click({ force: true })
+      const timePicker = page.locator('[data-task-time-picker]')
+      await timePicker.locator('input[type="time"]').fill('13:30')
+      await timePicker.locator('button').first().click({ force: true })
       await expect(schedule).toBeHidden()
 
       const sourceLink = sidebar.getByRole('link', { name: 'Todo detail E2E' })
@@ -188,8 +188,8 @@ test.describe('Todo detail sidebar', () => {
           focusInsideRoot: selection?.focusNode ? block.contains(selection.focusNode) : false,
         }
       })).toEqual({ activeEditor: true, anchorInsideRoot: true, focusInsideRoot: true })
-      await expect(page.getByRole('textbox', { name: 'Editor content' })).toContainText('Todo detail root edited')
-      await expect(page.getByRole('textbox', { name: 'Editor content' })).toContainText('Todo detail child edited')
+      await expect(page.locator('[data-editor-content]')).toContainText('Todo detail root edited')
+      await expect(page.locator('[data-editor-content]')).toContainText('Todo detail child edited')
       await expect(focusedRoot).toHaveAttribute('data-task-status', 'doing')
     }
     finally {
@@ -208,11 +208,11 @@ test.describe('Todo detail sidebar', () => {
       if (!childBlockId)
         throw new Error('Todo child is missing a block id')
 
-      await page.getByRole('link', { name: 'Todo', exact: true }).click()
+      await page.locator('a[href*="/todo"]').click()
       await expect.poll(() => page.evaluate(() => globalThis.location.hash)).toMatch(/^#\/todo(?:\?|$)/)
-      await page.getByRole('button', { name: /Show details for Todo detail child/ }).click()
+      await page.locator(`[data-task-block-id="${childBlockId}"]`).click()
 
-      const sidebar = page.getByRole('complementary', { name: 'Task details' })
+      const sidebar = page.locator('[data-task-detail-sidebar]')
       await expect(sidebar).toBeVisible()
       const detailEditor = sidebar.locator('[data-todo-detail-editor]')
       await expect(detailEditor.locator('[data-outline-focus-root]')).toHaveAttribute('data-block-id', childBlockId)
@@ -224,20 +224,20 @@ test.describe('Todo detail sidebar', () => {
       await page.keyboard.insertText('Todo detail child edited from sidebar')
       await expect(detailEditor).toContainText('Todo detail child edited from sidebar')
 
-      await sidebar.getByRole('button', { name: 'Close task details' }).click()
-      await expect(page.getByRole('button', { name: /Show details for Todo detail child edited from sidebar/ })).toBeVisible()
+      await sidebar.locator('[data-task-detail-action="close"]').click()
+      await expect(page.locator(`[data-task-block-id="${childBlockId}"]`)).toBeVisible()
 
-      await page.getByRole('button', { name: /Show details for Todo detail child edited from sidebar/ }).click()
-      const reopenedSidebar = page.getByRole('complementary', { name: 'Task details' })
-      await reopenedSidebar.getByRole('button', { name: 'Change status from Todo to In Progress' }).click()
-      await expect(reopenedSidebar.getByRole('button', { name: 'Change status from In Progress to Done' })).toBeVisible()
+      await page.locator(`[data-task-block-id="${childBlockId}"]`).click()
+      const reopenedSidebar = page.locator('[data-task-detail-sidebar]')
+      await reopenedSidebar.locator('[data-task-detail-action="status"]').click()
+      await expect(reopenedSidebar.locator('[data-task-detail-action="status"]')).toBeVisible()
 
       await reopenedSidebar.getByRole('link', { name: 'Todo subtask detail E2E' }).click()
       await expect.poll(() => page.evaluate(() => globalThis.location.hash)).toMatch(/^#\/note\/[^/]+\/[^/?]+\?focus=/)
       const focusedChild = page.locator(`[data-block-id="${childBlockId}"]`)
       await expect(focusedChild).toHaveAttribute('data-task-status', 'doing')
       await expect(focusedChild).toContainText('Todo detail child edited from sidebar')
-      await expect(page.getByRole('textbox', { name: 'Editor content' })).toContainText('Todo detail root')
+      await expect(page.locator('[data-editor-content]')).toContainText('Todo detail root')
     }
     finally {
       await closeApplication(context)

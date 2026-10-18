@@ -95,7 +95,7 @@ function ShelfContent({
         <LibraryBig {...stylex.props(shelfPageStyles.emptyIcon)} size={30} strokeWidth={1.4} aria-hidden="true" />
         <h1 {...stylex.props(shelfPageStyles.emptyTitle)}>{t('shelfNoBookSources')}</h1>
         <p {...stylex.props(shelfPageStyles.emptyText)}>{t('shelfAddSourceHint')}</p>
-        <button {...stylex.props(shelfSharedStyles.primaryButton)} type="button" onClick={onAddSource}>
+        <button {...stylex.props(shelfSharedStyles.primaryButton)} data-shelf-action="add-source" type="button" onClick={onAddSource}>
           <Plus size={16} strokeWidth={2} aria-hidden="true" />
           {t('shelfAddBookSource')}
         </button>
@@ -295,6 +295,7 @@ export function ShelfPage({
           shelfPageStyles.scrollViewport,
           catalog.sources.length > 0 ? shelfPageStyles.scrollViewportWithToolbar : shelfPageStyles.scrollViewportEmpty,
         )}
+        data-shelf-collection=""
         aria-label={t('shelfBookCollection')}
         role="region"
       >

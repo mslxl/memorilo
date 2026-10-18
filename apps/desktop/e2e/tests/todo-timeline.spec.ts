@@ -29,10 +29,10 @@ test('switches timeline views and creates a task in multi-day view', async () =>
   })
   try {
     const window = await electronApplication.firstWindow()
-    await window.getByRole('link', { name: 'Todo', exact: true }).click()
+    await window.locator('a[href*="/todo"]').click()
 
-    const scheduleButton = window.getByRole('button', { name: 'Switch to schedule view' })
-    const timelineButton = window.getByRole('button', { name: 'Switch to timeline view' })
+    const scheduleButton = window.locator('[data-todo-view-option="agenda"]')
+    const timelineButton = window.locator('[data-todo-view-option="timeline"]')
 
     await scheduleButton.click()
     await expect.poll(() => window.evaluate(() => globalThis.location.hash)).toBe('#/todo?view=agenda')
@@ -41,7 +41,7 @@ test('switches timeline views and creates a task in multi-day view', async () =>
     const calendar = window.locator('[data-todo-time-grid-calendar]')
     await calendar.waitFor()
 
-    await window.getByRole('button', { exact: true, name: 'Multi-day' }).click()
+    await window.locator('[data-todo-time-grid-mode="multi-day"]').click()
     const dayColumn = calendar.locator('.fc-timegrid-col[data-date]').first()
     const timeSlot = calendar.locator('.fc-timegrid-slot-lane[data-time="10:00:00"]').first()
     const [dayColumnBox, timeSlotBox] = await Promise.all([dayColumn.boundingBox(), timeSlot.boundingBox()])
@@ -49,7 +49,7 @@ test('switches timeline views and creates a task in multi-day view', async () =>
       throw new Error('Multi-day timeline slot is unavailable')
     await window.mouse.click(dayColumnBox.x + dayColumnBox.width / 2, timeSlotBox.y + timeSlotBox.height / 2)
 
-    await expect(window.getByRole('complementary', { name: 'Task details' })).toBeVisible()
+    await expect(window.locator('[data-task-detail-sidebar]')).toBeVisible()
   }
   finally {
     await electronApplication.close()

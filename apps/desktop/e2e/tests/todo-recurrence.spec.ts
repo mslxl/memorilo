@@ -18,8 +18,6 @@ if (typeof electronModule !== 'string')
   throw new TypeError('Electron package did not resolve to an executable path')
 const electronExecutablePath = electronModule
 
-const weekdayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
-
 function configuration(language: Language): Record<string, unknown> {
   return {
     backup: { enabled: false, intervalMinutes: 1_440, retentionCount: 7 },
@@ -142,23 +140,20 @@ async function mockChinaHolidayCalendar(application: ElectronApplication): Promi
   }, holidayCalendar())
 }
 
-async function createNoteWithTasks(page: Page, noteTitle: string, taskTitles: readonly string[], language: Language): Promise<void> {
-  const journals = language === 'en' ? 'Journals' : '日志'
-  const commandSearch = language === 'en' ? 'Search commands and Notes' : '搜索命令和笔记'
-  const taskList = language === 'en' ? /^Task list/ : /^任务列表/
-  await page.getByRole('link', { name: journals }).waitFor()
+async function createNoteWithTasks(page: Page, noteTitle: string, taskTitles: readonly string[]): Promise<void> {
+  await page.locator('a[href*="/journals"]').waitFor()
   await page.keyboard.press('Meta+P')
-  await page.getByRole('combobox', { name: commandSearch }).fill(noteTitle)
-  await page.getByRole('option').filter({ hasText: noteTitle }).last().click()
+  await page.locator('input[role=combobox][aria-autocomplete=list]').fill(noteTitle)
+  await page.locator('[role=listbox] [role=option][id$="-create-note"]').click()
 
-  const editor = page.getByRole('textbox', { name: language === 'en' ? 'Editor content' : '编辑器内容' })
+  const editor = page.locator('[data-editor-content]')
   const heading = editor.locator('[data-block-id]').first()
   await expect(heading).toBeVisible()
   await heading.click()
   await page.keyboard.press('End')
   await page.keyboard.press('Enter')
   await page.keyboard.insertText('/todo')
-  await page.getByRole('option', { name: taskList }).click()
+  await page.locator('[role=option][data-slash-command="task-list"]').click()
   await page.keyboard.insertText(taskTitles[0] ?? '')
 
   for (const title of taskTitles.slice(1)) {
@@ -174,25 +169,25 @@ function taskBlock(page: Page, title: string): Locator {
   return page.locator('[data-list-kind="task"]').filter({ hasText: title })
 }
 
-async function openSchedule(page: Page, title: string, language: Language): Promise<{ block: Locator, panel: Locator }> {
+async function openSchedule(page: Page, title: string): Promise<{ block: Locator, panel: Locator }> {
   const block = taskBlock(page, title)
   await block.hover()
-  await block.getByRole('button', { name: language === 'en' ? 'Task actions' : '任务操作' }).click()
-  const panel = page.getByRole('dialog', { name: language === 'en' ? 'Schedule' : '时间安排' })
+  await block.locator('[data-task-menu-trigger]').click()
+  const panel = page.locator('[data-task-action-panel]')
   await expect(panel).toBeVisible()
-  await panel.getByRole('button', { exact: true, name: language === 'en' ? 'Today' : '今天' }).click()
+  await panel.locator('[data-task-quick-date="today"]').click()
   return { block, panel }
 }
 
-async function openRepeat(panel: Locator, page: Page, language: Language): Promise<Locator> {
-  await panel.getByRole('button', { name: language === 'en' ? /^Repeat/ : /^重复/ }).click()
-  const repeat = page.getByRole('dialog', { name: language === 'en' ? 'Repeat settings' : '重复设置' })
+async function openRepeat(panel: Locator, page: Page): Promise<Locator> {
+  await panel.locator('[data-task-setting="repeat"]').click()
+  const repeat = page.locator('[data-task-repeat-picker][data-task-repeat-mode="presets"]')
   await expect(repeat).toBeVisible()
   return repeat
 }
 
-async function saveSchedule(panel: Locator, language: Language): Promise<void> {
-  await panel.getByRole('button', { exact: true, name: language === 'en' ? 'Done' : '确定' }).click()
+async function saveSchedule(panel: Locator): Promise<void> {
+  await panel.locator('[data-task-action="save-schedule"]').click()
   await expect(panel).toBeHidden()
 }
 
@@ -208,54 +203,52 @@ async function expectRule(block: Locator, expected: RepeatRule): Promise<void> {
 async function configurePreset(
   page: Page,
   title: string,
-  preset: RegExp,
+  preset: string,
   expected: RepeatRule,
-  language: Language = 'en',
 ): Promise<void> {
-  const { block, panel } = await openSchedule(page, title, language)
-  const repeat = await openRepeat(panel, page, language)
-  await repeat.getByRole('button', { name: preset }).click()
-  await saveSchedule(panel, language)
+  const { block, panel } = await openSchedule(page, title)
+  const repeat = await openRepeat(panel, page)
+  await repeat.locator(`[data-task-repeat-preset="${preset}"]`).click()
+  await saveSchedule(panel)
   await expectRule(block, expected)
 }
 
-async function openCustomRepeat(page: Page, title: string, language: Language): Promise<{
+async function openCustomRepeat(page: Page, title: string): Promise<{
   block: Locator
   panel: Locator
   repeat: Locator
 }> {
-  const { block, panel } = await openSchedule(page, title, language)
-  const presets = await openRepeat(panel, page, language)
-  await presets.getByRole('button', { name: language === 'en' ? /^Custom/ : /^自定义/ }).click()
-  const referenceLabel = language === 'en' ? 'Repeat reference' : '重复参考日期'
-  await expect(page.getByLabel(referenceLabel)).toBeVisible()
-  const repeat = page
-    .getByRole('dialog', { name: language === 'en' ? 'Repeat settings' : '重复设置' })
-    .filter({ has: page.getByLabel(referenceLabel) })
+  const { block, panel } = await openSchedule(page, title)
+  const presets = await openRepeat(panel, page)
+  await presets.locator('[data-task-repeat-preset="custom"]').click()
+  const repeat = page.locator('[data-task-repeat-picker][data-task-repeat-mode="custom"]')
+  await expect(repeat.locator('[data-task-field="reference"]')).toBeVisible()
   return { block, panel, repeat }
 }
 
-async function saveCustomRepeat(panel: Locator, repeat: Locator, language: Language): Promise<void> {
-  await repeat.getByRole('button', { exact: true, name: language === 'en' ? 'Done' : '确定' }).click()
-  await saveSchedule(panel, language)
+async function saveCustomRepeat(panel: Locator, repeat: Locator): Promise<void> {
+  await repeat.locator('[data-task-action="save-repeat"]').click()
+  await saveSchedule(panel)
 }
 
-async function setWeekdays(repeat: Locator, wanted: readonly string[]): Promise<void> {
-  const group = repeat.getByRole('group', { name: 'Repeat on' })
-  for (const label of wanted) {
-    const button = group.getByRole('button', { exact: true, name: label })
+async function setWeekdays(repeat: Locator, wanted: readonly number[]): Promise<void> {
+  const group = repeat.locator('[data-task-group="repeat-weekdays"]')
+  for (const weekday of wanted) {
+    const button = group.locator(`[data-task-weekday="${weekday}"]`)
     if (await button.getAttribute('aria-pressed') !== 'true')
       await button.click()
   }
-  for (const label of weekdayLabels.filter(label => !wanted.includes(label))) {
-    const button = group.getByRole('button', { exact: true, name: label })
+  for (const weekday of [0, 1, 2, 3, 4, 5, 6]) {
+    if (wanted.includes(weekday))
+      continue
+    const button = group.locator(`[data-task-weekday="${weekday}"]`)
     if (await button.getAttribute('aria-pressed') === 'true')
       await button.click()
   }
 }
 
-async function setCheckbox(repeat: Locator, label: string, checked: boolean): Promise<void> {
-  const checkbox = repeat.getByLabel(label)
+async function setCheckbox(repeat: Locator, field: string, checked: boolean): Promise<void> {
+  const checkbox = repeat.locator(`[data-task-field="${field}"]`)
   if (await checkbox.isChecked() !== checked)
     await checkbox.click()
 }
@@ -282,29 +275,29 @@ test.describe('Todo recurrence user flows', () => {
         'E2E repeat yearly weekday',
         'E2E repeat disable',
       ]
-      await createNoteWithTasks(page, 'Todo recurrence E2E', titles, 'en')
+      await createNoteWithTasks(page, 'Todo recurrence E2E', titles)
 
-      await configurePreset(page, titles[0]!, /^Daily/, {
+      await configurePreset(page, titles[0]!, 'day', {
         interval: 1,
         mode: 'due',
         skipHolidays: false,
         skipWeekends: false,
         unit: 'day',
       })
-      await configurePreset(page, titles[1]!, /^Weekly/, {
+      await configurePreset(page, titles[1]!, 'week', {
         interval: 1,
         mode: 'due',
         unit: 'week',
         weekdays: [today.getDay()],
       })
-      await configurePreset(page, titles[2]!, /^Monthly/, {
+      await configurePreset(page, titles[2]!, 'month', {
         interval: 1,
         mode: 'due',
         monthDay: today.getDate(),
         monthMode: 'date',
         unit: 'month',
       })
-      await configurePreset(page, titles[3]!, /^Yearly/, {
+      await configurePreset(page, titles[3]!, 'year', {
         interval: 1,
         mode: 'due',
         unit: 'year',
@@ -312,7 +305,7 @@ test.describe('Todo recurrence user flows', () => {
         yearMode: 'date',
         yearMonth: today.getMonth() + 1,
       })
-      await configurePreset(page, titles[4]!, /^Workdays/, {
+      await configurePreset(page, titles[4]!, 'workday', {
         interval: 1,
         mode: 'due',
         skipHolidays: false,
@@ -321,15 +314,15 @@ test.describe('Todo recurrence user flows', () => {
       })
 
       {
-        const { block, panel, repeat } = await openCustomRepeat(page, titles[5]!, 'en')
-        await repeat.getByLabel('Repeat reference').selectOption('completion')
-        await repeat.getByLabel('Every').fill('2')
-        await repeat.getByLabel('Unit').selectOption('week')
-        await setWeekdays(repeat, ['Mon', 'Wed', 'Fri'])
-        await repeat.getByLabel('End repeat').selectOption('date')
+        const { block, panel, repeat } = await openCustomRepeat(page, titles[5]!)
+        await repeat.locator('[data-task-field=reference]').selectOption('completion')
+        await repeat.locator('[data-task-field=interval]').fill('2')
+        await repeat.locator('[data-task-field=unit]').selectOption('week')
+        await setWeekdays(repeat, [1, 3, 5])
+        await repeat.locator('[data-task-field=end]').selectOption('date')
         const endDate = dateKey(localDate(120))
-        await repeat.locator('input[type="date"]').last().fill(endDate)
-        await saveCustomRepeat(panel, repeat, 'en')
+        await repeat.locator('[data-task-field=end-date]').fill(endDate)
+        await saveCustomRepeat(panel, repeat)
         await expectRule(block, {
           endDate,
           interval: 2,
@@ -340,16 +333,16 @@ test.describe('Todo recurrence user flows', () => {
       }
 
       {
-        const { block, panel, repeat } = await openCustomRepeat(page, titles[6]!, 'en')
-        await repeat.getByLabel('Repeat reference').selectOption('custom')
-        await repeat.getByRole('button', { name: 'Next month' }).click()
-        await repeat.getByRole('button', { exact: true, name: '15' }).click()
-        await repeat.getByLabel('Every').fill('2')
-        await repeat.getByLabel('Unit').selectOption('month')
-        await repeat.getByRole('tab', { name: 'By date' }).click()
-        await repeat.getByRole('group', { name: 'Last day' }).getByRole('button', { exact: true, name: '31' }).click()
+        const { block, panel, repeat } = await openCustomRepeat(page, titles[6]!)
+        await repeat.locator('[data-task-field=reference]').selectOption('custom')
+        await repeat.locator('[data-task-month-navigation=next]').click()
+        await repeat.locator('[data-task-date]').filter({ hasText: '15' }).click()
+        await repeat.locator('[data-task-field=interval]').fill('2')
+        await repeat.locator('[data-task-field=unit]').selectOption('month')
+        await repeat.locator('[data-task-month-mode=date], [data-task-year-mode=date]').click()
+        await repeat.locator('[data-task-group=day-of-month] [data-task-day-of-month=31]').click()
         const anchor = new Date(today.getFullYear(), today.getMonth() + 1, 15, 12)
-        await saveCustomRepeat(panel, repeat, 'en')
+        await saveCustomRepeat(panel, repeat)
         await expectRule(block, {
           anchorDate: dateKey(anchor),
           interval: 2,
@@ -361,13 +354,13 @@ test.describe('Todo recurrence user flows', () => {
       }
 
       {
-        const { block, panel, repeat } = await openCustomRepeat(page, titles[7]!, 'en')
-        await repeat.getByLabel('Repeat reference').selectOption('due')
-        await repeat.getByLabel('Unit').selectOption('month')
-        await repeat.getByRole('tab', { name: 'By weekday' }).click()
-        await repeat.getByLabel('Occurrence').selectOption('-1')
-        await repeat.getByLabel('Weekday').selectOption('5')
-        await saveCustomRepeat(panel, repeat, 'en')
+        const { block, panel, repeat } = await openCustomRepeat(page, titles[7]!)
+        await repeat.locator('[data-task-field=reference]').selectOption('due')
+        await repeat.locator('[data-task-field=unit]').selectOption('month')
+        await repeat.locator('[data-task-month-mode=weekday], [data-task-year-mode=weekday]').click()
+        await repeat.locator('[data-task-field=occurrence]').selectOption('-1')
+        await repeat.locator('[data-task-field=weekday]').selectOption('5')
+        await saveCustomRepeat(panel, repeat)
         await expectRule(block, {
           interval: 1,
           mode: 'due',
@@ -379,14 +372,14 @@ test.describe('Todo recurrence user flows', () => {
       }
 
       {
-        const { block, panel, repeat } = await openCustomRepeat(page, titles[8]!, 'en')
-        await repeat.getByLabel('Repeat reference').selectOption('completion')
-        await repeat.getByLabel('Every').fill('3')
-        await repeat.getByLabel('Unit').selectOption('month')
-        await repeat.getByRole('tab', { name: 'By workday' }).click()
-        await repeat.locator('label').filter({ hasText: /^Workday/ }).getByRole('combobox').selectOption('3')
-        await setCheckbox(repeat, 'Skip weekends', true)
-        await saveCustomRepeat(panel, repeat, 'en')
+        const { block, panel, repeat } = await openCustomRepeat(page, titles[8]!)
+        await repeat.locator('[data-task-field=reference]').selectOption('completion')
+        await repeat.locator('[data-task-field=interval]').fill('3')
+        await repeat.locator('[data-task-field=unit]').selectOption('month')
+        await repeat.locator('[data-task-month-mode=workday]').click()
+        await repeat.locator('[data-task-field=workday-occurrence]').selectOption('3')
+        await setCheckbox(repeat, 'skip-weekends', true)
+        await saveCustomRepeat(panel, repeat)
         await expectRule(block, {
           interval: 3,
           mode: 'completion',
@@ -398,14 +391,14 @@ test.describe('Todo recurrence user flows', () => {
       }
 
       {
-        const { block, panel, repeat } = await openCustomRepeat(page, titles[9]!, 'en')
-        await repeat.getByLabel('Repeat reference').selectOption('due')
-        await repeat.getByLabel('Every').fill('2')
-        await repeat.getByLabel('Unit').selectOption('year')
-        await repeat.getByRole('tab', { name: 'By date' }).click()
-        await repeat.locator('label').filter({ hasText: /^Month/ }).getByRole('combobox').selectOption('2')
-        await repeat.getByRole('group', { name: 'Last day' }).getByRole('button', { name: 'Last day' }).click()
-        await saveCustomRepeat(panel, repeat, 'en')
+        const { block, panel, repeat } = await openCustomRepeat(page, titles[9]!)
+        await repeat.locator('[data-task-field=reference]').selectOption('due')
+        await repeat.locator('[data-task-field=interval]').fill('2')
+        await repeat.locator('[data-task-field=unit]').selectOption('year')
+        await repeat.locator('[data-task-month-mode=date], [data-task-year-mode=date]').click()
+        await repeat.locator('[data-task-field=month]').selectOption('2')
+        await repeat.locator('[data-task-group=day-of-month] [data-task-day-of-month=last]').click()
+        await saveCustomRepeat(panel, repeat)
         await expectRule(block, {
           interval: 2,
           mode: 'due',
@@ -417,14 +410,14 @@ test.describe('Todo recurrence user flows', () => {
       }
 
       {
-        const { block, panel, repeat } = await openCustomRepeat(page, titles[10]!, 'en')
-        await repeat.getByLabel('Repeat reference').selectOption('completion')
-        await repeat.getByLabel('Unit').selectOption('year')
-        await repeat.getByRole('tab', { name: 'By weekday' }).click()
-        await repeat.locator('label').filter({ hasText: /^Month/ }).getByRole('combobox').selectOption('11')
-        await repeat.getByLabel('Occurrence').selectOption('4')
-        await repeat.getByLabel('Weekday').selectOption('4')
-        await saveCustomRepeat(panel, repeat, 'en')
+        const { block, panel, repeat } = await openCustomRepeat(page, titles[10]!)
+        await repeat.locator('[data-task-field=reference]').selectOption('completion')
+        await repeat.locator('[data-task-field=unit]').selectOption('year')
+        await repeat.locator('[data-task-month-mode=weekday], [data-task-year-mode=weekday]').click()
+        await repeat.locator('[data-task-field=month]').selectOption('11')
+        await repeat.locator('[data-task-field=occurrence]').selectOption('4')
+        await repeat.locator('[data-task-field=weekday]').selectOption('4')
+        await saveCustomRepeat(panel, repeat)
         await expectRule(block, {
           interval: 1,
           mode: 'completion',
@@ -436,12 +429,12 @@ test.describe('Todo recurrence user flows', () => {
         })
       }
 
-      await configurePreset(page, titles[11]!, /^Daily/, { mode: 'due', unit: 'day' })
+      await configurePreset(page, titles[11]!, 'day', { mode: 'due', unit: 'day' })
       {
-        const { block, panel } = await openSchedule(page, titles[11]!, 'en')
-        const repeat = await openRepeat(panel, page, 'en')
-        await repeat.getByRole('button', { exact: true, name: 'None' }).click()
-        await saveSchedule(panel, 'en')
+        const { block, panel } = await openSchedule(page, titles[11]!)
+        const repeat = await openRepeat(panel, page)
+        await repeat.locator('[data-task-repeat-preset=none]').click()
+        await saveSchedule(panel)
         await expect.poll(() => readRule(block)).toBeNull()
       }
     }
@@ -462,16 +455,16 @@ test.describe('Todo recurrence user flows', () => {
         'E2E 跳过整次节假日',
         'E2E 农历重复',
       ]
-      await createNoteWithTasks(page, 'Todo 重复 E2E', titles, 'zh-CN')
+      await createNoteWithTasks(page, 'Todo 重复 E2E', titles)
 
       {
-        const { block, panel, repeat } = await openCustomRepeat(page, titles[0]!, 'zh-CN')
-        await repeat.getByLabel('重复参考日期').selectOption('due')
-        await repeat.getByLabel('每隔').fill('1')
-        await repeat.getByLabel('单位').selectOption('day')
-        await setCheckbox(repeat, '跳过法定节假日', true)
-        await setCheckbox(repeat, '跳过双休日', true)
-        await saveCustomRepeat(panel, repeat, 'zh-CN')
+        const { block, panel, repeat } = await openCustomRepeat(page, titles[0]!)
+        await repeat.locator('[data-task-field=reference]').selectOption('due')
+        await repeat.locator('[data-task-field=interval]').fill('1')
+        await repeat.locator('[data-task-field=unit]').selectOption('day')
+        await setCheckbox(repeat, 'skip-holidays', true)
+        await setCheckbox(repeat, 'skip-weekends', true)
+        await saveCustomRepeat(panel, repeat)
         await expectRule(block, {
           calendarId: 'cn-holidays',
           interval: 1,
@@ -483,12 +476,12 @@ test.describe('Todo recurrence user flows', () => {
       }
 
       {
-        const { block, panel, repeat } = await openCustomRepeat(page, titles[1]!, 'zh-CN')
-        await repeat.getByLabel('重复参考日期').selectOption('due')
-        await repeat.getByLabel('每隔').fill('2')
-        await repeat.getByLabel('单位').selectOption('holiday')
-        await repeat.getByLabel('节假日策略').selectOption('allow')
-        await saveCustomRepeat(panel, repeat, 'zh-CN')
+        const { block, panel, repeat } = await openCustomRepeat(page, titles[1]!)
+        await repeat.locator('[data-task-field=reference]').selectOption('due')
+        await repeat.locator('[data-task-field=interval]').fill('2')
+        await repeat.locator('[data-task-field=unit]').selectOption('holiday')
+        await repeat.locator('[data-task-field=holiday-policy]').selectOption('allow')
+        await saveCustomRepeat(panel, repeat)
         await expectRule(block, {
           calendarId: 'cn-holidays',
           holidayPolicy: 'allow',
@@ -499,11 +492,11 @@ test.describe('Todo recurrence user flows', () => {
       }
 
       {
-        const { block, panel, repeat } = await openCustomRepeat(page, titles[2]!, 'zh-CN')
-        await repeat.getByLabel('重复参考日期').selectOption('completion')
-        await repeat.getByLabel('单位').selectOption('holiday')
-        await repeat.getByLabel('节假日策略').selectOption('next-workday')
-        await saveCustomRepeat(panel, repeat, 'zh-CN')
+        const { block, panel, repeat } = await openCustomRepeat(page, titles[2]!)
+        await repeat.locator('[data-task-field=reference]').selectOption('completion')
+        await repeat.locator('[data-task-field=unit]').selectOption('holiday')
+        await repeat.locator('[data-task-field=holiday-policy]').selectOption('next-workday')
+        await saveCustomRepeat(panel, repeat)
         await expectRule(block, {
           calendarId: 'cn-holidays',
           holidayPolicy: 'next-workday',
@@ -514,11 +507,11 @@ test.describe('Todo recurrence user flows', () => {
       }
 
       {
-        const { block, panel, repeat } = await openCustomRepeat(page, titles[3]!, 'zh-CN')
-        await repeat.getByLabel('重复参考日期').selectOption('due')
-        await repeat.getByLabel('单位').selectOption('week')
-        await repeat.getByLabel('节假日策略').selectOption('skip')
-        await saveCustomRepeat(panel, repeat, 'zh-CN')
+        const { block, panel, repeat } = await openCustomRepeat(page, titles[3]!)
+        await repeat.locator('[data-task-field=reference]').selectOption('due')
+        await repeat.locator('[data-task-field=unit]').selectOption('week')
+        await repeat.locator('[data-task-field=holiday-policy]').selectOption('skip')
+        await saveCustomRepeat(panel, repeat)
         await expectRule(block, {
           calendarId: 'cn-holidays',
           holidayPolicy: 'skip',
@@ -529,17 +522,17 @@ test.describe('Todo recurrence user flows', () => {
       }
 
       {
-        const { block, panel, repeat } = await openCustomRepeat(page, titles[4]!, 'zh-CN')
-        await repeat.getByLabel('重复参考日期').selectOption('custom')
-        await repeat.getByRole('button', { name: '下个月' }).click()
-        await repeat.getByRole('button', { exact: true, name: '15' }).click()
-        await repeat.getByLabel('每隔').fill('2')
-        await repeat.getByLabel('单位').selectOption('lunar')
-        await repeat.getByLabel('农历月').selectOption('8')
-        await repeat.getByLabel('农历日').selectOption('15')
+        const { block, panel, repeat } = await openCustomRepeat(page, titles[4]!)
+        await repeat.locator('[data-task-field=reference]').selectOption('custom')
+        await repeat.locator('[data-task-month-navigation=next]').click()
+        await repeat.locator('[data-task-date]').filter({ hasText: '15' }).click()
+        await repeat.locator('[data-task-field=interval]').fill('2')
+        await repeat.locator('[data-task-field=unit]').selectOption('lunar')
+        await repeat.locator('[data-task-field=lunar-month]').selectOption('8')
+        await repeat.locator('[data-task-field=lunar-day]').selectOption('15')
         const today = localDate()
         const anchor = new Date(today.getFullYear(), today.getMonth() + 1, 15, 12)
-        await saveCustomRepeat(panel, repeat, 'zh-CN')
+        await saveCustomRepeat(panel, repeat)
         await expectRule(block, {
           anchorDate: dateKey(anchor),
           interval: 2,

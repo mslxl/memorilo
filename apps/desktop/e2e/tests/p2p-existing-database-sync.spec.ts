@@ -119,7 +119,7 @@ function launchPeer(databasePath: string, deviceName: string, userDataDirectory:
 }
 
 async function waitForApplication(window: Page): Promise<void> {
-  await window.getByRole('link', { name: 'Journals' }).waitFor()
+  await window.locator('a[href*="/journals"]').waitFor()
 }
 
 async function waitForSyncedPeer(window: Page, deviceName: string): Promise<void> {
@@ -134,9 +134,9 @@ async function waitForSyncedPeer(window: Page, deviceName: string): Promise<void
 
 async function createNote(window: Page, title: string): Promise<void> {
   await window.keyboard.press('Meta+P')
-  await window.getByRole('combobox', { name: 'Search commands and Notes' }).fill(title)
-  await window.getByRole('option').filter({ hasText: `Create Note “${title}”` }).click()
-  await expect(window.getByRole('button', { name: `Rename Note: ${title}` })).toBeVisible()
+  await window.locator('input[role=combobox][aria-autocomplete=list]').fill(title)
+  await window.locator('[role=listbox] [role=option][id$=\"-create-note\"]').click()
+  await expect(window.locator('[data-note-action="rename-current"]')).toBeVisible()
 }
 
 async function pairPeers(firstWindow: Page, secondWindow: Page): Promise<void> {
@@ -178,7 +178,7 @@ test('synchronizes the captured existing database to a new peer', async () => {
 
     await waitForSyncedPeer(destinationWindow, 'Captured database')
 
-    const journals = destinationWindow.getByRole('main', { name: 'Journals' })
+    const journals = destinationWindow.locator('main[data-page=journals]')
     const previousJournal = journals.getByRole('article').filter({
       has: destinationWindow.locator('time[datetime="2026-08-21"]'),
     })
@@ -187,14 +187,14 @@ test('synchronizes the captured existing database to a new peer', async () => {
     })
     await expect(previousJournal).toBeVisible({ timeout: 20_000 })
     await expect(todayJournal).toBeVisible({ timeout: 20_000 })
-    await expect(previousJournal.getByRole('textbox', { name: 'Editor content' })).toContainText('123')
-    await expect(todayJournal.getByRole('textbox', { name: 'Editor content' })).toContainText('Today')
+    await expect(previousJournal.locator('[data-editor-content]')).toContainText('123')
+    await expect(todayJournal.locator('[data-editor-content]')).toContainText('Today')
 
-    await destinationWindow.getByRole('link', { name: 'Pages' }).click()
-    const pages = destinationWindow.getByRole('main', { name: 'Pages' })
+    await destinationWindow.locator('a[href*="/pages"]').click()
+    const pages = destinationWindow.locator('main[data-page=pages]')
     await expect(pages).toBeVisible()
-    await expect(pages.getByRole('button', { name: 'Open Note: 2026-08-21' })).toHaveCount(0)
-    await expect(pages.getByRole('button', { name: 'Open Note: 2026-08-22' })).toHaveCount(0)
+    await expect(pages.locator('button[data-note-action="open"]').filter({ hasText: '2026-08-21' })).toHaveCount(0)
+    await expect(pages.locator('button[data-note-action="open"]').filter({ hasText: '2026-08-22' })).toHaveCount(0)
   }
   finally {
     await Promise.all([
@@ -243,8 +243,8 @@ test('automatically reconnects paired peers after application restarts', async (
       waitForSyncedPeer(firstWindow, 'Second peer'),
       waitForSyncedPeer(secondWindow, 'First peer'),
     ])
-    await secondWindow.getByRole('link', { name: 'Pages' }).click()
-    await expect(secondWindow.getByRole('button', { name: 'Open Note: Created while peer offline' })).toBeVisible()
+    await secondWindow.locator('a[href*="/pages"]').click()
+    await expect(secondWindow.locator('button[data-note-action="open"]').filter({ hasText: 'Created while peer offline' })).toBeVisible()
 
     await Promise.all([firstApplication.close(), secondApplication.close()])
     firstApplication = null

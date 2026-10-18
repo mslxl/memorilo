@@ -15,6 +15,7 @@ import { todoTaskActionStyles as styles } from './todo-task-actions.stylex'
 interface TodoTaskActionsProps {
   compact?: boolean
   compactAlignment?: 'left' | 'right'
+  dataTaskAction?: string
   triggerContent?: ReactNode
   calendarEvents: readonly DesktopTodoCalendarEvent[]
   calendarSubscriptions: readonly DesktopTodoCalendarSubscription[]
@@ -49,6 +50,7 @@ function TodoTaskActionsForm({
   calendarSubscriptions,
   compact = false,
   compactAlignment = 'right',
+  dataTaskAction,
   triggerContent,
   onUpdateTask,
   t,
@@ -133,6 +135,7 @@ function TodoTaskActionsForm({
         aria-controls={menuId}
         aria-expanded={open}
         aria-haspopup="dialog"
+        data-task-action-trigger={dataTaskAction}
         aria-label={triggerContent ? t('scheduleSettings') : t('taskActions')}
         title={triggerContent ? t('scheduleSettings') : t('taskActions')}
         type="button"

@@ -71,7 +71,7 @@ export function ShelfSourceMenu({
                       value={allSourcesValue}
                       xstyle={[shelfSourceStyles.sourceMenuItem, selectedSourceId === null && shelfSourceStyles.sourceMenuItemSelected]}
                     >
-                      <button type="button">
+                      <button data-shelf-source-value={allSourcesValue} type="button">
                         <LibraryBig size={16} strokeWidth={1.8} aria-hidden="true" />
                         <span {...stylex.props(shelfSourceStyles.sourceMenuLabel)}>{t('shelfAllSources')}</span>
                         {selectedSourceId === null ? <Check size={15} strokeWidth={2} aria-hidden="true" /> : null}
@@ -87,7 +87,7 @@ export function ShelfSourceMenu({
                           value={source.id}
                           xstyle={[shelfSourceStyles.sourceMenuItem, selectedSourceId === source.id && shelfSourceStyles.sourceMenuItemSelected]}
                         >
-                          <button type="button">
+                          <button data-shelf-source-value={source.id} type="button">
                             <Globe2 size={16} strokeWidth={1.8} aria-hidden="true" />
                             <span {...stylex.props(shelfSourceStyles.sourceMenuLabel)}>
                               <strong>{source.name}</strong>

@@ -21,7 +21,8 @@ describe('card authoring interactions', () => {
 
     await userEvent.click(rendered.getByText('Important fact'))
     await userEvent.keyboard(modShortcut('a'))
-    await userEvent.click(await rendered.findByRole('button', { name: 'Highlight' }))
+    await waitFor(() => expect(rendered.container.querySelector('button[data-editor-action="highlight"]')).not.toBeNull())
+    await userEvent.click(rendered.container.querySelector('button[data-editor-action="highlight"]')!)
 
     await waitFor(() => {
       expect(rendered.container.querySelector('[data-inline-highlight="yellow"]')).toHaveTextContent('Important fact')
@@ -39,7 +40,8 @@ describe('card authoring interactions', () => {
 
     await userEvent.click(rendered.getByText('Important block'))
     await userEvent.keyboard('{End}{Enter}/')
-    await userEvent.click(await rendered.findByRole('option', { name: 'Highlight block' }))
+    await waitFor(() => expect(rendered.container.querySelector('[data-slash-command="block-highlight"]')).not.toBeNull())
+    await userEvent.click(rendered.container.querySelector('[data-slash-command="block-highlight"]')!)
 
     await waitFor(() => {
       expect(rendered.container.querySelector('[data-block-highlight="yellow"]')).not.toBeNull()
@@ -69,20 +71,26 @@ describe('card authoring interactions', () => {
     expect(delimiter).not.toHaveClass('card-delimiter-multiline')
 
     await userEvent.hover(page.getByText('First planet', { exact: false }))
-    const openOptions = await rendered.findByRole('button', { name: 'Card options' })
-    expect(await rendered.findByRole('button', { name: 'Preview card' })).toBeVisible()
+    await waitFor(() => expect(rendered.container.querySelector('[data-card-control="options"]')).not.toBeNull())
+    const openOptions = rendered.container.querySelector<HTMLButtonElement>('[data-card-control="options"]')!
+    expect(rendered.container.querySelector('[data-card-control="preview"]')).toBeVisible()
     expect(openOptions).toBeVisible()
 
     await userEvent.click(delimiter)
-    expect(rendered.queryByRole('toolbar', { name: 'Card options' })).toBeNull()
+    expect(rendered.baseElement.querySelector('[data-card-options-dialog]')).toBeNull()
 
     await userEvent.click(openOptions)
-    const listAnswer = await rendered.findByRole('button', { name: 'List answer' })
-    const basicDirection = rendered.getByRole('radio', { name: 'Basic direction' })
-    const reverseDirection = rendered.getByRole('radio', { name: 'Reverse direction' })
-    expect(rendered.getByRole('toolbar', { name: 'Card options' })).toBeVisible()
-    expect(rendered.queryByRole('button', { name: 'Preview' })).toBeNull()
-    expect(rendered.queryByTestId('inline-menu-main')).toBeNull()
+    await waitFor(() => expect(rendered.baseElement.querySelector('[data-card-options-dialog]')).not.toBeNull())
+    const listAnswer = rendered.baseElement.querySelector<HTMLButtonElement>('[data-card-presentation="list"]')!
+    const basicDirection = rendered.baseElement.querySelector<HTMLElement>('[data-card-direction-choice="forward"]')!
+    const reverseDirection = rendered.baseElement.querySelector<HTMLElement>('[data-card-direction-choice="backward"]')!
+    expect(rendered.baseElement.querySelector('[data-card-options-dialog]')).toBeVisible()
+    expect(
+      rendered.baseElement.querySelector(
+        '[data-card-options-dialog] button[data-card-control="preview"]',
+      ),
+    ).toBeNull()
+    expect(rendered.baseElement.querySelector('[data-inline-menu="main"]')).toBeNull()
     expect(listAnswer).toHaveAttribute('aria-pressed', 'false')
     expect(basicDirection).toHaveAttribute('aria-checked', 'true')
     expect(reverseDirection).toHaveAttribute('aria-checked', 'false')
@@ -177,7 +185,9 @@ describe('card authoring interactions', () => {
       expect(materialStyle.boxShadow).not.toBe('none')
     })
 
-    const controls = rendered.getByRole('group', { name: 'Card controls' })
+    const controls = rendered.container.querySelector<HTMLElement>('[data-card-hover-controls]')
+    if (!controls)
+      throw new Error('Card controls were not rendered')
     const sourceRect = source.getBoundingClientRect()
     const controlsRect = controls.getBoundingClientRect()
     expect(controlsRect.right).toBeGreaterThanOrEqual(sourceRect.right - 4)

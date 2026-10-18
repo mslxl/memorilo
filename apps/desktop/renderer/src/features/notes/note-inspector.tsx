@@ -174,6 +174,7 @@ export function NoteInspector({
               {...stylex.props(noteInspectorStyles.inspector)}
               animate={inspectorAnimate}
               aria-label={t('noteInspector')}
+              data-note-inspector=""
               exit={inspectorExit}
               initial={inspectorInitial}
               transition={inspectorTransition}
@@ -324,6 +325,9 @@ export function NoteInspectorContent({
                     exit={{ opacity: 0, y: shouldReduceMotion ? 0 : -3 }}
                     initial={{ opacity: 0, y: shouldReduceMotion ? 0 : -3 }}
                     layout={shouldReduceMotion ? false : 'position'}
+                    data-note-entry-id={entry.id}
+                    data-note-entry-kind={entry.kind}
+                    data-note-entry-topic-type={entry.kind === 'topic' ? entry.topicType : undefined}
                     role="listitem"
                     transition={entryTransition}
                   >

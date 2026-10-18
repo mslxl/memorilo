@@ -12,12 +12,12 @@ test('keeps the active Editor Block mounted while typing', async () => {
     const application = await launchPagesTestApplication(environment)
     try {
       const window = await application.firstWindow()
-      await window.getByRole('link', { name: 'Journals' }).waitFor()
+      await window.locator('a[href*="/journals"]').waitFor()
       await window.keyboard.press('Meta+P')
-      await window.getByRole('combobox', { name: 'Search commands and Notes' }).fill('Input stability Note')
-      await window.getByRole('option').filter({ hasText: 'Create Note “Input stability Note”' }).click()
+      await window.locator('input[role=combobox][aria-autocomplete=list]').fill('Input stability Note')
+      await window.locator('[role=listbox] [role=option][id$=\"-create-note\"]').click()
 
-      const editor = window.getByRole('textbox', { name: 'Editor content' })
+      const editor = window.locator('[data-editor-content]')
       await editor.waitFor()
       await editor.locator('[data-block-id]').first().click()
       await window.keyboard.press('End')

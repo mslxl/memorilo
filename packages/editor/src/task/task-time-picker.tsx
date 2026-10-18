@@ -27,7 +27,7 @@ export function TaskTimePicker({
   value,
 }: TaskTimePickerProps) {
   return (
-    <div ref={onFloatingRef} {...stylex.props(styles.popover)} data-task-action-floating-owner={floatingOwnerId} style={floatingStyle} role="dialog" aria-label={t('time')}>
+    <div ref={onFloatingRef} {...stylex.props(styles.popover)} data-task-action-floating-owner={floatingOwnerId} data-task-time-picker="" style={floatingStyle} role="dialog" aria-label={t('time')}>
       <div {...stylex.props(styles.heading)}>
         <span>{t('time')}</span>
         <Button variant="icon" xstyle={styles.closeButton} aria-label={t('close')} title={t('close')} type="button" onClick={onClose}>

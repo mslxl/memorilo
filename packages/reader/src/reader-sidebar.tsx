@@ -90,7 +90,7 @@ function RegionAnnotationPreview({
 }) {
   const rect = annotationRegionPreviewRect(annotation)
   return (
-    <div {...stylex.props(readerStyles.regionPreview)} aria-label={label} role="img">
+    <div {...stylex.props(readerStyles.regionPreview)} aria-label={label} data-reader-region-preview="" role="img">
       {imageOcclusion
         ? (
             <img
@@ -171,6 +171,7 @@ export function ReaderSidebar({
           )}
           aria-controls="reader-contents-panel"
           aria-selected={!auxiliarySidebarActive && sidebarTab === 'contents'}
+          data-reader-tab="contents"
           role="tab"
           type="button"
           onClick={() => onTabChange('contents')}
@@ -187,6 +188,7 @@ export function ReaderSidebar({
                 )}
                 aria-controls="reader-annotations-panel"
                 aria-selected={!auxiliarySidebarActive && sidebarTab === 'annotations'}
+                data-reader-tab="annotations"
                 role="tab"
                 type="button"
                 onClick={() => onTabChange('annotations')}
@@ -268,11 +270,14 @@ export function ReaderSidebar({
                             active && readerStyles.annotationItemActive,
                           )}
                           aria-label={label}
+                          data-reader-annotation-id={annotation.id}
+                          data-reader-annotation-kind={annotation.anchors[0].type}
                           onClick={() => onSelectAnnotation(annotation.id)}
                           onPointerDown={() => onActivateAnnotation(annotation.id)}
                         >
                           <button
                             {...stylex.props(readerStyles.annotationTarget)}
+                            data-reader-action="select-annotation"
                             type="button"
                           >
                             <span {...stylex.props(readerStyles.annotationDot, colorStyle(annotation.color))} />
@@ -294,7 +299,7 @@ export function ReaderSidebar({
                             : null}
                           {imageOcclusion
                             ? (
-                                <div {...stylex.props(readerStyles.annotationStatus)}>
+                                <div {...stylex.props(readerStyles.annotationStatus)} data-reader-annotation-status="image-occlusion">
                                   <ScanLine aria-hidden="true" size={12} strokeWidth={1.8} />
                                   {t('reader.annotation.imageOcclusion')}
                                 </div>

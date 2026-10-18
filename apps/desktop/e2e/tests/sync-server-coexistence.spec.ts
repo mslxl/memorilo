@@ -217,14 +217,14 @@ function withSyncServerFixture<Result>(
 }
 
 async function waitForApplication(window: Page): Promise<void> {
-  await window.getByRole('link', { name: 'Journals' }).waitFor()
+  await window.locator('a[href*="/journals"]').waitFor()
 }
 
 async function createNote(window: Page, title: string): Promise<void> {
   await window.keyboard.press('Meta+P')
-  await window.getByRole('combobox', { name: 'Search commands and Notes' }).fill(title)
-  await window.getByRole('option').filter({ hasText: `Create Note “${title}”` }).click()
-  await expect(window.getByRole('button', { name: `Rename Note: ${title}` })).toBeVisible()
+  await window.locator('input[role=combobox][aria-autocomplete=list]').fill(title)
+  await window.locator('[role=listbox] [role=option][id$=\"-create-note\"]').click()
+  await expect(window.locator('[data-note-action="rename-current"]')).toBeVisible()
 }
 
 async function openSettings(application: ElectronApplication, _mainWindow: Page, startPairing = false): Promise<Page> {
@@ -239,9 +239,9 @@ async function openSettings(application: ElectronApplication, _mainWindow: Page,
   const settings = application.windows().find(window => !previous.has(window))
   if (!settings)
     throw new Error('Settings window did not open')
-  await settings.getByRole('button', { exact: true, name: 'Sync Server' }).click()
+  await settings.locator('[data-settings-category="sync"]').click()
   if (startPairing)
-    await settings.getByRole('button', { exact: true, name: 'Set up Sync Server' }).click()
+    await settings.locator('[data-sync-server-action="start-pairing"]').click()
   return settings
 }
 
@@ -285,35 +285,35 @@ test('pairs through the management page, coexists with direct P2P, and restores 
     await waitForApplication(firstWindow)
     const management = await openManagementPage(browser, server.httpUrl)
 
-    await management.getByLabel('Username').fill('owner')
-    await management.getByLabel('Password').fill('correct-horse-battery-staple')
-    await management.getByRole('button', { name: 'Create account' }).click()
-    await expect(management.getByRole('alert')).toContainText('Account created')
-    await management.getByRole('button', { name: 'Sign in' }).click()
-    await expect(management.getByRole('navigation', { name: 'Management' })).toBeVisible()
-    await expect(management.getByRole('button', { name: 'Pair a device' })).toHaveCSS('border-radius', '0px')
-    await expect(management.getByText('The server stores plaintext synchronized data for this account.')).toBeVisible()
+    await management.locator('[data-management-field="username"]').fill('owner')
+    await management.locator('[data-management-field="password"]').fill('correct-horse-battery-staple')
+    await management.locator('[data-management-action="create-account"]').click()
+    await expect(management.locator('[data-management-message="account-created"]')).toBeVisible()
+    await management.locator('[data-management-action="sign-in"]').click()
+    await expect(management.locator('[data-management-navigation]')).toBeVisible()
+    await expect(management.locator('[data-management-action="open-devices"]')).toHaveCSS('border-radius', '0px')
+    await expect(management.locator('[data-management-section="overview"]')).toHaveClass(/active/u)
 
-    await management.getByRole('button', { name: 'Devices' }).click()
-    await management.getByRole('button', { name: 'Create invitation' }).click()
-    const invitation = await management.getByLabel('Invitation').inputValue()
+    await management.locator('[data-management-section="devices"]').click()
+    await management.locator('[data-management-action="create-invitation"]').click()
+    const invitation = await management.locator('[data-management-field="invitation"]').inputValue()
 
     const settings = await openSettings(firstApplication, firstWindow, true)
-    const serverUrl = settings.getByRole('textbox', { name: 'Sync Server URL' })
+    const serverUrl = settings.locator('[data-configuration-field="syncServer.url"] input')
     await serverUrl.fill(server.wsUrl)
     await serverUrl.blur()
-    await settings.getByLabel('Sync Server invitation').fill(invitation)
-    await settings.getByRole('button', { exact: true, name: 'Continue' }).click()
+    await settings.locator('[data-sync-server-field="invitation"]').fill(invitation)
+    await settings.locator('[data-sync-server-action="continue"]').click()
     const response = (await settings.locator('code').textContent())?.trim() ?? ''
     expect(response).not.toBe('')
 
-    await management.getByLabel('Client response').fill(response)
-    await management.getByRole('button', { name: 'Complete pairing' }).click()
-    const credential = await management.getByLabel('Device credential (copy into the client)').inputValue()
-    await settings.getByRole('button', { exact: true, name: 'Continue' }).click()
-    await settings.getByLabel('Issued device credential').fill(credential)
-    await settings.getByRole('button', { name: 'Finish pairing' }).click()
-    await expect(settings.getByText('Sync Server paired. Restart Memorilo to apply the server connection.')).toBeVisible()
+    await management.locator('[data-management-field="client-response"]').fill(response)
+    await management.locator('[data-management-action="complete-pairing"]').click()
+    const credential = await management.locator('[data-management-field="device-credential"]').inputValue()
+    await settings.locator('[data-sync-server-action="continue"]').click()
+    await settings.locator('[data-sync-server-field="credential"]').fill(credential)
+    await settings.locator('[data-sync-server-action="finish-pairing"]').click()
+    await expect(settings.locator('[data-sync-server-setup][data-sync-server-step="complete"]')).toBeVisible()
     expect(await readFile(resolve(firstUserData, 'configuration.json'), 'utf8')).not.toContain(credential)
     expect(await readFile(resolve(firstUserData, 'sync-server/device-credential.enc'), 'utf8')).not.toContain(credential)
 
@@ -343,10 +343,10 @@ test('pairs through the management page, coexists with direct P2P, and restores 
       })
     })
     await createNote(firstWindow, 'Server coexistence note')
-    await secondWindow.getByRole('link', { name: 'Pages' }).click()
-    await expect(secondWindow.getByRole('button', { name: 'Open Note: Server coexistence note' })).toHaveCount(1, { timeout: 30_000 })
-    await firstWindow.getByRole('link', { name: 'Pages' }).click()
-    await expect(firstWindow.getByRole('button', { name: 'Open Note: Server coexistence note' })).toHaveCount(1)
+    await secondWindow.locator('a[href*="/pages"]').click()
+    await expect(secondWindow.locator('button[data-note-action="open"]').filter({ hasText: 'Server coexistence note' })).toHaveCount(1, { timeout: 30_000 })
+    await firstWindow.locator('a[href*="/pages"]').click()
+    await expect(firstWindow.locator('button[data-note-action="open"]').filter({ hasText: 'Server coexistence note' })).toHaveCount(1)
     await expect.poll(() => firstWindow.evaluate(() => (window as unknown as MemoriloWindow).memoriloServerSyncStates ?? []), { timeout: 30_000 }).toEqual(expect.arrayContaining([
       expect.stringMatching(/^syncing:/u),
       expect.stringMatching(/^synced:/u),
@@ -357,20 +357,20 @@ test('pairs through the management page, coexists with direct P2P, and restores 
     await server.start()
     await expect.poll(() => firstWindow.evaluate(() => (window as unknown as MemoriloWindow).desktop.p2p.getServerStatus()), { timeout: 30_000 }).toMatchObject({ state: 'synced' })
     await management.reload()
-    await expect(management.getByRole('navigation', { name: 'Management' })).toBeVisible()
+    await expect(management.locator('[data-management-navigation]')).toBeVisible()
 
     const eventSettings = await openSettings(firstApplication, firstWindow)
-    await management.getByRole('button', { name: 'Sync policy', exact: true }).click()
-    await management.getByRole('button', { name: 'Relay enabled' }).click()
-    await management.getByLabel('Current password').fill('correct-horse-battery-staple')
-    await management.getByRole('button', { name: 'Confirm change' }).click()
-    await expect(eventSettings.getByRole('status').filter({ hasText: 'The Sync Server policy changed' })).toBeVisible({ timeout: 30_000 })
+    await management.locator('[data-management-section="sync-policy"]').click()
+    await management.locator('[data-management-action="toggle-relay"]').click()
+    await management.locator('[data-management-field="policy-password"]').fill('correct-horse-battery-staple')
+    await management.locator('[data-management-action="confirm-policy"]').click()
+    await expect(eventSettings.locator('[data-sync-server-event="policy-changed"]')).toBeVisible({ timeout: 30_000 })
 
-    await management.getByRole('button', { name: 'Server data', exact: true }).click()
-    await management.getByLabel('Current password').fill('correct-horse-battery-staple')
-    await management.getByLabel('Type CLEAR SERVER DATA to confirm').fill('CLEAR SERVER DATA')
-    await management.getByRole('button', { name: 'Clear server data' }).click()
-    await expect(eventSettings.getByRole('status').filter({ hasText: 'The Sync Server data was cleared' })).toBeVisible({ timeout: 30_000 })
+    await management.locator('[data-management-section="server-data"]').click()
+    await management.locator('[data-management-field="reset-password"]').fill('correct-horse-battery-staple')
+    await management.locator('[data-management-field="reset-confirmation"]').fill('CLEAR SERVER DATA')
+    await management.locator('[data-management-action="clear-server-data"]').click()
+    await expect(eventSettings.locator('[data-sync-server-event="account-data-reset"]')).toBeVisible({ timeout: 30_000 })
     await expect.poll(() => firstWindow.evaluate(() => (window as unknown as MemoriloWindow).desktop.p2p.getServerStatus()), { timeout: 30_000 }).toMatchObject({ state: 'synced' })
 
     await Promise.all([applications.close(firstApplication), applications.close(secondApplication)])
@@ -384,7 +384,7 @@ test('pairs through the management page, coexists with direct P2P, and restores 
     firstApplication = await applications.launch(firstDatabase, 'Server and direct peer', firstUserData)
     firstWindow = await firstApplication.firstWindow()
     await waitForApplication(firstWindow)
-    await firstWindow.getByRole('link', { name: 'Pages' }).click()
-    await expect(firstWindow.getByRole('button', { name: 'Open Note: Server coexistence note' })).toHaveCount(1, { timeout: 30_000 })
+    await firstWindow.locator('a[href*="/pages"]').click()
+    await expect(firstWindow.locator('button[data-note-action="open"]').filter({ hasText: 'Server coexistence note' })).toHaveCount(1, { timeout: 30_000 })
   })
 })

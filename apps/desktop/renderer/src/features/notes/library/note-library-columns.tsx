@@ -188,6 +188,8 @@ export function PagesTitleCell({ commands, note, renameRequested, t }: {
         title: displayedTitle,
       })}
       aria-pressed={note.favorite}
+      data-note-action="favorite"
+      data-note-id={note.id}
       disabled={favoritePending}
       title={note.favorite ? t('removeFromFavorites') : t('addToFavorites')}
       type="button"
@@ -209,6 +211,8 @@ export function PagesTitleCell({ commands, note, renameRequested, t }: {
           {...stylex.props(pagesRouteStyles.titleOpenButton)}
           aria-label={t('openNoteFor', { title: displayedTitle })}
           aria-busy={opening}
+          data-note-action="open"
+          data-note-id={note.id}
           disabled={opening}
           title={t('openTitle', { title: displayedTitle })}
           type="button"
@@ -221,6 +225,8 @@ export function PagesTitleCell({ commands, note, renameRequested, t }: {
               <button
                 {...stylex.props(pagesRouteStyles.titleIconButton)}
                 aria-label={t('renameNoteFor', { title: displayedTitle })}
+                data-note-action="rename"
+                data-note-id={note.id}
                 title={t('renameNote')}
                 type="button"
                 onClick={() => {
@@ -249,6 +255,8 @@ export function PagesTitleCell({ commands, note, renameRequested, t }: {
           aria-busy={saving}
           aria-invalid={error !== null}
           aria-label={error ?? t('titleFor', { title: note.title })}
+          data-note-action="rename-input"
+          data-note-id={note.id}
           readOnly={saving}
           title={error ?? t('renameNote')}
           value={draft}

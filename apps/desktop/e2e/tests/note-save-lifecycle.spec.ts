@@ -7,11 +7,11 @@ import {
 } from './pages-test-helpers'
 
 async function createEditedNote(window: Page, title: string, text: string): Promise<void> {
-  await window.getByRole('link', { name: 'Journals' }).waitFor()
+  await window.locator('a[href*="/journals"]').waitFor()
   await window.keyboard.press('Meta+P')
-  await window.getByRole('combobox', { name: 'Search commands and Notes' }).fill(title)
-  await window.getByRole('option').filter({ hasText: `Create Note “${title}”` }).click()
-  const editor = window.getByRole('textbox', { name: 'Editor content' })
+  await window.locator('input[role=combobox][aria-autocomplete=list]').fill(title)
+  await window.locator('[role=listbox] [role=option][id$=\"-create-note\"]').click()
+  const editor = window.locator('[data-editor-content]')
   const initialBlock = editor.locator('[data-block-id]').first()
   await expect(initialBlock).toBeVisible()
   await initialBlock.click()
@@ -20,14 +20,14 @@ async function createEditedNote(window: Page, title: string, text: string): Prom
   await expect(editor).toContainText(text.trim())
 }
 
-async function assertPersisted(environment: Awaited<ReturnType<typeof createPagesTestEnvironment>>, text: string): Promise<void> {
+async function assertPersisted(environment: Awaited<ReturnType<typeof createPagesTestEnvironment>>, title: string, text: string): Promise<void> {
   const relaunched = await launchPagesTestApplication(environment)
   try {
     const window = await relaunched.firstWindow()
-    const recentNote = window.getByRole('link', { name: /persistence/ }).last()
+    const recentNote = window.locator('button[data-note-action="open"]').filter({ hasText: title })
     await expect(recentNote).toBeVisible()
     await recentNote.click()
-    const editor = window.getByRole('textbox', { name: 'Editor content' })
+    const editor = window.locator('[data-editor-content]')
     await expect(editor.locator('[data-block-id]').first()).toContainText(text)
   }
   finally {
@@ -46,7 +46,7 @@ test('persists an edit made immediately before the native window closes', async 
     await closed
     await application.close()
 
-    await assertPersisted(environment, 'saved-before-close')
+    await assertPersisted(environment, 'Window close persistence', 'saved-before-close')
   }
   finally {
     await removePagesTestEnvironment(environment)
@@ -59,12 +59,12 @@ test('persists an edit across route navigation before the debounce expires', asy
     const application = await launchPagesTestApplication(environment)
     const window = await application.firstWindow()
     await createEditedNote(window, 'Route persistence', 'saved-before-navigation')
-    await window.getByRole('link', { name: 'Pages' }).click()
-    await expect(window.getByRole('main', { name: 'Pages' })).toBeVisible()
+    await window.locator('a[href*="/pages"]').click()
+    await expect(window.locator('main[data-page=pages]')).toBeVisible()
     await new Promise(resolve => setTimeout(resolve, 300))
     await application.close()
 
-    await assertPersisted(environment, 'saved-before-navigation')
+    await assertPersisted(environment, 'Route persistence', 'saved-before-navigation')
   }
   finally {
     await removePagesTestEnvironment(environment)
@@ -76,14 +76,14 @@ test('persists an edit made immediately before application quit', async () => {
   try {
     const application = await launchPagesTestApplication(environment)
     const window = await application.firstWindow()
-    await window.getByRole('link', { name: 'Journals' }).waitFor()
+    await window.locator('a[href*="/journals"]').waitFor()
     const title = 'Application quit persistence'
     await window.keyboard.press('Meta+P')
-    await window.getByRole('combobox', { name: 'Search commands and Notes' }).fill(title)
-    await window.getByRole('option').filter({ hasText: `Create Note “${title}”` }).click()
-    const heading = window.getByRole('textbox', { name: 'Editor content' }).locator('[data-block-id]').first()
+    await window.locator('input[role=combobox][aria-autocomplete=list]').fill(title)
+    await window.locator('[role=listbox] [role=option][id$=\"-create-note\"]').click()
+    const heading = window.locator('[data-editor-content]').locator('[data-block-id]').first()
     await expect(heading).toBeVisible()
-    const editor = window.getByRole('textbox', { name: 'Editor content' })
+    const editor = window.locator('[data-editor-content]')
     await heading.click()
     await window.keyboard.press('Meta+A')
     await window.keyboard.insertText('saved-before-quit')
@@ -98,7 +98,7 @@ test('persists an edit made immediately before application quit', async () => {
         applicationProcess.once('exit', () => resolve())
     })
 
-    await assertPersisted(environment, 'saved-before-quit')
+    await assertPersisted(environment, 'Application quit persistence', 'saved-before-quit')
   }
   finally {
     await removePagesTestEnvironment(environment)

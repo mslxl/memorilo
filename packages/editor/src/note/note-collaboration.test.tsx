@@ -69,7 +69,9 @@ function blockIdForText(container: HTMLElement, text: string): string {
 }
 
 function rootBlockIds(container: HTMLElement): string[] {
-  const editor = within(container).getByRole('textbox', { name: 'Editor content' })
+  const editor = container.querySelector<HTMLElement>('[data-editor-content]')
+  if (!editor)
+    throw new Error('Editor content was not rendered')
   return Array.from(editor.children).map((element) => {
     const blockId = (element as HTMLElement).dataset.blockId
     if (!blockId)
@@ -170,7 +172,9 @@ describe('collaborative Notes', () => {
     )
     await within(rendered.container).findByText('Before')
     expect(note.getEntries().find(entry => entry.id === topicId)).toMatchObject({ title: 'Before' })
-    const editor = within(rendered.container).getByRole('textbox', { name: 'Editor content' })
+    const editor = rendered.container.querySelector<HTMLElement>('[data-editor-content]')
+    if (!editor)
+      throw new Error('Editor content was not rendered')
     await userEvent.click(editor)
     await userEvent.keyboard('{End} after')
     await waitFor(() => {
@@ -360,7 +364,7 @@ describe('collaborative Notes', () => {
     expect(receiverVersion).toHaveLength(1)
     expect(receiverVersion[0]?.counter).toBeGreaterThan(0)
 
-    await userEvent.click(within(sender.container).getByRole('textbox', { name: 'Editor content' }))
+    await userEvent.click(sender.container.querySelector<HTMLElement>('[data-editor-content]')!)
     await userEvent.keyboard('{End} synchronized')
     await waitFor(() => expect(sender.container.querySelector('[data-block-id="shared-node"]')).toHaveTextContent('Shared text synchronized'))
 
@@ -394,11 +398,11 @@ describe('collaborative Notes', () => {
     await within(right.container).findByText('Common')
     const sharedVersion = leftNote.getVersion()
 
-    await userEvent.click(within(left.container).getByRole('textbox', { name: 'Editor content' }))
+    await userEvent.click(left.container.querySelector<HTMLElement>('[data-editor-content]')!)
     await userEvent.keyboard('{End} from-left')
     await waitFor(() => expect(left.container.querySelector('[data-block-id="collaborative-node"]')).toHaveTextContent('Common from-left'))
 
-    await userEvent.click(within(right.container).getByRole('textbox', { name: 'Editor content' }))
+    await userEvent.click(right.container.querySelector<HTMLElement>('[data-editor-content]')!)
     await userEvent.keyboard('{Home}from-right ')
     await waitFor(() => expect(right.container.querySelector('[data-block-id="collaborative-node"]')).toHaveTextContent('from-right Common'))
 
@@ -607,7 +611,9 @@ describe('collaborative Notes', () => {
     await within(rendered.container).findByText('Before')
     const earlierVersion = note.getVersion()
 
-    const editor = within(rendered.container).getByRole('textbox', { name: 'Editor content' })
+    const editor = rendered.container.querySelector<HTMLElement>('[data-editor-content]')
+    if (!editor)
+      throw new Error('Editor content was not rendered')
     await userEvent.click(editor)
     await userEvent.keyboard('{End} after')
     await waitFor(() => expect(rendered.container.querySelector('[data-block-id="timeline-node"]')).toHaveTextContent('Before after'))

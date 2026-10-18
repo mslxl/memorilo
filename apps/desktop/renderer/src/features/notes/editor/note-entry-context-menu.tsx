@@ -178,6 +178,7 @@ export function useNoteEntryContextMenu({
                     {...stylex.props(noteEntryContextMenuStyles.entryContextMenuItem)}
                     aria-expanded={addSubmenuOpen}
                     aria-haspopup="menu"
+                    data-entry-action="add"
                     role="menuitem"
                     type="button"
                     onClick={() => setAddSubmenuOpen(true)}
@@ -217,6 +218,7 @@ export function useNoteEntryContextMenu({
                           <button
                             ref={addMenuFirstItemRef}
                             {...stylex.props(noteEntryContextMenuStyles.entryContextMenuItem)}
+                            data-entry-action="add-topic"
                             role="menuitem"
                             type="button"
                             onClick={() => {
@@ -229,6 +231,7 @@ export function useNoteEntryContextMenu({
                           </button>
                           <button
                             {...stylex.props(noteEntryContextMenuStyles.entryContextMenuItem)}
+                            data-entry-action="add-whiteboard"
                             role="menuitem"
                             type="button"
                             onClick={() => {
@@ -243,6 +246,7 @@ export function useNoteEntryContextMenu({
                             ? (
                                 <button
                                   {...stylex.props(noteEntryContextMenuStyles.entryContextMenuItem)}
+                                  data-entry-action="add-folder"
                                   role="menuitem"
                                   type="button"
                                   onClick={() => {
@@ -257,6 +261,7 @@ export function useNoteEntryContextMenu({
                             : null}
                           <button
                             {...stylex.props(noteEntryContextMenuStyles.entryContextMenuItem)}
+                            data-entry-action="add-book"
                             role="menuitem"
                             type="button"
                             onClick={() => {
@@ -274,6 +279,7 @@ export function useNoteEntryContextMenu({
                 <div {...stylex.props(noteEntryContextMenuStyles.entryContextMenuSeparator)} role="separator" />
                 <button
                   {...stylex.props(noteEntryContextMenuStyles.entryContextMenuItem)}
+                  data-entry-action="import-markdown"
                   role="menuitem"
                   type="button"
                   onFocus={() => setAddSubmenuOpen(false)}
@@ -292,6 +298,7 @@ export function useNoteEntryContextMenu({
                         <div {...stylex.props(noteEntryContextMenuStyles.entryContextMenuSeparator)} role="separator" />
                         <button
                           {...stylex.props(noteEntryContextMenuStyles.entryContextMenuItem)}
+                          data-entry-action="rename"
                           role="menuitem"
                           type="button"
                           onFocus={() => setAddSubmenuOpen(false)}
@@ -306,6 +313,7 @@ export function useNoteEntryContextMenu({
                         </button>
                         <button
                           {...stylex.props(noteEntryContextMenuStyles.entryContextMenuItem)}
+                          data-entry-action="delete"
                           role="menuitem"
                           type="button"
                           onFocus={() => setAddSubmenuOpen(false)}

@@ -113,10 +113,11 @@ export default function InlineMenu({ learningEnabled = true }: { learningEnabled
           <Toolbar.Root asChild variant="floating" xstyle={inlineMenuStyles.mainPopup}>
             <InlinePopoverPopup
               {...stylex.props(editorPositionerAdapterStyles.motion)}
-              data-testid="inline-menu-main"
+              data-inline-menu="main"
             >
               <HeadingDropdown actions={actions.heading} />
               <Button
+                data-editor-action="bold"
                 pressed={actions.mark.bold.active}
                 disabled={!actions.mark.bold.canExec}
                 onClick={actions.mark.bold.run}
@@ -125,6 +126,7 @@ export default function InlineMenu({ learningEnabled = true }: { learningEnabled
                 <Bold size={16} />
               </Button>
               <Button
+                data-editor-action="italic"
                 pressed={actions.mark.italic.active}
                 disabled={!actions.mark.italic.canExec}
                 onClick={actions.mark.italic.run}
@@ -133,6 +135,7 @@ export default function InlineMenu({ learningEnabled = true }: { learningEnabled
                 <Italic size={16} />
               </Button>
               <Button
+                data-editor-action="underline"
                 pressed={actions.mark.underline.active}
                 disabled={!actions.mark.underline.canExec}
                 onClick={actions.mark.underline.run}
@@ -141,6 +144,7 @@ export default function InlineMenu({ learningEnabled = true }: { learningEnabled
                 <Underline size={16} />
               </Button>
               <Button
+                data-editor-action="strikethrough"
                 pressed={actions.mark.strike.active}
                 disabled={!actions.mark.strike.canExec}
                 onClick={actions.mark.strike.run}
@@ -149,6 +153,7 @@ export default function InlineMenu({ learningEnabled = true }: { learningEnabled
                 <Strikethrough size={16} />
               </Button>
               <Button
+                data-editor-action="code"
                 pressed={actions.mark.code.active}
                 disabled={!actions.mark.code.canExec}
                 onClick={actions.mark.code.run}
@@ -159,6 +164,7 @@ export default function InlineMenu({ learningEnabled = true }: { learningEnabled
               {learningEnabled
                 ? (
                     <Button
+                      data-editor-action="cloze"
                       pressed={cardSelection.cloze}
                       disabled={!cardSelection.canCloze}
                       onClick={() => {
@@ -174,6 +180,7 @@ export default function InlineMenu({ learningEnabled = true }: { learningEnabled
                   )
                 : null}
               <Button
+                data-editor-action="highlight"
                 pressed={cardSelection.highlight}
                 disabled={!cardSelection.canHighlight}
                 onClick={() => {
@@ -188,6 +195,7 @@ export default function InlineMenu({ learningEnabled = true }: { learningEnabled
               </Button>
               {link.canExec && (
                 <Button
+                  data-editor-action="link"
                   pressed={link.isActive}
                   onClick={() => {
                     link.command()
@@ -211,7 +219,7 @@ export default function InlineMenu({ learningEnabled = true }: { learningEnabled
         <InlinePopoverPositioner {...stylex.props(editorPositionerAdapterStyles.positioner)} placement="bottom">
           <InlinePopoverPopup
             {...stylex.props(editorPositionerAdapterStyles.motion)}
-            data-testid="inline-menu-link"
+            data-inline-menu="link"
           >
             <Surface variant="popover" xstyle={inlineMenuStyles.linkPopup}>
               {linkMenuOpen && (

@@ -53,7 +53,8 @@ interface ProjectCommandPaletteSearchOptions {
 }
 
 function matchesQuery(command: PaletteCommand, normalizedQuery: string): boolean {
-  return [command.label, command.description, command.section, ...command.keywords]
+  // Stable command IDs keep keyboard palette flows usable across localized labels.
+  return [command.id, command.label, command.description, command.section, ...command.keywords]
     .some(value => value.toLocaleLowerCase().includes(normalizedQuery))
 }
 

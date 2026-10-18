@@ -140,6 +140,7 @@ export function AppTitlebar({
                       >
                         <EditableTitle.Trigger
                           aria-label={t('renameNoteFor', { title: page.title })}
+                          data-note-action="rename-current"
                           data-window-no-drag=""
                           title={t('renameNote')}
                         >
@@ -148,7 +149,7 @@ export function AppTitlebar({
                             <Pencil aria-hidden="true" strokeWidth={1.8} />
                           </EditableTitle.Icon>
                         </EditableTitle.Trigger>
-                        <EditableTitle.Input aria-label={t('noteTitle')} data-window-no-drag="" title={t('renameNote')} />
+                        <EditableTitle.Input aria-label={t('noteTitle')} data-note-action="rename-current-input" data-window-no-drag="" title={t('renameNote')} />
                         <EditableTitle.Error />
                       </EditableTitle.Root>
                     )

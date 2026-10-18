@@ -79,6 +79,7 @@ export function ShelfSourceEditor({
   return (
     <form
       key={editor === 'add' ? 'add' : editor.id}
+      data-shelf-source-editor={editor === 'add' ? 'add' : 'edit'}
       {...stylex.props(shelfSourceManagerStyles.sourceForm)}
       onSubmit={event => void submit(event)}
     >
@@ -89,6 +90,7 @@ export function ShelfSourceEditor({
           autoComplete="url"
           defaultValue={editorSource?.url}
           name="url"
+          data-shelf-field="url"
           placeholder="https://example.com/opds"
           required
           type="url"
@@ -104,6 +106,7 @@ export function ShelfSourceEditor({
         <TextField
           defaultValue={editorSource?.name}
           name="name"
+          data-shelf-field="name"
           placeholder={t('shelfUsesSourceTitle')}
           required={editor !== 'add'}
           type="text"
@@ -134,7 +137,7 @@ export function ShelfSourceEditor({
               >
                 <label {...stylex.props(shelfSourceManagerStyles.field)}>
                   <span>{t('shelfUsername')}</span>
-                  <TextField autoComplete="username" defaultValue={editorSource?.username ?? ''} name="username" required type="text" xstyle={shelfSourceManagerStyles.textInput} />
+                  <TextField autoComplete="username" data-shelf-field="username" defaultValue={editorSource?.username ?? ''} name="username" required type="text" xstyle={shelfSourceManagerStyles.textInput} />
                 </label>
                 <label {...stylex.props(shelfSourceManagerStyles.field)}>
                   <span>
@@ -143,6 +146,7 @@ export function ShelfSourceEditor({
                   </span>
                   <TextField
                     autoComplete="current-password"
+                    data-shelf-field="password"
                     name="password"
                     required={editorSource?.auth !== 'basic'}
                     type="password"
@@ -164,7 +168,7 @@ export function ShelfSourceEditor({
         : null}
       <footer {...stylex.props(shelfSourceManagerStyles.sheetActions)}>
         <Button disabled={isPending} variant="secondary" xstyle={shelfSharedStyles.secondaryButton} onClick={onCancel}>{t('shelfCancel')}</Button>
-        <Button disabled={isPending} type="submit" variant="primary" xstyle={shelfSharedStyles.primaryButton}>
+        <Button data-shelf-action="submit-source" disabled={isPending} type="submit" variant="primary" xstyle={shelfSharedStyles.primaryButton}>
           {isPending ? <LoaderCircle {...stylex.props(shelfSharedStyles.spinner)} size={16} strokeWidth={1.9} aria-hidden="true" /> : editor === 'add' ? <Plus size={16} strokeWidth={1.9} aria-hidden="true" /> : <Check size={16} strokeWidth={1.9} aria-hidden="true" />}
           {isPending ? t('shelfChecking') : editor === 'add' ? t('shelfAddSource') : t('shelfSaveChanges')}
         </Button>

@@ -9,13 +9,13 @@ import {
 } from './pages-test-helpers'
 
 async function createNote(window: Page, title: string): Promise<void> {
-  await window.getByRole('link', { name: 'Journals' }).waitFor()
+  await window.locator('a[href*="/journals"]').waitFor()
   await window.keyboard.press('Meta+P')
-  await window.getByRole('combobox', { name: 'Search commands and Notes' }).fill(title)
-  await window.getByRole('option').filter({ hasText: `Create Note “${title}”` }).click()
+  await window.locator('input[role=combobox][aria-autocomplete=list]').fill(title)
+  await window.locator('[role=listbox] [role=option][id$=\"-create-note\"]').click()
   const section = window.locator(`section[aria-label="${title}"]`)
   await expect(section).toBeVisible()
-  const editor = section.getByRole('textbox', { name: 'Editor content' })
+  const editor = section.locator('[data-editor-content]')
   await expect(editor).toBeVisible()
   await expect(editor.locator('[data-block-id]')).toHaveCount(1)
 }
@@ -54,10 +54,12 @@ async function openSlashMenu(window: Page, editor: Locator): Promise<Locator> {
 
 async function registeredSlashMenuComponents(window: Page, editor: Locator): Promise<string[]> {
   const options = await openSlashMenu(window, editor)
-  const labels = await options.evaluateAll(elements => elements.map(element => element.textContent?.replace(/\s+/gu, ' ').trim() ?? ''))
+  const commands = await options.evaluateAll(elements => elements
+    .map(element => element.getAttribute('data-slash-command'))
+    .filter((command): command is string => command !== null))
   await window.keyboard.press('Escape')
   await window.keyboard.press('Backspace')
-  return labels
+  return commands
 }
 
 async function addTodoStates(editor: Locator, window: Page): Promise<void> {
@@ -79,7 +81,7 @@ async function addTodoStates(editor: Locator, window: Page): Promise<void> {
   await window.keyboard.press('Meta+Enter')
   await expect(tasks).toHaveCount(3)
   await appendTaskText('clipboard todo done')
-  const statusButton = (index: number) => tasks.nth(index).getByRole('button', { name: /Task status:/u })
+  const statusButton = (index: number) => tasks.nth(index).locator('button[data-task-status-control]')
   const setTaskStatus = async (index: number, expected: 'todo' | 'doing' | 'done'): Promise<void> => {
     for (let attempt = 0; attempt < 3; attempt++) {
       if (await tasks.nth(index).getAttribute('data-task-status') === expected)
@@ -94,11 +96,11 @@ async function addTodoStates(editor: Locator, window: Page): Promise<void> {
   await expect(tasks.nth(0)).toHaveAttribute('data-task-status', 'todo')
 }
 
-async function appendRegisteredComponents(window: Page, editor: Locator, labels: readonly string[]): Promise<void> {
-  for (const label of labels) {
+async function appendRegisteredComponents(window: Page, editor: Locator, commands: readonly string[]): Promise<void> {
+  for (const command of commands) {
     const beforeTaskLists = await editor.locator('[data-list-kind="task"]').count()
     const options = await openSlashMenu(window, editor)
-    const option = options.filter({ hasText: label })
+    const option = options.locator(`[data-slash-command="${command}"]`)
     await expect(option).toHaveCount(1)
     await option.click()
     await expect(options.first()).toBeHidden()
@@ -164,7 +166,7 @@ test('copies all registered slash-menu components to another Note', async () => 
     const errors = attachErrorCapture(window)
     await createNote(window, 'Clipboard source')
 
-    const editor = window.locator('section[aria-label="Clipboard source"]').getByRole('textbox', { name: 'Editor content' })
+    const editor = window.locator('section[aria-label="Clipboard source"]').locator('[data-editor-content]')
     const registeredComponents = await registeredSlashMenuComponents(window, editor)
     expect(registeredComponents.length).toBeGreaterThan(0)
     await appendRegisteredComponents(window, editor, registeredComponents)
@@ -176,21 +178,21 @@ test('copies all registered slash-menu components to another Note', async () => 
     await window.keyboard.press('Meta+C')
 
     await createNote(window, 'Clipboard target')
-    const targetEditor = window.locator('section[aria-label="Clipboard target"]').getByRole('textbox', { name: 'Editor content' })
+    const targetEditor = window.locator('section[aria-label="Clipboard target"]').locator('[data-editor-content]')
     await targetEditor.locator('[data-block-id]').first().click()
     await window.keyboard.press('Meta+A')
     await targetEditor.click({ button: 'right' })
-    await window.getByRole('menuitem', { name: 'Paste' }).click()
+    await window.locator('[data-editor-action=paste]').click()
     await expect(targetEditor.locator('pre[data-language]')).not.toHaveCount(0)
     await expect.poll(() => editorStructure(targetEditor), { timeout: 30_000 }).toEqual(sourceStructure)
     await expect(targetEditor.locator('[data-list-kind="task"]')).toHaveCount(3)
     await expect(window.locator('section[aria-label="Clipboard target"] [role="status"]')).toHaveCount(0)
     expect(errors).toEqual([])
 
-    await window.getByRole('link', { name: 'Pages' }).click()
-    await expect(window.getByRole('main', { name: 'Pages' })).toBeVisible()
-    await window.getByRole('button', { name: 'Open Note: Clipboard target' }).click()
-    const reopenedEditor = window.locator('section[aria-label="Clipboard target"]').getByRole('textbox', { name: 'Editor content' })
+    await window.locator('a[href*="/pages"]').click()
+    await expect(window.locator('main[data-page=pages]')).toBeVisible()
+    await window.locator('button[data-note-action="open"]').filter({ hasText: 'Clipboard target' }).click()
+    const reopenedEditor = window.locator('section[aria-label="Clipboard target"]').locator('[data-editor-content]')
     await expect.poll(() => editorStructure(reopenedEditor), { timeout: 30_000 }).toEqual(sourceStructure)
     await expect(window.locator('section[aria-label="Clipboard target"] [role="status"]')).toHaveCount(0)
     expect(errors).toEqual([])

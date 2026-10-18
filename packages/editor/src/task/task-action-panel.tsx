@@ -264,6 +264,7 @@ export function TaskActionPanel({
       <div
         ref={panelRef}
         aria-labelledby={headingId}
+        data-task-action-panel=""
         id={id}
         role="dialog"
         style={{ ...style, visibility: visible ? 'visible' : 'hidden' }}
@@ -273,6 +274,7 @@ export function TaskActionPanel({
           <button
             {...stylex.props(styles.segment, mode === 'date' && styles.segmentSelected)}
             aria-selected={mode === 'date'}
+            data-task-schedule-mode="date"
             role="tab"
             type="button"
             onClick={() => {
@@ -287,6 +289,7 @@ export function TaskActionPanel({
           <button
             {...stylex.props(styles.segment, mode === 'span' && styles.segmentSelected)}
             aria-selected={mode === 'span'}
+            data-task-schedule-mode="span"
             role="tab"
             type="button"
             onClick={() => {
@@ -305,7 +308,7 @@ export function TaskActionPanel({
               <>
                 <div {...stylex.props(styles.quickDates)}>
                   {quickDateOptions.map(({ icon: Icon, key }) => (
-                    <button key={key} {...stylex.props(styles.quickDate)} aria-label={t(`quickDate${key.slice(0, 1).toUpperCase()}${key.slice(1)}`)} title={t(`quickDate${key.slice(0, 1).toUpperCase()}${key.slice(1)}`)} type="button" onClick={() => quickDate(key)}>
+                    <button key={key} {...stylex.props(styles.quickDate)} aria-label={t(`quickDate${key.slice(0, 1).toUpperCase()}${key.slice(1)}`)} data-task-quick-date={key} title={t(`quickDate${key.slice(0, 1).toUpperCase()}${key.slice(1)}`)} type="button" onClick={() => quickDate(key)}>
                       <Icon aria-hidden="true" size={16} strokeWidth={1.7} />
                     </button>
                   ))}
@@ -378,6 +381,7 @@ export function TaskActionPanel({
         <button
           ref={timeRefs.setReference}
           {...stylex.props(styles.settingRow)}
+          data-task-setting="time"
           disabled={updating || (mode === 'date' && selectedDate === null)}
           type="button"
           onClick={() => {
@@ -416,6 +420,7 @@ export function TaskActionPanel({
         <button
           ref={reminderRefs.setReference}
           {...stylex.props(styles.settingRow, reminders.length > 0 && styles.settingRowSelected)}
+          data-task-setting="reminder"
           disabled={updating}
           type="button"
           onClick={() => {
@@ -448,6 +453,7 @@ export function TaskActionPanel({
         <button
           ref={refs.setReference}
           {...stylex.props(styles.settingRow, repeatDraft !== null && styles.settingRowSelected)}
+          data-task-setting="repeat"
           disabled={updating}
           type="button"
           onClick={() => {
@@ -497,8 +503,8 @@ export function TaskActionPanel({
           : null}
         {error !== null ? <span {...stylex.props(styles.error)} role="alert">{error}</span> : null}
         <div {...stylex.props(styles.footer)}>
-          <Button variant="plain" xstyle={styles.footerButton} disabled={updating} type="button" onClick={clear}>{t('clearSchedule')}</Button>
-          <Button variant="primary" xstyle={[styles.footerButton, styles.primaryAction]} disabled={updating} type="button" onClick={save}>{t('confirmSchedule')}</Button>
+          <Button data-task-action="clear-schedule" variant="plain" xstyle={styles.footerButton} disabled={updating} type="button" onClick={clear}>{t('clearSchedule')}</Button>
+          <Button data-task-action="save-schedule" variant="primary" xstyle={[styles.footerButton, styles.primaryAction]} disabled={updating} type="button" onClick={save}>{t('confirmSchedule')}</Button>
         </div>
       </div>
     </Surface>

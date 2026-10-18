@@ -130,7 +130,7 @@ export function TaskOccurrencePanel({
         <div {...stylex.props(styles.divider)} />
         <Button variant="plain" xstyle={styles.action} disabled={updating} type="button" onClick={skip}>{t('skipThis')}</Button>
         <Button variant="plain" xstyle={styles.action} disabled={updating} type="button" onClick={onlyThis}>{t('onlyThis')}</Button>
-        <Button variant="primary" xstyle={[styles.action, styles.primaryAction]} disabled={updating} type="button" onClick={complete}>{t('completeAndRepeat')}</Button>
+        <Button data-task-action="complete-and-repeat" variant="primary" xstyle={[styles.action, styles.primaryAction]} disabled={updating} type="button" onClick={complete}>{t('completeAndRepeat')}</Button>
       </div>
     </Surface>
   )

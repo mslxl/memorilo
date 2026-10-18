@@ -62,11 +62,11 @@ async function selectMarkdownFile(application: ElectronApplication, filePath: st
 }
 
 async function createNote(window: Page, title: string): Promise<void> {
-  await window.getByRole('link', { name: 'Journals' }).waitFor()
+  await window.locator('a[href*="/journals"]').waitFor()
   await window.keyboard.press('Meta+P')
-  await window.getByRole('combobox', { name: 'Search commands and Notes' }).fill(title)
-  await window.getByRole('option').filter({ hasText: `Create Note “${title}”` }).click()
-  await expect(window.getByRole('textbox', { name: 'Editor content' })).toBeVisible()
+  await window.locator('input[role=combobox][aria-autocomplete=list]').fill(title)
+  await window.locator('[role=listbox] [role=option][id$=\"-create-note\"]').click()
+  await expect(window.locator('[data-editor-content]')).toBeVisible()
 }
 
 test('imports Markdown as a new Note with GFM content and warnings', async () => {
@@ -78,22 +78,22 @@ test('imports Markdown as a new Note with GFM content and warnings', async () =>
       const window = await application.firstWindow()
       const markdownPath = resolve(userDataDirectory, 'Markdown import E2E.md')
       await writeFile(markdownPath, markdownSource)
-      await window.getByRole('link', { name: 'Pages' }).click()
-      await expect(window.getByRole('main', { name: 'Pages' })).toBeVisible()
+      await window.locator('a[href*="/pages"]').click()
+      await expect(window.locator('main[data-page=pages]')).toBeVisible()
       await selectMarkdownFile(application, markdownPath)
-      await window.getByRole('button', { name: 'Import…' }).click()
+      await window.locator('button[data-note-action="import"]').click()
 
-      const dialog = window.getByRole('dialog', { name: 'Import Markdown' })
+      const dialog = window.locator('[data-markdown-import-dialog]')
       await expect(dialog).toBeVisible()
-      await expect(dialog.getByRole('textbox', { name: 'Note title' })).toHaveValue('Markdown import E2E')
-      await expect(dialog.getByRole('textbox', { name: 'Topic title' })).toHaveValue('Imported Markdown Topic')
-      await expect(dialog.locator('select')).toHaveValue('gfm')
-      await expect(dialog.getByRole('checkbox')).toBeChecked()
-      await expect(dialog.getByRole('status')).toContainText('HTML is not supported')
-      await dialog.getByRole('button', { exact: true, name: 'Import' }).click()
+      await expect(dialog.locator('[data-markdown-import-field="note-title"]')).toHaveValue('Markdown import E2E')
+      await expect(dialog.locator('[data-markdown-import-field="topic-title"]')).toHaveValue('Imported Markdown Topic')
+      await expect(dialog.locator('[data-markdown-import-field="flavor"]')).toHaveValue('gfm')
+      await expect(dialog.locator('[data-markdown-import-field="map-tasks"]')).toBeChecked()
+      await expect(dialog.locator('[data-markdown-import-diagnostics]')).toContainText('HTML is not supported')
+      await dialog.locator('[data-markdown-import-action="submit"]').click()
 
       await expect(dialog).toBeHidden()
-      const editor = window.getByRole('textbox', { name: 'Editor content' })
+      const editor = window.locator('[data-editor-content]')
       await expect(window.locator('section[aria-label="Markdown import E2E"]')).toBeVisible()
       await expect(editor.locator('h1')).toHaveText('Imported Markdown Topic')
       await expect(editor.locator('strong')).toHaveText('bold')
@@ -102,8 +102,8 @@ test('imports Markdown as a new Note with GFM content and warnings', async () =>
       await expect(editor.locator('code')).toHaveText('code')
       await expect(editor.locator('a').filter({ hasText: 'link' })).toHaveAttribute('href', 'https://example.com')
       await expect(editor.locator('table')).toHaveCount(1)
-      await expect(editor.getByRole('button', { name: 'Task status: todo' })).toHaveCount(1)
-      await expect(editor.getByRole('button', { name: 'Task status: done' })).toHaveCount(1)
+      await expect(editor.locator('button[data-task-status-control][data-status="todo"]')).toHaveCount(1)
+      await expect(editor.locator('button[data-task-status-control][data-status="done"]')).toHaveCount(1)
     }
     finally {
       await application.close()
@@ -123,20 +123,20 @@ test('imports Markdown as a Topic from the Note Structure context menu', async (
       const window = await application.firstWindow()
       const noteTitle = 'Markdown context import E2E'
       await createNote(window, noteTitle)
-      await window.getByRole('button', { name: 'Show Note Inspector' }).click()
-      await window.getByRole('heading', { name: 'Note Structure' }).click({ button: 'right' })
-      await window.getByRole('menuitem', { name: 'Add' }).click()
-      await window.getByRole('menuitem', { name: 'Import Markdown' }).click()
+      await window.locator('[data-note-inspector-toggle]').click()
+      await window.locator('[data-note-inspector] h1').click({ button: 'right' })
+      await window.locator('[role="menuitem"][data-entry-action="add"]').click()
+      await window.locator('[role="menuitem"][data-entry-action="import-markdown"]').click()
       await attachMarkdownFile(window, 'Nested Markdown Topic.md')
 
-      const dialog = window.getByRole('dialog', { name: 'Import Markdown' })
-      await expect(dialog.getByRole('textbox', { name: 'Topic title' })).toHaveValue('Imported Markdown Topic')
-      await expect(dialog.getByRole('textbox', { name: 'Note title' })).toHaveCount(0)
-      await dialog.getByRole('button', { exact: true, name: 'Import' }).click()
+      const dialog = window.locator('[data-markdown-import-dialog]')
+      await expect(dialog.locator('[data-markdown-import-field="topic-title"]')).toHaveValue('Imported Markdown Topic')
+      await expect(dialog.locator('[data-markdown-import-field="note-title"]')).toHaveCount(0)
+      await dialog.locator('[data-markdown-import-action="submit"]').click()
 
-      const editor = window.getByRole('textbox', { name: 'Editor content' })
+      const editor = window.locator('[data-editor-content]')
       await expect(editor.locator('h1')).toHaveText('Imported Markdown Topic')
-      await expect(window.getByRole('link', { name: 'Imported Markdown Topic' })).toBeVisible()
+      await expect(window.locator('[data-note-inspector] [data-note-entry-topic-type="regular"] a').filter({ hasText: 'Imported Markdown Topic' })).toBeVisible()
       await expect(window.locator(`section[aria-label="${noteTitle}"]`)).toBeVisible()
     }
     finally {

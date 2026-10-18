@@ -79,10 +79,11 @@ export function ReaderAnnotationPopover({
       {...stylex.props(styles.popover, position.below && styles.below)}
       aria-label={t('reader.annotationActions')}
       data-reader-capture-overlay="true"
+      data-reader-toolbar="annotation"
       role="toolbar"
       style={position.style}
     >
-      <button {...stylex.props(styles.tool)} aria-label={t('reader.close')} title={t('reader.close')} type="button" onClick={onDismiss}>
+      <button {...stylex.props(styles.tool)} aria-label={t('reader.close')} data-reader-action="dismiss-annotation" title={t('reader.close')} type="button" onClick={onDismiss}>
         <X aria-hidden="true" size={17} strokeWidth={1.9} />
       </button>
       {colorPaletteOpen
@@ -94,6 +95,8 @@ export function ReaderAnnotationPopover({
                   {...stylex.props(styles.colorButton, colorStyle(color), annotation.color === color && styles.colorSelected)}
                   aria-label={t('reader.colorAnnotation', { color: t(`reader.colors.${color}`) })}
                   aria-pressed={annotation.color === color}
+                  data-reader-action="select-color"
+                  data-reader-color={color}
                   title={t('reader.useColor', { color: t(`reader.colors.${color}`) })}
                   type="button"
                   onClick={() => onColorChange(color)}
@@ -114,6 +117,7 @@ export function ReaderAnnotationPopover({
                 {...stylex.props(styles.tool)}
                 aria-label={t('reader.chooseAnnotationColor')}
                 aria-expanded={colorPaletteOpen}
+                data-reader-action="choose-color"
                 title={t('reader.color')}
                 type="button"
                 onClick={() => onColorPaletteOpenChange(true)}
@@ -127,6 +131,7 @@ export function ReaderAnnotationPopover({
                         {...stylex.props(styles.tool, annotation.style === 'highlight' && styles.toolActive)}
                         aria-label={t('reader.highlightStyle')}
                         aria-pressed={annotation.style === 'highlight'}
+                        data-reader-action="set-style-highlight"
                         title={t('reader.highlightStyle')}
                         type="button"
                         onClick={() => onStyleChange('highlight')}
@@ -137,6 +142,7 @@ export function ReaderAnnotationPopover({
                         {...stylex.props(styles.tool, annotation.style === 'underline' && styles.toolActive)}
                         aria-label={t('reader.underlineStyle')}
                         aria-pressed={annotation.style === 'underline'}
+                        data-reader-action="set-style-underline"
                         title={t('reader.underlineStyle')}
                         type="button"
                         onClick={() => onStyleChange('underline')}
@@ -151,6 +157,7 @@ export function ReaderAnnotationPopover({
                     <button
                       {...stylex.props(styles.tool)}
                       aria-label={t('reader.openImageOcclusion')}
+                      data-reader-action="open-image-occlusion"
                       disabled={openingImageOcclusion}
                       title={t('reader.openImageOcclusion')}
                       type="button"
@@ -165,6 +172,7 @@ export function ReaderAnnotationPopover({
                     <button
                       {...stylex.props(styles.tool)}
                       aria-label={t('reader.addAnnotation')}
+                      data-reader-action="add-annotation"
                       disabled={creatingTopic}
                       title={t('reader.addAnnotation')}
                       type="button"
@@ -175,7 +183,7 @@ export function ReaderAnnotationPopover({
                   )
                 : null}
               <span {...stylex.props(styles.divider)} />
-              <button {...stylex.props(styles.tool, styles.destructive)} aria-label={t('reader.deleteHighlight')} title={t('reader.deleteHighlight')} type="button" onClick={onDelete}>
+              <button {...stylex.props(styles.tool, styles.destructive)} aria-label={t('reader.deleteHighlight')} data-reader-action="delete-highlight" title={t('reader.deleteHighlight')} type="button" onClick={onDelete}>
                 <Trash2 aria-hidden="true" size={16} strokeWidth={1.9} />
               </button>
             </>

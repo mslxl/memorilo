@@ -221,6 +221,7 @@ export default function ImageView(props: ReactNodeViewProps & {
     >
       {url && !error && (
         <img
+          data-editor-image=""
           src={url}
           onLoad={handleImageLoad}
           alt="upload preview"
@@ -259,6 +260,7 @@ export default function ImageView(props: ReactNodeViewProps & {
             >
               <button
                 {...stylex.props(imageViewStyles.bubbleButton)}
+                data-image-action="open-occlusion"
                 disabled={opening || !naturalSize}
                 type="button"
                 onClick={() => void handleOpenImageOcclusion()}

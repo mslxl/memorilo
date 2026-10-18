@@ -79,6 +79,7 @@ export function ReaderToolbar({
     <Button
       aria-label={sidebarLabel}
       aria-pressed={annotationPanelOpen}
+      data-reader-action="toggle-sidebar"
       data-window-no-drag=""
       title={sidebarLabel}
       variant="toolbar"
@@ -138,7 +139,7 @@ export function ReaderToolbar({
         >
           <ChevronLeft aria-hidden="true" size={17} strokeWidth={1.9} />
         </Button>
-        <span {...stylex.props(readerStyles.location)} aria-live="polite">
+        <span {...stylex.props(readerStyles.location)} aria-live="polite" data-reader-location="">
           {adapterState.location.label || t('reader.opening')}
         </span>
         <Button
@@ -170,6 +171,7 @@ export function ReaderToolbar({
               <Button
                 aria-label={t('reader.selectArea')}
                 aria-pressed={regionSelectionActive}
+                data-reader-action="select-area"
                 disabled={status !== 'ready'}
                 title={t('reader.selectArea')}
                 variant="toolbar"
@@ -207,6 +209,7 @@ export function ReaderToolbar({
               <>
                 <Button
                   aria-label={scaleActionLabel(scaleCapability, 'out', t)}
+                  data-reader-action="scale-out"
                   data-window-no-drag=""
                   disabled={status !== 'ready' || adapterState.scale <= scaleCapability.minimum}
                   title={scaleActionLabel(scaleCapability, 'out', t)}
@@ -222,6 +225,7 @@ export function ReaderToolbar({
                 </Button>
                 <Button
                   aria-label={scaleActionLabel(scaleCapability, 'in', t)}
+                  data-reader-action="scale-in"
                   data-window-no-drag=""
                   disabled={status !== 'ready' || adapterState.scale >= scaleCapability.maximum}
                   title={scaleActionLabel(scaleCapability, 'in', t)}

@@ -198,11 +198,11 @@ describe('outline interactions', () => {
         }}
       />,
     )
-    await rendered.findByRole('button', { name: 'Task status: todo' })
+    await waitFor(() => expect(rendered.container.querySelector('button[data-task-status-control][data-status="todo"]')).not.toBeNull())
 
-    await userEvent.click(page.getByRole('button', { name: 'Task status: todo' }))
+    await userEvent.click(rendered.container.querySelector('button[data-task-status-control][data-status="todo"]')!)
 
-    expect(await rendered.findByRole('button', { name: 'Task status: doing' })).toHaveAttribute('aria-pressed', 'false')
+    await waitFor(() => expect(rendered.container.querySelector('button[data-task-status-control][data-status="doing"]')).toHaveAttribute('aria-pressed', 'false'))
     expect(blockElement(rendered.container, 'Task')).not.toHaveAttribute('data-outline-focus-root')
   })
 

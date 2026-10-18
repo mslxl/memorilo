@@ -129,7 +129,7 @@ export function SyncServerSetup({ onMessage, serverStatus }: SyncServerSetupProp
 
   if (step === 'idle') {
     return (
-      <div {...stylex.props(styles.setupCard)}>
+      <div {...stylex.props(styles.setupCard)} data-sync-server-setup="">
         <div {...stylex.props(styles.setupHeader)}>
           <div {...stylex.props(styles.setupIcon)}>
             <Server aria-hidden="true" size={20} strokeWidth={1.8} />
@@ -144,6 +144,7 @@ export function SyncServerSetup({ onMessage, serverStatus }: SyncServerSetupProp
         <Button
           disabled={!available}
           variant="primary"
+          data-sync-server-action="start-pairing"
           xstyle={styles.setupButton}
           onClick={startPairing}
         >
@@ -154,7 +155,7 @@ export function SyncServerSetup({ onMessage, serverStatus }: SyncServerSetupProp
   }
 
   return (
-    <div {...stylex.props(styles.wizardContainer)}>
+    <div {...stylex.props(styles.wizardContainer)} data-sync-server-setup="" data-sync-server-step={step}>
       {needsRestart && (
         <Alert variant="warning" xstyle={styles.restartBanner}>
           <AlertTriangle aria-hidden="true" size={16} strokeWidth={2} />
@@ -190,6 +191,7 @@ export function SyncServerSetup({ onMessage, serverStatus }: SyncServerSetupProp
                 {t('syncServerPairingInvitationHelp')}
               </p>
               <TextField
+                data-sync-server-field="invitation"
                 id="sync-server-invitation"
                 placeholder={t('syncServerInvitationPlaceholder')}
                 value={serverInvitation}
@@ -198,11 +200,12 @@ export function SyncServerSetup({ onMessage, serverStatus }: SyncServerSetupProp
               />
             </div>
             <div {...stylex.props(styles.wizardActions)}>
-              <Button variant="secondary" onClick={() => setStep('idle')}>
+              <Button data-sync-server-action="cancel" variant="secondary" onClick={() => setStep('idle')}>
                 {t('cancel')}
               </Button>
               <Button
                 disabled={!available || serverInvitation.trim().length === 0 || isProcessing}
+                data-sync-server-action="continue"
                 variant="primary"
                 onClick={() => void acceptInvitation()}
               >
@@ -234,10 +237,10 @@ export function SyncServerSetup({ onMessage, serverStatus }: SyncServerSetupProp
               </Button>
             </div>
             <div {...stylex.props(styles.wizardActions)}>
-              <Button variant="secondary" onClick={() => setStep('invitation')}>
+              <Button data-sync-server-action="back" variant="secondary" onClick={() => setStep('invitation')}>
                 {t('back')}
               </Button>
-              <Button variant="primary" onClick={continueToCredential}>
+              <Button data-sync-server-action="continue" variant="primary" onClick={continueToCredential}>
                 {t('continue')}
               </Button>
             </div>
@@ -254,6 +257,7 @@ export function SyncServerSetup({ onMessage, serverStatus }: SyncServerSetupProp
                 {t('syncServerIssuedCredentialHelp')}
               </p>
               <TextField
+                data-sync-server-field="credential"
                 id="sync-server-issued-credential"
                 placeholder={t('syncServerCredentialPlaceholder')}
                 value={serverCredential}
@@ -262,11 +266,12 @@ export function SyncServerSetup({ onMessage, serverStatus }: SyncServerSetupProp
               />
             </div>
             <div {...stylex.props(styles.wizardActions)}>
-              <Button variant="secondary" onClick={() => setStep('response')}>
+              <Button data-sync-server-action="back" variant="secondary" onClick={() => setStep('response')}>
                 {t('back')}
               </Button>
               <Button
                 disabled={!available || serverCredential.trim().length === 0 || isProcessing}
+                data-sync-server-action="finish-pairing"
                 variant="primary"
                 onClick={() => void completeSetup()}
               >
@@ -283,7 +288,7 @@ export function SyncServerSetup({ onMessage, serverStatus }: SyncServerSetupProp
               {t('syncServerPairingCompleted')}
             </Status>
             <div {...stylex.props(styles.wizardActions)}>
-              <Button variant="primary" onClick={() => setStep('idle')}>
+              <Button data-sync-server-action="done" variant="primary" onClick={() => setStep('idle')}>
                 {t('done')}
               </Button>
             </div>

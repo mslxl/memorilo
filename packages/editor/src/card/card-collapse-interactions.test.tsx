@@ -336,38 +336,43 @@ describe('card authoring interactions', () => {
     )
     await waitFor(() => expect(rendered.container.querySelector('[data-card-delimiter]')).not.toBeNull())
     await userEvent.hover(page.getByText('Capital of France', { exact: false }))
-    const previewButton = await rendered.findByRole('button', { name: 'Preview card' })
+    await waitFor(() => expect(rendered.container.querySelector('button[data-card-control="preview"]')).not.toBeNull())
+    const previewButton = rendered.container.querySelector<HTMLButtonElement>('button[data-card-control="preview"]')!
     await waitFor(() => {
       expect(previewButton).toBeVisible()
-      expect(rendered.getByRole('button', { name: 'Card options' })).toBeVisible()
+      expect(rendered.container.querySelector('button[data-card-control="options"]')).toBeVisible()
     })
 
     await userEvent.click(previewButton)
 
-    const preview = await rendered.findByRole('dialog', { name: 'Card preview' })
-    expect(rendered.queryByRole('toolbar', { name: 'Card options' })).toBeNull()
+    await waitFor(() => expect(rendered.baseElement.querySelector('[data-card-preview-dialog]')).not.toBeNull())
+    const preview = rendered.baseElement.querySelector<HTMLElement>('[data-card-preview-dialog]')!
+    expect(rendered.baseElement.querySelector('[data-card-options-dialog]')).toBeNull()
     expect(rendered.container.querySelector('[data-block-id="capital"]')).toHaveAttribute('data-card-scope-active')
     expect(rendered.container.querySelectorAll('[data-card-scope-active]')).toHaveLength(1)
     expect(within(preview).getByText('Capital of France')).toBeInTheDocument()
     expect(within(preview).getByText('Paris')).not.toBeVisible()
-    const previewEditor = within(preview).getByTestId('card-preview-surface').querySelector('.ProseMirror')
+    const previewSurface = preview.querySelector<HTMLElement>('[data-card-id]')
+    if (!previewSurface)
+      throw new Error('Card Preview surface was not rendered')
+    const previewEditor = previewSurface.querySelector('.ProseMirror')
     if (!previewEditor)
       throw new Error('Card Preview did not mount a ProseMirror Editor')
 
     await act(async () => {
-      await userEvent.click(within(preview).getByRole('button', { name: 'Show answer' }))
+      await userEvent.click(preview.querySelector('button[data-card-action="reveal-answer"]')!)
     })
     await waitFor(() => expect(
-      within(preview).getByTestId('card-preview-surface').querySelector('[data-card-review-hidden]'),
+      previewSurface.querySelector('[data-card-review-hidden]'),
     ).toBeNull())
-    expect(within(preview).getByTestId('card-preview-surface')).toHaveTextContent('Paris')
-    expect(within(preview).getByTestId('card-preview-surface').querySelector('.ProseMirror')).toBe(previewEditor)
+    expect(previewSurface).toHaveTextContent('Paris')
+    expect(previewSurface.querySelector('.ProseMirror')).toBe(previewEditor)
 
     await act(async () => {
       await userEvent.keyboard('{Escape}')
     })
     await waitFor(() => {
-      expect(rendered.queryByRole('dialog', { name: 'Card preview' })).toBeNull()
+      expect(rendered.baseElement.querySelector('[data-card-preview-dialog]')).toBeNull()
       expect(rendered.container.querySelector('[data-card-scope-active]')).toBeNull()
     })
   })

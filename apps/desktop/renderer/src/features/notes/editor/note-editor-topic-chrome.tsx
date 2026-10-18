@@ -148,6 +148,7 @@ export function ReaderSourceHeader({
             <Link
               {...stylex.props(noteEditorStyles.readerSourceLink)}
               aria-label={t('openReaderSource')}
+              data-reader-source-link=""
               params={{ readingId: navigation.readingId }}
               search={{
                 annotationId: navigation.annotationId,

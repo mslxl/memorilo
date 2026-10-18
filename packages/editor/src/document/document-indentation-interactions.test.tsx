@@ -173,7 +173,7 @@ describe('document interactions', () => {
     expect(parentBlockId(rendered.container, 'C')).toBe('B')
     expectRichSubtreeContent(rendered.container)
 
-    await userEvent.click(rendered.getByRole('button', { name: 'Outline mode' }))
+    await userEvent.click(rendered.container.querySelector('button[data-editor-mode-control="outline"]')!)
     await waitFor(() => expect(rendered.container.querySelector('[data-editor-mode="outline"]')).not.toBeNull())
     expect(parentBlockId(rendered.container, 'B')).toBe('A')
     expect(parentBlockId(rendered.container, 'C')).toBe('B')
@@ -189,7 +189,7 @@ describe('document interactions', () => {
     expect(parentBlockId(rendered.container, 'F')).toBe('E')
     expectRichSubtreeContent(rendered.container)
 
-    await userEvent.click(rendered.getByRole('button', { name: 'Document mode' }))
+    await userEvent.click(rendered.container.querySelector('button[data-editor-mode-control="document"]')!)
     await waitFor(() => expect(rendered.container.querySelector('[data-editor-mode="document"]')).not.toBeNull())
     expect(parentBlockId(rendered.container, 'B')).toBe('Level-2')
     expect(parentBlockId(rendered.container, 'C')).toBe('B')
@@ -471,7 +471,8 @@ describe('document interactions', () => {
     await act(async () => {
       await new Promise<void>(resolve => setTimeout(resolve, 250))
     })
-    const dragHandle = rendered.getByLabelText('Drag block')
+    await waitFor(() => expect(rendered.baseElement.querySelector('[data-block-handle-action="drag"]')).not.toBeNull())
+    const dragHandle = rendered.baseElement.querySelector<HTMLElement>('[data-block-handle-action="drag"]')!
     await act(async () => {
       fireEvent.pointerDown(dragHandle)
       await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
@@ -483,12 +484,12 @@ describe('document interactions', () => {
 
     expect(rootBlockIds(rendered.container)).toEqual(['A', 'B'])
     expect(selectedBlock).toHaveClass('ProseMirror-selectednode')
-    expect(rendered.getByRole('textbox', { name: 'Editor content' })).toHaveFocus()
+    expect(rendered.container.querySelector<HTMLElement>('[data-editor-content]')!).toHaveFocus()
 
     await userEvent.keyboard('{Shift>}{Tab}{/Shift}')
 
     expect(rootBlockIds(rendered.container)).toEqual(['A', 'B'])
     expect(selectedBlock).toHaveClass('ProseMirror-selectednode')
-    expect(rendered.getByRole('textbox', { name: 'Editor content' })).toHaveFocus()
+    expect(rendered.container.querySelector<HTMLElement>('[data-editor-content]')!).toHaveFocus()
   })
 })

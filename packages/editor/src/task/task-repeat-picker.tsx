@@ -41,14 +41,16 @@ export interface TaskRepeatPickerProps {
 
 function Select({
   children,
+  field,
   onChange,
   value,
 }: {
   children: ReactNode
+  field?: string
   onChange: (value: string) => void
   value: string
 }) {
-  return <SelectField xstyle={styles.input} value={value} onChange={event => onChange(event.target.value)}>{children}</SelectField>
+  return <SelectField data-task-field={field} xstyle={styles.input} value={value} onChange={event => onChange(event.target.value)}>{children}</SelectField>
 }
 
 function DayChoiceGrid({
@@ -61,12 +63,13 @@ function DayChoiceGrid({
   value: TaskRepeatDayOfMonth
 }) {
   return (
-    <div {...stylex.props(styles.miniGrid)} role="group" aria-label={lastLabel}>
+    <div {...stylex.props(styles.miniGrid)} data-task-group="day-of-month" role="group" aria-label={lastLabel}>
       {dayOfMonthOptions.map(item => (
         <button
           key={String(item.value)}
           {...stylex.props(styles.miniDay, item.value === 'last' && styles.miniDayLast, value === item.value && styles.miniDaySelected)}
           aria-pressed={value === item.value}
+          data-task-day-of-month={item.value}
           type="button"
           onClick={() => onChange(item.value)}
         >
@@ -131,9 +134,9 @@ export function TaskRepeatPicker({
       { id: 'custom', label: t('repeatPresetCustom') },
     ]
     return (
-      <div ref={onFloatingRef} {...stylex.props(styles.popover)} data-task-action-floating-owner={floatingOwnerId} style={floatingStyle} role="dialog" aria-label={t('repeatSettings')}>
+      <div ref={onFloatingRef} {...stylex.props(styles.popover)} data-task-action-floating-owner={floatingOwnerId} data-task-repeat-picker="" data-task-repeat-mode="presets" style={floatingStyle} role="dialog" aria-label={t('repeatSettings')}>
         <div {...stylex.props(styles.presetList)}>
-          <button {...stylex.props(styles.preset)} type="button" onClick={onDisable}>
+          <button data-task-repeat-preset="none" {...stylex.props(styles.preset)} type="button" onClick={onDisable}>
             <span>{t('repeatNone')}</span>
             <span {...stylex.props(styles.presetSummary)}>{draft === null ? <Check aria-hidden="true" size={15} strokeWidth={2.1} /> : null}</span>
           </button>
@@ -147,6 +150,7 @@ export function TaskRepeatPicker({
               <button
                 key={preset.id}
                 {...stylex.props(styles.preset)}
+                data-task-repeat-preset={preset.id}
                 type="button"
                 onClick={() => {
                   if (preset.id === 'custom') {
@@ -186,15 +190,15 @@ export function TaskRepeatPicker({
   const canSelectAnchor = (date: string) => date >= baseDate
 
   return (
-    <div ref={onFloatingRef} {...stylex.props(styles.popover, styles.customPopover)} data-task-action-floating-owner={floatingOwnerId} style={floatingStyle} role="dialog" aria-label={t('repeatSettings')}>
+    <div ref={onFloatingRef} {...stylex.props(styles.popover, styles.customPopover)} data-task-action-floating-owner={floatingOwnerId} data-task-repeat-picker="" data-task-repeat-mode="custom" style={floatingStyle} role="dialog" aria-label={t('repeatSettings')}>
       <div {...stylex.props(styles.heading)}>
         <span>{t('repeatSettings')}</span>
-        <Button variant="icon" aria-label={t('backToRepeatPresets')} title={t('backToRepeatPresets')} type="button" onClick={onClose}>×</Button>
+        <Button data-task-action="back-to-repeat-presets" variant="icon" aria-label={t('backToRepeatPresets')} title={t('backToRepeatPresets')} type="button" onClick={onClose}>×</Button>
       </div>
       <div {...stylex.props(styles.content)}>
         <label {...stylex.props(styles.field)}>
           <span>{t('repeatReference')}</span>
-          <Select value={normalized.mode} onChange={value => setMode(value as TaskRepeatRule['mode'])}>
+          <Select field="reference" value={normalized.mode} onChange={value => setMode(value as TaskRepeatRule['mode'])}>
             <option value="due">{t('repeatDue')}</option>
             <option value="completion">{t('repeatCompletion')}</option>
             <option value="custom">{t('repeatCustomDate')}</option>
@@ -203,11 +207,11 @@ export function TaskRepeatPicker({
         <div {...stylex.props(styles.selectRow)}>
           <label {...stylex.props(styles.field)}>
             <span>{t('repeatEvery')}</span>
-            <input {...stylex.props(styles.input)} min={1} max={999} type="number" value={normalized.interval} onChange={event => patchRule({ interval: Number(event.target.value) })} />
+            <input data-task-field="interval" {...stylex.props(styles.input)} min={1} max={999} type="number" value={normalized.interval} onChange={event => patchRule({ interval: Number(event.target.value) })} />
           </label>
           <label {...stylex.props(styles.field)}>
             <span>{t('repeatUnit')}</span>
-            <Select value={normalized.unit} onChange={value => chooseUnit(value as TaskRepeatUnit)}>
+            <Select field="unit" value={normalized.unit} onChange={value => chooseUnit(value as TaskRepeatUnit)}>
               <option value="day">{t('repeatDay')}</option>
               <option value="week">{t('repeatWeek')}</option>
               <option value="month">{t('repeatMonth')}</option>
@@ -222,9 +226,9 @@ export function TaskRepeatPicker({
           ? (
               <div {...stylex.props(styles.miniMonth)}>
                 <div {...stylex.props(styles.miniMonthHeader)}>
-                  <button {...stylex.props(styles.iconButton)} aria-label={t('previousMonth')} type="button" onClick={() => setActiveMonth(current => current.subtract(1, 'month'))}><ChevronLeft aria-hidden="true" size={14} /></button>
+                  <button data-task-month-navigation="previous" {...stylex.props(styles.iconButton)} aria-label={t('previousMonth')} type="button" onClick={() => setActiveMonth(current => current.subtract(1, 'month'))}><ChevronLeft aria-hidden="true" size={14} /></button>
                   <span>{monthFormat(activeMonth, locale)}</span>
-                  <button {...stylex.props(styles.iconButton)} aria-label={t('nextMonth')} type="button" onClick={() => setActiveMonth(current => current.add(1, 'month'))}><ChevronRight aria-hidden="true" size={14} /></button>
+                  <button data-task-month-navigation="next" {...stylex.props(styles.iconButton)} aria-label={t('nextMonth')} type="button" onClick={() => setActiveMonth(current => current.add(1, 'month'))}><ChevronRight aria-hidden="true" size={14} /></button>
                 </div>
                 <div {...stylex.props(styles.miniWeekdays, styles.anchorWeekdays)} aria-hidden="true">{weekdayKeys.map(key => <span key={key}>{t(key)}</span>)}</div>
                 <div {...stylex.props(styles.miniGrid, styles.anchorGrid)} role="grid" aria-label={t('repeatCustomDate')}>
@@ -233,7 +237,7 @@ export function TaskRepeatPicker({
                     const inMonth = day.month() === activeMonth.month()
                     const selected = date === anchorDate
                     const preview = previewDates.includes(date)
-                    return <button key={date} {...stylex.props(styles.miniDay, styles.anchorDay, !inMonth && styles.miniDayMuted, selected && styles.miniDaySelected, preview && !selected && styles.miniDayPreview)} aria-pressed={selected} disabled={!canSelectAnchor(date)} type="button" onClick={() => patchRule({ anchorDate: date })}>{day.date()}</button>
+                    return <button key={date} data-task-date={date} {...stylex.props(styles.miniDay, styles.anchorDay, !inMonth && styles.miniDayMuted, selected && styles.miniDaySelected, preview && !selected && styles.miniDayPreview)} aria-pressed={selected} disabled={!canSelectAnchor(date)} type="button" onClick={() => patchRule({ anchorDate: date })}>{day.date()}</button>
                   })}
                 </div>
               </div>
@@ -242,12 +246,13 @@ export function TaskRepeatPicker({
 
         {normalized.unit === 'week'
           ? (
-              <div {...stylex.props(styles.weekdayRow)} aria-label={t('repeatOn')} role="group">
+              <div {...stylex.props(styles.weekdayRow)} aria-label={t('repeatOn')} data-task-group="repeat-weekdays" role="group">
                 {weekdayKeys.map((key, weekday) => (
                   <button
                     key={key}
                     {...stylex.props(styles.weekday, normalized.weekdays?.includes(weekday) && styles.weekdaySelected)}
                     aria-pressed={normalized.weekdays?.includes(weekday) ?? false}
+                    data-task-weekday={weekday}
                     type="button"
                     onClick={() => {
                       const current = normalized.weekdays ?? []
@@ -267,7 +272,7 @@ export function TaskRepeatPicker({
           ? (
               <>
                 <div {...stylex.props(styles.segmented)} role="tablist" aria-label={t('repeatMonthMode')}>
-                  {(['date', 'weekday', 'workday'] as const).map(value => <button key={value} {...stylex.props(styles.segment, normalized.monthMode === value && styles.segmentSelected)} aria-selected={normalized.monthMode === value} role="tab" type="button" onClick={() => patchRule({ monthMode: value as TaskRepeatMonthMode })}>{t(`repeatMonthBy${value.slice(0, 1).toUpperCase()}${value.slice(1)}`)}</button>)}
+                  {(['date', 'weekday', 'workday'] as const).map(value => <button key={value} data-task-month-mode={value} {...stylex.props(styles.segment, normalized.monthMode === value && styles.segmentSelected)} aria-selected={normalized.monthMode === value} role="tab" type="button" onClick={() => patchRule({ monthMode: value as TaskRepeatMonthMode })}>{t(`repeatMonthBy${value.slice(0, 1).toUpperCase()}${value.slice(1)}`)}</button>)}
                 </div>
                 {normalized.monthMode === 'date'
                   ? (
@@ -282,11 +287,11 @@ export function TaskRepeatPicker({
                       <div {...stylex.props(styles.selectRow)}>
                         <label {...stylex.props(styles.field)}>
                           <span>{t('repeatOrdinal')}</span>
-                          <Select value={String(normalized.monthOrdinal ?? 1)} onChange={value => patchRule({ monthOrdinal: Number(value) as TaskRepeatOrdinal })}>{ordinalOptions}</Select>
+                          <Select field="occurrence" value={String(normalized.monthOrdinal ?? 1)} onChange={value => patchRule({ monthOrdinal: Number(value) as TaskRepeatOrdinal })}>{ordinalOptions}</Select>
                         </label>
                         <label {...stylex.props(styles.field)}>
                           <span>{t('repeatWeekday')}</span>
-                          <Select value={String(normalized.monthWeekday ?? dayjs(baseDate).day())} onChange={value => patchRule({ monthWeekday: Number(value) })}>{weekdayKeys.map((key, index) => <option key={key} value={index}>{t(key)}</option>)}</Select>
+                          <Select field="weekday" value={String(normalized.monthWeekday ?? dayjs(baseDate).day())} onChange={value => patchRule({ monthWeekday: Number(value) })}>{weekdayKeys.map((key, index) => <option key={key} value={index}>{t(key)}</option>)}</Select>
                         </label>
                       </div>
                     )
@@ -295,7 +300,7 @@ export function TaskRepeatPicker({
                   ? (
                       <label {...stylex.props(styles.field)}>
                         <span>{t('repeatWorkdayOrdinal')}</span>
-                        <Select value={String(normalized.monthOrdinal ?? 1)} onChange={value => patchRule({ monthOrdinal: Number(value) as TaskRepeatOrdinal })}>{ordinalOptions}</Select>
+                        <Select field="workday-occurrence" value={String(normalized.monthOrdinal ?? 1)} onChange={value => patchRule({ monthOrdinal: Number(value) as TaskRepeatOrdinal })}>{ordinalOptions}</Select>
                       </label>
                     )
                   : null}
@@ -307,11 +312,11 @@ export function TaskRepeatPicker({
           ? (
               <>
                 <div {...stylex.props(styles.segmented, styles.segmentedTwo)} role="tablist" aria-label={t('repeatYearMode')}>
-                  {(['date', 'weekday'] as const).map(value => <button key={value} {...stylex.props(styles.segment, normalized.yearMode === value && styles.segmentSelected)} aria-selected={normalized.yearMode === value} role="tab" type="button" onClick={() => patchRule({ yearMode: value as TaskRepeatYearMode })}>{t(`repeatYearBy${value.slice(0, 1).toUpperCase()}${value.slice(1)}`)}</button>)}
+                  {(['date', 'weekday'] as const).map(value => <button key={value} data-task-year-mode={value} {...stylex.props(styles.segment, normalized.yearMode === value && styles.segmentSelected)} aria-selected={normalized.yearMode === value} role="tab" type="button" onClick={() => patchRule({ yearMode: value as TaskRepeatYearMode })}>{t(`repeatYearBy${value.slice(0, 1).toUpperCase()}${value.slice(1)}`)}</button>)}
                 </div>
                 <label {...stylex.props(styles.field)}>
                   <span>{t('repeatMonthOfYear')}</span>
-                  <Select value={String(normalized.yearMonth ?? dayjs(baseDate).month() + 1)} onChange={value => patchRule({ yearMonth: Number(value) })}>{monthOptions}</Select>
+                  <Select field="month" value={String(normalized.yearMonth ?? dayjs(baseDate).month() + 1)} onChange={value => patchRule({ yearMonth: Number(value) })}>{monthOptions}</Select>
                 </label>
                 {normalized.yearMode === 'date'
                   ? (
@@ -324,11 +329,11 @@ export function TaskRepeatPicker({
                       <div {...stylex.props(styles.selectRow)}>
                         <label {...stylex.props(styles.field)}>
                           <span>{t('repeatOrdinal')}</span>
-                          <Select value={String(normalized.yearOrdinal ?? 1)} onChange={value => patchRule({ yearOrdinal: Number(value) as TaskRepeatOrdinal })}>{ordinalOptions}</Select>
+                          <Select field="occurrence" value={String(normalized.yearOrdinal ?? 1)} onChange={value => patchRule({ yearOrdinal: Number(value) as TaskRepeatOrdinal })}>{ordinalOptions}</Select>
                         </label>
                         <label {...stylex.props(styles.field)}>
                           <span>{t('repeatWeekday')}</span>
-                          <Select value={String(normalized.yearWeekday ?? dayjs(baseDate).day())} onChange={value => patchRule({ yearWeekday: Number(value) })}>{weekdayKeys.map((key, index) => <option key={key} value={index}>{t(key)}</option>)}</Select>
+                          <Select field="weekday" value={String(normalized.yearWeekday ?? dayjs(baseDate).day())} onChange={value => patchRule({ yearWeekday: Number(value) })}>{weekdayKeys.map((key, index) => <option key={key} value={index}>{t(key)}</option>)}</Select>
                         </label>
                       </div>
                     )}
@@ -341,11 +346,11 @@ export function TaskRepeatPicker({
               <div {...stylex.props(styles.selectRow)}>
                 <label {...stylex.props(styles.field)}>
                   <span>{t('repeatLunarMonth')}</span>
-                  <Select value={String(normalized.lunarMonth ?? 1)} onChange={value => patchRule({ lunarMonth: Number(value) })}>{monthOptions}</Select>
+                  <Select field="lunar-month" value={String(normalized.lunarMonth ?? 1)} onChange={value => patchRule({ lunarMonth: Number(value) })}>{monthOptions}</Select>
                 </label>
                 <label {...stylex.props(styles.field)}>
                   <span>{t('repeatLunarDay')}</span>
-                  <Select value={String(normalized.lunarDay ?? 1)} onChange={value => patchRule({ lunarDay: Number(value) })}>{Array.from({ length: 30 }, (_, index) => <option key={index + 1} value={index + 1}>{index + 1}</option>)}</Select>
+                  <Select field="lunar-day" value={String(normalized.lunarDay ?? 1)} onChange={value => patchRule({ lunarDay: Number(value) })}>{Array.from({ length: 30 }, (_, index) => <option key={index + 1} value={index + 1}>{index + 1}</option>)}</Select>
                 </label>
               </div>
             )
@@ -355,7 +360,7 @@ export function TaskRepeatPicker({
           ? (
               <label {...stylex.props(styles.field)}>
                 <span>{t('repeatCalendar')}</span>
-                <Select value={selectedCalendarId} onChange={value => patchRule({ calendarId: value })}>{calendarSubscriptions.map(subscription => <option key={subscription.id} value={subscription.id}>{subscription.title}</option>)}</Select>
+                <Select field="calendar" value={selectedCalendarId} onChange={value => patchRule({ calendarId: value })}>{calendarSubscriptions.map(subscription => <option key={subscription.id} value={subscription.id}>{subscription.title}</option>)}</Select>
               </label>
             )
           : null}
@@ -364,6 +369,7 @@ export function TaskRepeatPicker({
               <label {...stylex.props(styles.field)}>
                 <span>{t('holidayPolicy')}</span>
                 <Select
+                  field="holiday-policy"
                   value={normalized.holidayPolicy ?? 'allow'}
                   onChange={value => patchRule({
                     holidayPolicy: value as TaskRepeatRule['holidayPolicy'],
@@ -381,13 +387,13 @@ export function TaskRepeatPicker({
           ? (
               <>
                 <label {...stylex.props(styles.checkboxRow)}>
-                  <input {...stylex.props(styles.checkbox)} checked={normalized.skipHolidays === true} type="checkbox" onChange={event => patchRule({ skipHolidays: event.target.checked, ...(event.target.checked && selectedCalendarId.length > 0 ? { calendarId: selectedCalendarId } : {}) })} />
+                  <input data-task-field="skip-holidays" {...stylex.props(styles.checkbox)} checked={normalized.skipHolidays === true} type="checkbox" onChange={event => patchRule({ skipHolidays: event.target.checked, ...(event.target.checked && selectedCalendarId.length > 0 ? { calendarId: selectedCalendarId } : {}) })} />
                   {t('repeatSkipHolidays')}
                 </label>
                 {(normalized.unit === 'day' || normalized.monthMode === 'workday')
                   ? (
                       <label {...stylex.props(styles.checkboxRow)}>
-                        <input {...stylex.props(styles.checkbox)} checked={normalized.skipWeekends === true} type="checkbox" onChange={event => patchRule({ skipWeekends: event.target.checked })} />
+                        <input data-task-field="skip-weekends" {...stylex.props(styles.checkbox)} checked={normalized.skipWeekends === true} type="checkbox" onChange={event => patchRule({ skipWeekends: event.target.checked })} />
                         {t('repeatSkipWeekends')}
                       </label>
                     )
@@ -398,16 +404,16 @@ export function TaskRepeatPicker({
         {normalized.mode === 'custom' ? <p {...stylex.props(styles.note)}>{t('repeatCustomPreview', { date: dateFormat(dayjs(anchorDate), locale) })}</p> : null}
         <label {...stylex.props(styles.field)}>
           <span>{t('repeatEnd')}</span>
-          <Select value={normalized.endDate === undefined ? '' : 'date'} onChange={value => patchRule({ endDate: value === '' ? undefined : normalized.endDate ?? baseDate })}>
+          <Select field="end" value={normalized.endDate === undefined ? '' : 'date'} onChange={value => patchRule({ endDate: value === '' ? undefined : normalized.endDate ?? baseDate })}>
             <option value="">{t('repeatForever')}</option>
             <option value="date">{t('repeatEndOnDate')}</option>
           </Select>
         </label>
-        {normalized.endDate !== undefined ? <input {...stylex.props(styles.input)} min={baseDate} type="date" value={normalized.endDate} onChange={event => patchRule({ endDate: event.target.value })} /> : null}
+        {normalized.endDate !== undefined ? <input data-task-field="end-date" {...stylex.props(styles.input)} min={baseDate} type="date" value={normalized.endDate} onChange={event => patchRule({ endDate: event.target.value })} /> : null}
       </div>
       <div {...stylex.props(styles.footer)}>
-        <Button variant="plain" xstyle={styles.footerButton} type="button" onClick={onCancel}>{t('cancel')}</Button>
-        <Button variant="primary" xstyle={styles.footerButton} type="button" onClick={onClose}>{t('confirmSchedule')}</Button>
+        <Button data-task-action="cancel-repeat" variant="plain" xstyle={styles.footerButton} type="button" onClick={onCancel}>{t('cancel')}</Button>
+        <Button data-task-action="save-repeat" variant="primary" xstyle={styles.footerButton} type="button" onClick={onClose}>{t('confirmSchedule')}</Button>
       </div>
     </div>
   )

@@ -31,17 +31,17 @@ test('switches a non-empty Topic between Document and Outline without losing edi
       const window = await electronApplication.firstWindow()
       const title = 'Dynamic editor mode 7e21c4'
 
-      await window.getByRole('link', { name: 'Journals' }).waitFor()
+      await window.locator('a[href*="/journals"]').waitFor()
       await window.keyboard.press('Meta+P')
-      await window.getByRole('combobox', { name: 'Search commands and Notes' }).fill(title)
-      await window.getByRole('option').filter({ hasText: `Create Note “${title}”` }).click()
+      await window.locator('input[role=combobox][aria-autocomplete=list]').fill(title)
+      await window.locator('[role=listbox] [role=option][id$=\"-create-note\"]').click()
 
-      const editor = window.getByRole('textbox', { name: 'Editor content' })
+      const editor = window.locator('[data-editor-content]')
       const heading = editor.locator('[data-block-id]').first()
       const editorShell = window.locator('[data-editor-mode]')
       await expect(editorShell).toHaveAttribute('data-editor-mode', 'document')
 
-      await window.getByRole('button', { name: 'Document' }).click()
+      await window.locator('[data-editor-mode-picker] button[data-editor-mode="document"]').click()
       await expect(window.locator('[data-editor-mode-picker]')).toHaveCount(0)
       await heading.click()
       await window.keyboard.type(title)
@@ -70,16 +70,16 @@ test('switches a non-empty Topic between Document and Outline without losing edi
       })
 
       await window.keyboard.press('Meta+P')
-      await window.getByRole('combobox', { name: 'Search commands and Notes' }).fill('Switch to Outline Mode')
-      await window.getByRole('option').filter({ hasText: 'Switch to Outline Mode' }).click()
+      await window.locator('input[role=combobox][aria-autocomplete=list]').fill('editor-mode-outline')
+      await window.locator('[role=listbox] [role=option][id$="-editor-mode-outline"]').click()
 
       await expect(editorShell).toHaveAttribute('data-editor-mode', 'outline')
       await expect(editor.locator('[data-block-id]').first()).toBeVisible()
       await expect.poll(readSelection).toEqual(selectionBeforeSwitch)
 
       await window.keyboard.press('Meta+P')
-      await window.getByRole('combobox', { name: 'Search commands and Notes' }).fill('Switch to Document Mode')
-      await window.getByRole('option').filter({ hasText: 'Switch to Document Mode' }).click()
+      await window.locator('input[role=combobox][aria-autocomplete=list]').fill('editor-mode-document')
+      await window.locator('[role=listbox] [role=option][id$="-editor-mode-document"]').click()
       await expect(editorShell).toHaveAttribute('data-editor-mode', 'document')
       await expect(editor.locator('[data-block-id]').first()).toBeVisible()
       await expect.poll(readSelection).toEqual(selectionBeforeSwitch)

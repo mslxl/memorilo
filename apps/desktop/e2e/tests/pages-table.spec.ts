@@ -9,13 +9,14 @@ import {
 } from './pages-test-helpers'
 
 async function openPages(window: Page, expectedCount = '4 notes'): Promise<void> {
-  await window.getByRole('button', { name: 'Hide Sidebar' }).waitFor()
-  await window.getByRole('link', { name: 'Pages' }).click()
-  await expect(window.getByText(expectedCount, { exact: true })).toBeVisible()
+  await window.locator('button[data-sidebar-toggle]').waitFor()
+  await window.locator('a[href*="/pages"]').click()
+  const expectedTotal = Number.parseInt(expectedCount, 10)
+  await expect(window.locator(`p[data-note-count="${expectedTotal}"]`)).toBeVisible()
 }
 
 async function visibleTitles(window: Page): Promise<string[]> {
-  return window.getByRole('button', { name: /^Rename Note:/ }).allTextContents()
+  return window.locator('button[data-note-action="open"]').allTextContents()
 }
 
 async function expectTitleOrder(window: Page, titles: readonly string[]): Promise<void> {
@@ -34,28 +35,28 @@ test('sorts Notes through each table header', async () => {
     const window = await application.firstWindow()
     await openPages(window)
 
-    const titleHeader = window.getByRole('button', { name: /^Sort by Title/ })
+    const titleHeader = window.locator('button[data-column-id="title"]')
     await titleHeader.click()
-    await expect(titleHeader).toHaveAccessibleName('Sort by Title, currently ascending')
+    await expect(titleHeader.locator('xpath=ancestor::th')).toHaveAttribute('aria-sort', 'ascending')
     await expectTitleOrder(window, ['Alpha Note', 'Middle Note', 'Zulu Note'])
     await titleHeader.click()
-    await expect(titleHeader).toHaveAccessibleName('Sort by Title, currently descending')
+    await expect(titleHeader.locator('xpath=ancestor::th')).toHaveAttribute('aria-sort', 'descending')
     await expectTitleOrder(window, ['Zulu Note', 'Middle Note', 'Alpha Note'])
 
-    const createdHeader = window.getByRole('button', { name: /^Sort by Created/ })
+    const createdHeader = window.locator('button[data-column-id="createdAt"]')
     await createdHeader.click()
-    await expect(createdHeader).toHaveAccessibleName('Sort by Created, currently descending')
+    await expect(createdHeader.locator('xpath=ancestor::th')).toHaveAttribute('aria-sort', 'descending')
     await expectTitleOrder(window, ['Alpha Note', 'Zulu Note', 'Middle Note'])
     await createdHeader.click()
-    await expect(createdHeader).toHaveAccessibleName('Sort by Created, currently ascending')
+    await expect(createdHeader.locator('xpath=ancestor::th')).toHaveAttribute('aria-sort', 'ascending')
     await expectTitleOrder(window, ['Middle Note', 'Zulu Note', 'Alpha Note'])
 
-    const modifiedHeader = window.getByRole('button', { name: /^Sort by Modified/ })
+    const modifiedHeader = window.locator('button[data-column-id="updatedAt"]')
     await modifiedHeader.click()
-    await expect(modifiedHeader).toHaveAccessibleName('Sort by Modified, currently descending')
+    await expect(modifiedHeader.locator('xpath=ancestor::th')).toHaveAttribute('aria-sort', 'descending')
     await expectTitleOrder(window, ['Middle Note', 'Zulu Note', 'Alpha Note'])
     await modifiedHeader.click()
-    await expect(modifiedHeader).toHaveAccessibleName('Sort by Modified, currently ascending')
+    await expect(modifiedHeader.locator('xpath=ancestor::th')).toHaveAttribute('aria-sort', 'ascending')
     await expectTitleOrder(window, ['Alpha Note', 'Zulu Note', 'Middle Note'])
   }
   finally {
@@ -73,24 +74,24 @@ test('renames a Note through the table and keeps the title after restart', async
   try {
     application = await launchPagesTestApplication(environment)
     let window = await application.firstWindow()
-    await window.getByRole('button', { name: 'Hide Sidebar' }).waitFor()
-    await window.getByRole('link', { name: 'Pages' }).click()
-    await window.getByRole('button', { name: 'Rename Note: Original Note' }).click()
+    await window.locator('button[data-sidebar-toggle]').waitFor()
+    await window.locator('a[href*="/pages"]').click()
+    await window.locator('button[data-note-action="rename"][data-note-id="renamed-note"]').click()
 
-    const titleInput = window.getByRole('textbox', { name: 'Title for Original Note' })
+    const titleInput = window.locator('input[data-note-action="rename-input"][data-note-id="renamed-note"]')
     await titleInput.fill('Renamed Note')
     await titleInput.press('Enter')
-    await expect(window.getByRole('button', { name: 'Rename Note: Renamed Note' })).toBeVisible()
+    await expect(window.locator('button[data-note-action="open"][data-note-id="renamed-note"]')).toContainText('Renamed Note')
 
     await application.close()
     application = null
 
     application = await launchPagesTestApplication(environment)
     window = await application.firstWindow()
-    await window.getByRole('button', { name: 'Hide Sidebar' }).waitFor()
-    await window.getByRole('link', { name: 'Pages' }).click()
-    await expect(window.getByRole('button', { name: 'Rename Note: Renamed Note' })).toBeVisible()
-    await expect(window.getByRole('button', { name: 'Rename Note: Original Note' })).toHaveCount(0)
+    await window.locator('button[data-sidebar-toggle]').waitFor()
+    await window.locator('a[href*="/pages"]').click()
+    await expect(window.locator('button[data-note-action="open"][data-note-id="renamed-note"]')).toContainText('Renamed Note')
+    await expect(window.locator('button[data-note-action="open"][data-note-id="renamed-note"]').filter({ hasText: 'Original Note' })).toHaveCount(0)
   }
   finally {
     if (application)
@@ -109,17 +110,17 @@ test('rejects a duplicate Note title through table rename', async () => {
     application = await launchPagesTestApplication(environment)
     let window = await application.firstWindow()
     await openPages(window, '3 notes')
-    await window.getByRole('button', { name: 'Rename Note: Alpha Note' }).click()
+    await window.locator('button[data-note-action="rename"][data-note-id="alpha-note"]').click()
 
-    const titleInput = window.getByRole('textbox', { name: 'Title for Alpha Note' })
+    const titleInput = window.locator('input[data-note-action="rename-input"][data-note-id="alpha-note"]')
     await titleInput.fill('Beta Note')
     await titleInput.press('Enter')
-    const duplicateInput = window.getByRole('textbox', { name: 'A Note with this title already exists' })
+    const duplicateInput = window.locator('input[data-note-action="rename-input"][data-note-id="alpha-note"][aria-invalid="true"]')
     await expect(duplicateInput).toHaveValue('Beta Note')
 
     await duplicateInput.press('Escape')
-    await expect(window.getByRole('button', { name: 'Rename Note: Alpha Note' })).toBeVisible()
-    await expect(window.getByRole('button', { name: 'Rename Note: Beta Note' })).toHaveCount(1)
+    await expect(window.locator('button[data-note-action="open"][data-note-id="alpha-note"]')).toContainText('Alpha Note')
+    await expect(window.locator('button[data-note-action="open"][data-note-id="beta-note"]')).toHaveCount(1)
 
     await application.close()
     application = null
@@ -127,8 +128,8 @@ test('rejects a duplicate Note title through table rename', async () => {
     application = await launchPagesTestApplication(environment)
     window = await application.firstWindow()
     await openPages(window, '3 notes')
-    await expect(window.getByRole('button', { name: 'Rename Note: Alpha Note' })).toBeVisible()
-    await expect(window.getByRole('button', { name: 'Rename Note: Beta Note' })).toHaveCount(1)
+    await expect(window.locator('button[data-note-action="open"][data-note-id="alpha-note"]')).toContainText('Alpha Note')
+    await expect(window.locator('button[data-note-action="open"][data-note-id="beta-note"]')).toHaveCount(1)
   }
   finally {
     if (application)

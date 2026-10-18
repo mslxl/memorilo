@@ -7,6 +7,7 @@ import { autocompleteMenuStyles } from '../autocomplete-menu/autocomplete-menu.s
 
 export default function SlashMenuItem(props: {
   aliases?: readonly string[]
+  command: string
   label: string
   kbd?: string
   onSelect: () => void
@@ -18,6 +19,7 @@ export default function SlashMenuItem(props: {
   return (
     <AutocompleteItem
       {...stylex.props(autocompleteMenuStyles.item)}
+      data-slash-command={props.command}
       onSelect={props.onSelect}
       value={searchValue}
     >

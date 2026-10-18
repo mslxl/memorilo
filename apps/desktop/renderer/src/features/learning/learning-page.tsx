@@ -72,7 +72,7 @@ export function LearningPage({
   }
 
   return (
-    <main {...stylex.props(learningRouteStyles.page)} aria-label={t('title')}>
+    <main {...stylex.props(learningRouteStyles.page)} aria-label={t('title')} data-page="learning">
       <Tabs.Root
         value={activeTab}
         onValueChange={(value) => {

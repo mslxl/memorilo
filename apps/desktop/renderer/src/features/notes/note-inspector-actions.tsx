@@ -68,6 +68,7 @@ export function NoteInspectorActions({
         )}
         aria-label={inspectorVisible ? t('hideNoteInspector') : t('showNoteInspector')}
         aria-pressed={inspectorVisible}
+        data-note-inspector-toggle=""
         title={inspectorVisible ? t('hideNoteInspector') : t('showNoteInspector')}
         type="button"
         onClick={onToggleInspector}

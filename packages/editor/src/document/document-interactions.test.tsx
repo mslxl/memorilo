@@ -44,7 +44,8 @@ describe('document interactions', () => {
         }}
       />,
     )
-    const editor = await rendered.findByRole('textbox', { name: 'Editor content' })
+    await rendered.findByText('Bullet before')
+    const editor = rendered.container.querySelector<HTMLElement>('[data-editor-content]')!
     await userEvent.click(rendered.getByText('Bullet before'))
     await userEvent.keyboard(modShortcut('a'))
 
@@ -87,7 +88,7 @@ describe('document interactions', () => {
         }}
       />,
     )
-    const editor = await rendered.findByRole('textbox', { name: 'Editor content' })
+    const editor = rendered.container.querySelector<HTMLElement>('[data-editor-content]')!
     await userEvent.click(rendered.getByText('Before'))
     const clipboardData = new DataTransfer()
     clipboardData.setData('text/html', '<img src="https://example.com/image.png">')
@@ -122,7 +123,7 @@ describe('document interactions', () => {
         initialContent={{ type: 'doc', content: [documentBlock('before', paragraph('Before'))] }}
       />,
     )
-    const editor = await rendered.findByRole('textbox', { name: 'Editor content' })
+    const editor = rendered.container.querySelector<HTMLElement>('[data-editor-content]')!
     await userEvent.click(rendered.getByText('Before'))
     const clipboardData = new DataTransfer()
     clipboardData.setData('text/plain', 'https://example.com/image.png')
@@ -152,7 +153,7 @@ describe('document interactions', () => {
         initialContent={{ type: 'doc', content: [documentBlock('before', paragraph('Before'))] }}
       />,
     )
-    const editor = await rendered.findByRole('textbox', { name: 'Editor content' })
+    const editor = rendered.container.querySelector<HTMLElement>('[data-editor-content]')!
     await userEvent.click(rendered.getByText('Before'))
     const clipboardData = new DataTransfer()
     clipboardData.setData('text/html', '<img src="https://example.com/image.png">')
@@ -175,7 +176,7 @@ describe('document interactions', () => {
         initialContent={{ type: 'doc', content: [documentBlock('before', paragraph('Before'))] }}
       />,
     )
-    const editor = await rendered.findByRole('textbox', { name: 'Editor content' })
+    const editor = rendered.container.querySelector<HTMLElement>('[data-editor-content]')!
     await userEvent.click(rendered.getByText('Before'))
     const clipboardData = new DataTransfer()
     clipboardData.setData('text/plain', 'https://example.com/image.png')
@@ -194,7 +195,7 @@ describe('document interactions', () => {
         initialContent={{ type: 'doc', content: [documentBlock('before', paragraph('Before'))] }}
       />,
     )
-    const editor = await rendered.findByRole('textbox', { name: 'Editor content' })
+    const editor = rendered.container.querySelector<HTMLElement>('[data-editor-content]')!
     await userEvent.click(rendered.getByText('Before'))
     const clipboardData = new DataTransfer()
     clipboardData.items.add(new File([Uint8Array.from([1, 2, 3])], 'clipboard.png', { type: 'image/png' }))
@@ -217,18 +218,18 @@ describe('document interactions', () => {
     )
     await rendered.findByText('Before')
 
-    await userEvent.click(rendered.getByRole('button', { name: 'Outline mode' }))
+    await userEvent.click(rendered.container.querySelector('button[data-editor-mode-control="outline"]')!)
     await waitFor(() => expect(rendered.container.querySelector('[data-editor-mode="outline"]')).not.toBeNull())
-    await userEvent.click(rendered.getByRole('button', { name: 'Document mode' }))
+    await userEvent.click(rendered.container.querySelector('button[data-editor-mode-control="document"]')!)
     const before = await rendered.findByText('Before')
-    const editor = rendered.getByRole('textbox', { name: 'Editor content' })
+    const editor = rendered.container.querySelector<HTMLElement>('[data-editor-content]')!
     await userEvent.click(before)
     await userEvent.keyboard('{End}{Enter}/')
 
     expect(editor).toHaveTextContent('Before/')
-    await rendered.findByRole('option', { name: 'Text' })
-    expect(rendered.getByRole('option', { name: 'Text' })).toBeVisible()
-    expect(rendered.getByRole('option', { name: /^Quote/ })).toBeVisible()
+    await waitFor(() => expect(rendered.container.querySelector('[data-slash-command="paragraph"]')).not.toBeNull())
+    expect(rendered.container.querySelector('[data-slash-command="paragraph"]')).toBeVisible()
+    expect(rendered.container.querySelector('[data-slash-command="blockquote"]')).toBeVisible()
   })
 
   it('moves the slash menu highlight with ArrowDown in Document mode', async () => {
@@ -246,8 +247,9 @@ describe('document interactions', () => {
     await userEvent.click(page.getByText('Before', { exact: true }))
     await userEvent.keyboard('{End}{Enter}/')
 
-    const textOption = await rendered.findByRole('option', { name: 'Text' })
-    const headingOption = rendered.getByRole('option', { name: 'Heading 1 #' })
+    await waitFor(() => expect(rendered.container.querySelector('[data-slash-command="paragraph"]')).not.toBeNull())
+    const textOption = rendered.container.querySelector<HTMLElement>('[data-slash-command="paragraph"]')!
+    const headingOption = rendered.container.querySelector<HTMLElement>('[data-slash-command="heading-1"]')!
     await waitFor(() => expect(textOption).toHaveAttribute('data-highlighted'))
 
     await userEvent.keyboard('{ArrowDown}')
@@ -274,14 +276,14 @@ describe('document interactions', () => {
 
     await userEvent.keyboard('{End}{Enter}/quote')
 
-    expect(await rendered.findByRole('option', { name: 'Quote >' })).toBeVisible()
-    expect(rendered.queryByRole('option', { name: 'Text' })).not.toBeInTheDocument()
-    expect(rendered.queryByRole('option', { name: 'Heading 1 #' })).not.toBeInTheDocument()
+    expect(rendered.container.querySelector('[data-slash-command="blockquote"]')).toBeVisible()
+    expect(rendered.container.querySelector('[data-slash-command="paragraph"]')).toHaveAttribute('hidden')
+    expect(rendered.container.querySelector('[data-slash-command="heading-1"]')).toHaveAttribute('hidden')
 
     await userEvent.keyboard('{Enter}')
 
     expect(rendered.container.querySelectorAll('blockquote')).toHaveLength(1)
-    expect(rendered.getByRole('textbox', { name: 'Editor content' })).not.toHaveTextContent('/quote')
+    expect(rendered.container.querySelector<HTMLElement>('[data-editor-content]')!).not.toHaveTextContent('/quote')
   })
 
   it('searches slash commands by aliases such as h1', async () => {
@@ -300,13 +302,13 @@ describe('document interactions', () => {
 
     await userEvent.keyboard('{End}{Enter}/h1')
 
-    expect(await rendered.findByRole('option', { name: 'Heading 1 #' })).toBeVisible()
-    expect(rendered.queryByRole('option', { name: 'Heading 2 ##' })).not.toBeInTheDocument()
+    expect(rendered.container.querySelector('[data-slash-command="heading-1"]')).toBeVisible()
+    expect(rendered.container.querySelector('[data-slash-command="heading-2"]')).toHaveAttribute('hidden')
 
     await userEvent.keyboard('{Enter}')
 
     expect(rendered.container.querySelectorAll('h1')).toHaveLength(1)
-    expect(rendered.getByRole('textbox', { name: 'Editor content' })).not.toHaveTextContent('/h1')
+    expect(rendered.container.querySelector<HTMLElement>('[data-editor-content]')!).not.toHaveTextContent('/h1')
   })
 
   it('creates inline math when the user types a dollar-delimited expression', async () => {
@@ -327,7 +329,7 @@ describe('document interactions', () => {
 
     const inlineMath = rendered.container.querySelector('.prosemirror-math-inline')
     expect(inlineMath).toHaveTextContent('E=mc^2')
-    expect(rendered.getByRole('textbox', { name: 'Editor content' })).not.toHaveTextContent('$E=mc^2$')
+    expect(rendered.container.querySelector<HTMLElement>('[data-editor-content]')!).not.toHaveTextContent('$E=mc^2$')
   })
 
   it('creates editable inline math when the user types double dollar followed by Space', async () => {
@@ -347,7 +349,7 @@ describe('document interactions', () => {
     await userEvent.keyboard('{End} $$ ')
 
     expect(rendered.container.querySelectorAll('.prosemirror-math-inline')).toHaveLength(1)
-    expect(rendered.getByRole('textbox', { name: 'Editor content' })).not.toHaveTextContent('$$')
+    expect(rendered.container.querySelector<HTMLElement>('[data-editor-content]')!).not.toHaveTextContent('$$')
 
     await userEvent.keyboard('x^2')
 
@@ -369,11 +371,12 @@ describe('document interactions', () => {
     await userEvent.click(page.getByText('Before', { exact: true }))
     await userEvent.keyboard('{End}{Enter}/inline')
 
-    const inlineMathOption = await rendered.findByRole('option', { name: 'Inline math $' })
+    await waitFor(() => expect(rendered.container.querySelector('[data-slash-command="inline-math"]')).not.toBeNull())
+    const inlineMathOption = rendered.container.querySelector<HTMLElement>('[data-slash-command="inline-math"]')!
     expect(inlineMathOption).toBeVisible()
     await userEvent.click(inlineMathOption)
 
-    expect(rendered.getByRole('textbox', { name: 'Editor content' })).not.toHaveTextContent('/inline')
+    expect(rendered.container.querySelector<HTMLElement>('[data-editor-content]')!).not.toHaveTextContent('/inline')
     expect(rendered.container.querySelectorAll('.prosemirror-math-inline')).toHaveLength(1)
 
     await userEvent.keyboard('x^2')

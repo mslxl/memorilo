@@ -1,7 +1,6 @@
 import type { DesktopFavoriteNoteItem, DesktopRecentNoteItem } from '@memorilo/desktop-api'
 import type { LucideIcon } from 'lucide-react'
-import type { MouseEvent as ReactMouseEvent } from 'react'
-import type { ReactNode } from 'react'
+import type { MouseEvent as ReactMouseEvent, ReactNode } from 'react'
 import type { DesktopClientError } from '../../shared/effect-query'
 import { Sidebar } from '@memorilo/ui'
 import * as stylex from '@stylexjs/stylex'

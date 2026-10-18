@@ -52,7 +52,6 @@ export function CardSurface({
       data-card-review-active={showSource ? undefined : ''}
       data-card-side={showSource ? 'source' : side}
       data-card-surface={appearance}
-      data-testid={appearance === 'preview' ? 'card-preview-surface' : undefined}
     >
       <Editor
         adapters={adapters}

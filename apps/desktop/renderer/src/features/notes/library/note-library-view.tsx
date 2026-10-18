@@ -180,7 +180,7 @@ export function NoteLibraryView({ commands, onCancelTransfer, transferBusy }: { 
     title: t('pageLabel'),
     trailing: (
       <>
-        <Button aria-busy={transferBusy} aria-label={t('importNote')} data-window-no-drag="" disabled={transferBusy} title={t('importNote')} variant="titlebar" onClick={() => void commands.importNote()}>
+        <Button aria-busy={transferBusy} aria-label={t('importNote')} data-note-action="import" data-window-no-drag="" disabled={transferBusy} title={t('importNote')} variant="titlebar" onClick={() => void commands.importNote()}>
           <FileUp aria-hidden="true" size={17} strokeWidth={1.9} />
         </Button>
         {transferBusy
@@ -252,10 +252,10 @@ export function NoteLibraryView({ commands, onCancelTransfer, transferBusy }: { 
   const totalItems = firstPage?.totalItems
 
   return (
-    <main {...stylex.props(pagesRouteStyles.page)} aria-label={t('pageLabel')}>
+    <main {...stylex.props(pagesRouteStyles.page)} aria-label={t('pageLabel')} data-page="pages">
       <section {...stylex.props(pagesRouteStyles.content)} aria-label={t('libraryLabel')}>
         <div {...stylex.props(pagesRouteStyles.summary)}>
-          <p {...stylex.props(pagesRouteStyles.resultCount)} aria-live="polite">
+          <p {...stylex.props(pagesRouteStyles.resultCount)} aria-live="polite" data-note-count={totalItems === undefined ? undefined : String(totalItems)}>
             {totalItems === undefined ? t('notes') : noteCountLabel(totalItems, t)}
           </p>
         </div>
@@ -266,6 +266,7 @@ export function NoteLibraryView({ commands, onCancelTransfer, transferBusy }: { 
               {...stylex.props(pagesRouteStyles.table)}
               aria-busy={isFetchingNextPage}
               aria-rowcount={totalItems}
+              data-note-library=""
             >
               <thead {...stylex.props(pagesRouteStyles.tableHead)}>
                 {table.getHeaderGroups().map(headerGroup => (
@@ -284,6 +285,7 @@ export function NoteLibraryView({ commands, onCancelTransfer, transferBusy }: { 
                             columnStyle(header.column.id),
                           )}
                           aria-sort={sorted === 'asc' ? 'ascending' : sorted === 'desc' ? 'descending' : 'none'}
+                          data-column-id={header.column.id}
                           scope="col"
                         >
                           <button
@@ -294,6 +296,7 @@ export function NoteLibraryView({ commands, onCancelTransfer, transferBusy }: { 
                             aria-label={sorted
                               ? t('sortByCurrent', { direction: sorted === 'asc' ? t('ascending', { ns: 'common' }) : t('descending', { ns: 'common' }), label })
                               : t('sortBy', { label })}
+                            data-column-id={header.column.id}
                             title={t('sortBy', { label })}
                             type="button"
                             onClick={header.column.getToggleSortingHandler()}

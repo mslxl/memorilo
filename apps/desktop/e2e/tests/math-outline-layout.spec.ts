@@ -23,14 +23,14 @@ function packagedExecutable(): string {
 }
 
 async function createPage(window: Page, title: string) {
-  await window.getByRole('link', { name: 'Journals' }).waitFor()
+  await window.locator('a[href*="/journals"]').waitFor()
   await window.keyboard.press('Meta+P')
-  const search = window.getByRole('combobox', { name: 'Search commands and Notes' })
+  const search = window.locator('input[role=combobox][aria-autocomplete=list]')
   await search.fill(title)
-  await window.getByRole('option').filter({ hasText: `Create Note “${title}”` }).click()
+  await window.locator('[role=listbox] [role=option][id$=\"-create-note\"]').click()
 
-  await expect(window.getByRole('textbox', { name: 'Editor content' })).toBeVisible()
-  await expect(window.getByRole('button', { name: `Rename Note: ${title}` })).toBeVisible()
+  await expect(window.locator('[data-editor-content]')).toBeVisible()
+  await expect(window.locator('button[data-note-action="open"]').filter({ hasText: title })).toBeVisible()
 }
 
 test('reproduces formula layout regressions in an Outline Page', async () => {
@@ -58,10 +58,10 @@ test('reproduces formula layout regressions in an Outline Page', async () => {
     const title = 'Outline formula layout reproduction'
     await createPage(window, title)
 
-    const editor = window.getByRole('textbox', { name: 'Editor content' })
+    const editor = window.locator('[data-editor-content]')
     await window.keyboard.press('Meta+P')
-    await window.getByRole('combobox', { name: 'Search commands and Notes' }).fill('Switch to Outline Mode')
-    await window.getByRole('option').filter({ hasText: 'Switch to Outline Mode' }).click()
+    await window.locator('input[role=combobox][aria-autocomplete=list]').fill('editor-mode-outline')
+    await window.locator('[role=listbox] [role=option][id$="-editor-mode-outline"]').click()
     await expect(window.locator('[data-editor-mode="outline"]')).toBeVisible()
 
     const firstBlock = editor.locator('[data-block-id]').first()

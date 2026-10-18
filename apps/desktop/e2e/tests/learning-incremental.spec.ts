@@ -23,12 +23,12 @@ async function rpc(window: Page, method: string, args: readonly RpcValue[] = [])
 }
 
 async function createHighlightedNote(window: Page, title: string, withSecondHighlight = false): Promise<ReturnType<Page['getByRole']>> {
-  await window.getByRole('link', { name: 'Journals' }).waitFor()
+  await window.locator('a[href*="/journals"]').waitFor()
   await window.keyboard.press('Meta+P')
-  await window.getByRole('combobox', { name: 'Search commands and Notes' }).fill(title)
-  await window.getByRole('option').filter({ hasText: `Create Note “${title}”` }).click()
+  await window.locator('input[role=combobox][aria-autocomplete=list]').fill(title)
+  await window.locator('[role=listbox] [role=option][id$=\"-create-note\"]').click()
 
-  const editor = window.getByRole('textbox', { name: 'Editor content' })
+  const editor = window.locator('[data-editor-content]')
   const initialBlock = editor.locator('[data-block-id]').first()
   await expect(initialBlock).toBeVisible()
   await initialBlock.click()
@@ -50,8 +50,8 @@ async function createHighlightedNote(window: Page, title: string, withSecondHigh
     selection.removeAllRanges()
     selection.addRange(range)
   })
-  await expect(window.getByTestId('inline-menu-main')).toBeVisible()
-  await window.getByTestId('inline-menu-main').getByRole('button', { exact: true, name: 'Highlight' }).click()
+  await expect(window.locator('[data-inline-menu="main"]')).toBeVisible()
+  await window.locator('[data-inline-menu="main"] [data-editor-action="highlight"]').click()
   await expect(sourceBlock.locator('[data-inline-highlight="yellow"]')).toHaveText('Incremental learning keeps source notes editable.')
   if (withSecondHighlight) {
     await sourceBlock.click()
@@ -60,8 +60,8 @@ async function createHighlightedNote(window: Page, title: string, withSecondHigh
     await window.keyboard.type('A second Reading Item remains in the queue.')
     const secondBlock = editor.locator('[data-block-id]').last()
     await selectBlockText(secondBlock)
-    await expect(window.getByTestId('inline-menu-main')).toBeVisible()
-    await window.getByTestId('inline-menu-main').getByRole('button', { exact: true, name: 'Highlight' }).click()
+    await expect(window.locator('[data-inline-menu="main"]')).toBeVisible()
+    await window.locator('[data-inline-menu="main"] [data-editor-action="highlight"]').click()
     await expect(secondBlock.locator('[data-inline-highlight="yellow"]')).toHaveText('A second Reading Item remains in the queue.')
   }
   return editor
@@ -83,9 +83,9 @@ async function selectBlockText(block: ReturnType<Page['locator']>): Promise<void
 }
 
 async function openIncrementalLearning(window: Page): Promise<void> {
-  await window.getByRole('link', { exact: true, name: 'Learning' }).click()
-  await window.getByRole('link', { name: 'Study all Notes' }).click()
-  await expect(window.getByRole('main', { name: 'Incremental learning' })).toBeVisible()
+  await window.locator('a[href="/learning"]').click()
+  await window.locator('a[href*="/learning/review"]').click()
+  await expect(window.locator('main[data-page="learning-reading-workspace"]')).toBeVisible()
 }
 
 test('runs a Highlight Reading Item through the editable Learning workspace', async () => {
@@ -100,22 +100,22 @@ test('runs a Highlight Reading Item through the editable Learning workspace', as
       await expect.poll(async () => (await rpc(window, 'listReadingItems', [{ includeScheduled: true }])).length).toBe(1)
       await openIncrementalLearning(window)
 
-      const workspace = window.getByRole('main', { name: 'Incremental learning' })
-      await expect(workspace.getByRole('complementary', { name: 'Note Structure' })).toBeVisible()
-      await expect(workspace.getByRole('button', { name: 'Make Card' })).toBeVisible()
-      await expect(workspace.getByRole('button', { name: 'Next' })).toBeVisible()
+      const workspace = window.locator('main[data-page="learning-reading-workspace"]')
+      await expect(workspace.locator('aside#learning-note-structure')).toBeVisible()
+      await expect(workspace.locator('[data-learning-action="make-card"][data-learning-state="available"]')).toBeVisible()
+      await expect(workspace.locator('[data-learning-action="next"]')).toBeVisible()
       await expect(workspace.locator('[data-inline-highlight="yellow"]')).toHaveText('Incremental learning keeps source notes editable.')
-      await expect(workspace.getByLabel('Learning source')).toBeVisible()
+      await expect(workspace.locator('[data-learning-source-marker]')).toBeVisible()
 
-      await workspace.getByRole('button', { name: 'Make Card' }).click()
-      await expect(workspace.getByRole('button', { name: 'Card created' })).toBeDisabled()
+      await workspace.locator('[data-learning-action="make-card"]').click()
+      await expect(workspace.locator('[data-learning-action="make-card"][data-learning-state="created"]')).toBeDisabled()
       await expect.poll(async () => {
         const notes = await rpc(window, 'listNotesWithCards') as Array<{ cardCount: number, noteTitle: string }>
         return notes.find(note => note.noteTitle === title)?.cardCount ?? 0
       }).toBe(1)
 
       const readingItemBeforeNext = (await rpc(window, 'listReadingItems', [{ includeScheduled: true }]))[0]
-      await workspace.getByRole('button', { name: 'Next' }).click()
+      await workspace.locator('[data-learning-action="next"]').click()
       await expect.poll(async () => (await rpc(window, 'listReadingItems', [{ includeScheduled: true }]))[0]?.state).toBe('learning')
       await expect.poll(async () => await rpc(window, 'getNextLearningKind', [{ now: Date.now() }])).toBe('review')
       const readingItemAfterNext = (await rpc(window, 'listReadingItems', [{ includeScheduled: true }]))[0]
@@ -143,9 +143,9 @@ test('moves Reading to Basic Review and back to Reading through the public queue
         (await rpc(window, 'listReadingItems', [{ includeScheduled: true }])).length
       )).toBe(2)
       await openIncrementalLearning(window)
-      const workspace = window.getByRole('main', { name: 'Incremental learning' })
-      await workspace.getByRole('button', { name: 'Make Card' }).click()
-      await expect(workspace.getByRole('button', { name: 'Card created' })).toBeDisabled()
+      const workspace = window.locator('main[data-page="learning-reading-workspace"]')
+      await workspace.locator('[data-learning-action="make-card"]').click()
+      await expect(workspace.locator('[data-learning-action="make-card"][data-learning-state="created"]')).toBeDisabled()
 
       await expect.poll(async () => {
         const queue = await rpc(window, 'listQueue', [{ limit: 3, now: Date.now() }]) as Array<{ kind: string }>
@@ -157,7 +157,7 @@ test('moves Reading to Basic Review and back to Reading through the public queue
         ?.cardId
       if (!cardId)
         throw new Error('Mixed Basic Card is missing from the Review queue')
-      await workspace.getByRole('button', { name: 'Next' }).click()
+      await workspace.locator('[data-learning-action="next"]').click()
       await expect.poll(async () => {
         const queue = await rpc(window, 'listQueue', [{ limit: 2, now: Date.now() }]) as Array<{ kind: string }>
         return queue.map(item => item.kind)
@@ -193,20 +193,20 @@ test('processes extract and cloze actions through Learning scheduling', async ()
       await expect.poll(async () => (await rpc(window, 'listReadingItems', [{ includeScheduled: true }])).length).toBe(1)
       await openIncrementalLearning(window)
 
-      const workspace = window.getByRole('main', { name: 'Incremental learning' })
-      const blocks = workspace.getByRole('textbox', { name: 'Editor content' }).locator('[data-block-id]')
+      const workspace = window.locator('main[data-page="learning-reading-workspace"]')
+      const blocks = workspace.locator('[data-editor-content]').locator('[data-block-id]')
       const readingItem = (await rpc(window, 'listReadingItems', [{ includeScheduled: true }]))[0]
 
       await selectBlockText(blocks.filter({ hasText: 'Context remains editable.' }).first())
-      await expect(window.getByTestId('inline-menu-main')).toBeVisible()
-      await window.getByTestId('inline-menu-main').getByRole('button', { exact: true, name: 'Highlight' }).click()
+      await expect(window.locator('[data-inline-menu="main"]')).toBeVisible()
+      await window.locator('[data-inline-menu="main"] [data-editor-action="highlight"]').click()
       await expect.poll(async () => (await rpc(window, 'listReadingItems', [{ includeScheduled: true, readingItemId: readingItem.readingItemId }]))[0]?.state).toBe('learning')
       const afterExtract = (await rpc(window, 'listReadingItems', [{ includeScheduled: true, readingItemId: readingItem.readingItemId }]))[0]
       expect(afterExtract.nextProcessAt).toBeGreaterThan(Date.now())
 
       await selectBlockText(blocks.filter({ hasText: 'Incremental learning keeps source notes editable.' }).first())
-      await expect(window.getByTestId('inline-menu-main')).toBeVisible()
-      await window.getByTestId('inline-menu-main').getByRole('button', { exact: true, name: 'Cloze' }).click()
+      await expect(window.locator('[data-inline-menu="main"]')).toBeVisible()
+      await window.locator('[data-inline-menu="main"] [data-editor-action="cloze"]').click()
       await expect.poll(async () => (await rpc(window, 'listReadingItems', [{ includeScheduled: true, readingItemId: readingItem.readingItemId }]))[0]?.nextProcessAt).toBeGreaterThan((afterExtract.nextProcessAt ?? 0) + 20 * 60 * 60 * 1000)
       const afterCloze = (await rpc(window, 'listReadingItems', [{ includeScheduled: true, readingItemId: readingItem.readingItemId }]))[0]
       if (!afterCloze)

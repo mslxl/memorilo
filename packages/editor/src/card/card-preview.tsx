@@ -45,10 +45,10 @@ function blockHighlightStyle(color: HighlightColor | null) {
   return null
 }
 
-function RevealButton({ children, onClick }: { children: ReactNode, onClick: () => void }) {
+function RevealButton({ action, children, onClick }: { action: 'reveal-answer' | 'reveal-next', children: ReactNode, onClick: () => void }) {
   return (
     <div {...stylex.props(cardPreviewStyles.actions)}>
-      <button {...stylex.props(cardPreviewStyles.revealButton)} type="button" onClick={onClick}>
+      <button {...stylex.props(cardPreviewStyles.revealButton)} data-card-action={action} type="button" onClick={onClick}>
         {children}
       </button>
     </div>
@@ -127,7 +127,7 @@ function BasicPreview({ card, mode }: {
             </div>
           )
         : null}
-      {mode === 'interactive' && !revealed ? <RevealButton onClick={() => setRevealed(true)}>{i18next.t('ui.showAnswer', { ns: 'editor' })}</RevealButton> : null}
+      {mode === 'interactive' && !revealed ? <RevealButton action="reveal-answer" onClick={() => setRevealed(true)}>{i18next.t('ui.showAnswer', { ns: 'editor' })}</RevealButton> : null}
     </>
   )
 }
@@ -141,7 +141,7 @@ function ClozePreview({ card, mode }: {
   return (
     <>
       <CardRichContent clozeCardId={card.id} nodes={card.content} revealCloze={showAnswer} />
-      {mode === 'interactive' && !revealed ? <RevealButton onClick={() => setRevealed(true)}>{i18next.t('ui.showAnswer', { ns: 'editor' })}</RevealButton> : null}
+      {mode === 'interactive' && !revealed ? <RevealButton action="reveal-answer" onClick={() => setRevealed(true)}>{i18next.t('ui.showAnswer', { ns: 'editor' })}</RevealButton> : null}
     </>
   )
 }
@@ -175,7 +175,7 @@ function MultiLinePreview({ card, itemSelection, mode, revealedItemBlockIds }: {
               </div>
             )
           : null}
-        {mode === 'interactive' && !revealed ? <RevealButton onClick={() => setRevealed(true)}>{i18next.t('ui.showAnswer', { ns: 'editor' })}</RevealButton> : null}
+        {mode === 'interactive' && !revealed ? <RevealButton action="reveal-answer" onClick={() => setRevealed(true)}>{i18next.t('ui.showAnswer', { ns: 'editor' })}</RevealButton> : null}
       </>
     )
   }
@@ -204,13 +204,13 @@ function MultiLinePreview({ card, itemSelection, mode, revealedItemBlockIds }: {
         : null}
       {canRevealNext
         ? (
-            <RevealButton onClick={() => setRevealedItems(count => count + 1)}>
+            <RevealButton action="reveal-next" onClick={() => setRevealedItems(count => count + 1)}>
               {i18next.t('ui.showNextItem', { visibleCount: visibleCount + 1, total: card.items.length, ns: 'editor' })}
             </RevealButton>
           )
         : null}
       {mode === 'interactive' && card.kind === 'set' && !revealed
-        ? <RevealButton onClick={() => setRevealed(true)}>{i18next.t('ui.showAnswer', { ns: 'editor' })}</RevealButton>
+        ? <RevealButton action="reveal-answer" onClick={() => setRevealed(true)}>{i18next.t('ui.showAnswer', { ns: 'editor' })}</RevealButton>
         : null}
     </>
   )
@@ -240,7 +240,6 @@ function CardPreviewSession({
       data-card-direction={card.kind === 'basic' || card.kind === 'list' || card.kind === 'set' ? card.direction : undefined}
       data-card-id={card.id}
       data-card-kind={card.kind}
-      data-testid="card-preview-surface"
     >
       {card.kind === 'basic' ? <BasicPreview card={card} mode={mode} /> : null}
       {card.kind === 'cloze' ? <ClozePreview card={card} mode={mode} /> : null}

@@ -14,8 +14,6 @@ const electronModule: unknown = createRequire(import.meta.url)('electron')
 if (typeof electronModule !== 'string')
   throw new TypeError('Electron package did not resolve to an executable path')
 const electronExecutablePath = electronModule
-const fileInputLabel = 'Open PDF or EPUB, TXT, CBZ, or CBR'
-
 test('releases and reopens EPUB and CBZ reader sessions', async () => {
   const userDataDirectory = await mkdtemp(resolve(tmpdir(), 'memorilo-reader-archives-'))
   const electronApplication = await electron.launch({
@@ -39,16 +37,16 @@ test('releases and reopens EPUB and CBZ reader sessions', async () => {
       await window.evaluate(() => {
         location.hash = '/reader'
       })
-      await expect(window.getByLabel(fileInputLabel)).toBeVisible()
+      await expect(window.locator('[data-reader-file-input]')).toBeVisible()
     }
     const leaveReaderRoute = async () => {
       await window.evaluate(() => {
         location.hash = '/shelf'
       })
-      await expect(window.getByLabel(fileInputLabel)).toHaveCount(0)
+      await expect(window.locator('[data-reader-file-input]')).toHaveCount(0)
     }
     const expectEpub = async () => {
-      await window.getByLabel(fileInputLabel).setInputFiles({
+      await window.locator('[data-reader-file-input]').setInputFiles({
         buffer: lifecycleEpub(),
         mimeType: 'application/epub+zip',
         name: 'lifecycle.epub',
@@ -59,7 +57,7 @@ test('releases and reopens EPUB and CBZ reader sessions', async () => {
       await expect(frame.contentFrame().getByText('EPUB lifecycle fixture')).toBeVisible()
     }
     const expectCbz = async () => {
-      await window.getByLabel(fileInputLabel).setInputFiles({
+      await window.locator('[data-reader-file-input]').setInputFiles({
         buffer: lifecycleCbz(),
         mimeType: 'application/vnd.comicbook+zip',
         name: 'lifecycle.cbz',
