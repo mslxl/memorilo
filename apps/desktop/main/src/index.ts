@@ -18,7 +18,7 @@ import {
   rendererIndexUrl,
 } from './renderer-protocol'
 import { acquireSingleInstance, showPrimaryWindow } from './single-instance'
-import { applicationDataDirectory, mainDatabasePath } from './storage/workspace-paths'
+import { createDesktopPaths } from './storage/workspace-paths'
 import { initialPanelToggleState, panelBlur, settleTrayInteraction, trayClick, trayMouseDown } from './tray/panel-toggle-state'
 import { createTrayController } from './tray/tray-controller'
 import { mainWindowChromeOptions, usesCustomWindowChrome } from './windows/main-window-chrome'
@@ -283,9 +283,20 @@ function openMainWindow(): void {
 async function startApplication(): Promise<void> {
   if (process.platform === 'darwin')
     app.dock?.setIcon(applicationIconPath)
-  const dataDirectory = applicationDataDirectory(app.getPath('userData'), resolve(mainDirectory, '../../../../.dev'), app.isPackaged)
-  const database = mainDatabasePath(dataDirectory)
-  const restore = await applyPendingRestore(database)
+  const paths = createDesktopPaths({
+    developmentDirectory: resolve(mainDirectory, '../../../../.dev'),
+    homePath: app.getPath('home'),
+    localCachePath: process.env.LOCALAPPDATA || app.getPath('sessionData'),
+    mainDirectory,
+    packaged: app.isPackaged,
+    platform: process.platform,
+    resourcesPath: process.resourcesPath,
+    ...(process.env.MEMORILO_SHELF_IMAGE_CACHE_PATH === undefined
+      ? {}
+      : { shelfImageCachePath: process.env.MEMORILO_SHELF_IMAGE_CACHE_PATH }),
+    userDataPath: app.getPath('userData'),
+  })
+  const restore = await applyPendingRestore(paths.databasePath)
   try {
     trayController = createTrayController({
       onOpenMainWindow: openMainWindow,
@@ -302,6 +313,7 @@ async function startApplication(): Promise<void> {
       createWindow,
       flushRenderer: () => requestRendererSave(),
       mainDirectory,
+      paths,
       requestRestart: () => {
         app.relaunch()
         app.quit()
