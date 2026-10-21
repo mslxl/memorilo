@@ -81,6 +81,10 @@ export class EditorNoteCardTopics {
   }
 
   reconcile(input: { document: NodeJSON, topicId: string }): CardTopicReconciliationResult {
+    // Paste can expose block nodes before the editor stores its normalized list form.
+    if (input.document.content?.some(block => block.type !== 'list'))
+      return { detachedTopicId: null }
+
     return this.#runtime.runMutation(() => {
       const sourceNode = findNoteEntry(this.#runtime.doc, input.topicId)
       if (sourceNode.data.get(ENTRY_KIND_KEY) !== 'topic')

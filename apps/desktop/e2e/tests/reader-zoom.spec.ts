@@ -38,7 +38,7 @@ function solidPagePdf(): Buffer {
   return Buffer.from(body, 'ascii')
 }
 
-async function expectPdfToRemainVisible(zoomControl: 'Zoom in' | 'Zoom out') {
+async function expectPdfToRemainVisible(direction: 'in' | 'out') {
   const userDataDirectory = await mkdtemp(resolve(tmpdir(), 'memorilo-reader-zoom-'))
   const electronApplication = await electron.launch({
     args: [desktopDirectory, `--user-data-dir=${userDataDirectory}`],
@@ -56,7 +56,7 @@ async function expectPdfToRemainVisible(zoomControl: 'Zoom in' | 'Zoom out') {
     await window.evaluate(() => {
       location.hash = '/reader'
     })
-    await window.getByLabel('Open PDF or EPUB').setInputFiles({
+    await window.locator('[data-reader-file-input]').setInputFiles({
       buffer: solidPagePdf(),
       mimeType: 'application/pdf',
       name: 'zoom-continuity.pdf',
@@ -72,9 +72,9 @@ async function expectPdfToRemainVisible(zoomControl: 'Zoom in' | 'Zoom out') {
       return context.getImageData(Math.floor(current.width / 2), Math.floor(current.height / 2), 1, 1).data[3]
     })).toBe(255)
 
-    const zoomButton = window.getByLabel(zoomControl)
+    const zoomButton = window.locator(`[data-reader-action="scale-${direction}"]`)
     await expect(zoomButton).toBeEnabled()
-    await window.evaluate((controlLabel) => {
+    await window.evaluate((controlDirection) => {
       const surfaceElement = document.querySelector<HTMLElement>('.reader-pdf-page')
       if (!surfaceElement)
         throw new Error('PDF page surface is not available')
@@ -82,10 +82,11 @@ async function expectPdfToRemainVisible(zoomControl: 'Zoom in' | 'Zoom out') {
       const initialCanvas = pageSurface.querySelector<HTMLCanvasElement>('.reader-pdf-canvas')
       if (!initialCanvas)
         throw new Error('PDF page surface is not available')
-      const control = Array.from(document.querySelectorAll<HTMLButtonElement>('button'))
-        .find(button => button.getAttribute('aria-label') === controlLabel)
+      const control = document.querySelector<HTMLButtonElement>(
+        `[data-reader-action="scale-${controlDirection}"]`,
+      )
       if (!control || control.disabled)
-        throw new Error(`PDF ${controlLabel} control is not available`)
+        throw new Error(`PDF scale-${controlDirection} control is not available`)
 
       const continuity = new Promise<{ blankSamples: number, sawResize: boolean, samples: number }>((resolvePromise, reject) => {
         let animationFrame = 0
@@ -171,7 +172,7 @@ async function expectPdfToRemainVisible(zoomControl: 'Zoom in' | 'Zoom out') {
         __memoriloReaderZoomContinuity?: typeof continuity
       }
       testWindow.__memoriloReaderZoomContinuity = continuity
-    }, zoomControl)
+    }, direction)
     await zoomButton.click()
     const result = await window.evaluate(async () => {
       const testWindow = globalThis as typeof globalThis & {
@@ -202,9 +203,9 @@ async function expectPdfToRemainVisible(zoomControl: 'Zoom in' | 'Zoom out') {
 }
 
 test('keeps the rendered PDF visible while zooming in', async () => {
-  await expectPdfToRemainVisible('Zoom in')
+  await expectPdfToRemainVisible('in')
 })
 
 test('keeps the rendered PDF visible while zooming out', async () => {
-  await expectPdfToRemainVisible('Zoom out')
+  await expectPdfToRemainVisible('out')
 })

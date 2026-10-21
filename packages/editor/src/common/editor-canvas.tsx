@@ -397,6 +397,11 @@ export function EditorCanvas({
   const [editing, setEditing] = useState(false)
   const scrollingRef = useRef<HTMLDivElement>(null)
   const beginEditing = useCallback(() => setEditing(true), [])
+  const contentProps = stylex.props(
+    editorCanvasStyles.content,
+    embedded && editorCanvasStyles.contentEmbedded,
+    modePicker && !editing && editorCanvasStyles.contentChoosingMode,
+  )
 
   useLayoutEffect(() => {
     if (focusBlockId !== undefined)
@@ -439,11 +444,9 @@ export function EditorCanvas({
             {editing ? null : modePicker?.(beginEditing)}
             <div
               ref={editor.mount}
-              {...stylex.props(
-                editorCanvasStyles.content,
-                embedded && editorCanvasStyles.contentEmbedded,
-                modePicker && !editing && editorCanvasStyles.contentChoosingMode,
-              )}
+              {...contentProps}
+              // React owns this class after mount; preserving it keeps ProseMirror-scoped rules active across rerenders.
+              className={contentProps.className ? `ProseMirror ${contentProps.className}` : 'ProseMirror'}
               aria-label={t('ui.editorContent')}
               aria-multiline={readOnly ? undefined : 'true'}
               aria-readonly={readOnly ? 'true' : undefined}

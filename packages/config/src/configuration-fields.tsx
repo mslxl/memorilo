@@ -183,7 +183,7 @@ function FieldControl<T extends object>({
   )
 
   return (
-    <div {...rowStyles}>
+    <div {...rowStyles} data-configuration-field={field.path}>
       <div {...stylex.props(configurationFieldStyles.copy)}>
         <span {...stylex.props(configurationFieldStyles.label)}>{field.label}</span>
         {field.description

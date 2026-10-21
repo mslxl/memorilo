@@ -23,7 +23,6 @@ import { createNoteAuthoritativeLoading } from './note-authoritative-loading'
 import {
   noteRevision,
   toStoredEntries,
-  toStoredSpreadsheets,
   toStoredTopic,
 } from './note-authoritative-projection'
 import { projectNoteLearningCards, projectNoteReadingItems } from './note-learning-cards'
@@ -159,9 +158,6 @@ export function createNoteAuthoritativeRuntime(
       : resolveJournalTopic(current.note, { expectedNoteTitle: current.journalDate })
     const update = current.note.exportUpdates(version)
     const assetReferences = projectNoteAssetReferences(current.note)
-    const spreadsheetTopicIds = persistOptions.entries || journalTopic !== null
-      ? undefined
-      : new Set(persistOptions.topicIds ?? [])
     const receipt = await storage.notes.saveNoteUpdates({
       allowedMissingAssetFileNames: assetReferences.map(reference => reference.fileName),
       assetReferences,
@@ -173,7 +169,6 @@ export function createNoteAuthoritativeRuntime(
           ? {}
           : { learningCards: projectNoteLearningCards(current.note, persistOptions.topicIds), learningReadingItems: projectNoteReadingItems(current.note) }),
       noteId: current.note.id,
-      spreadsheets: toStoredSpreadsheets(current.note, spreadsheetTopicIds),
       ...(persistOptions.title || journalTopic !== null ? { title: current.note.getTitle() } : {}),
       topics: (journalTopic === null ? persistOptions.topicIds ?? [] : [journalTopic.topicId])
         .map(topicId => toStoredTopic(current.note.getTopicContent(topicId))),

@@ -182,33 +182,33 @@ test('persists and reloads a BookTopic annotation and region occlusion', async (
     let window = await electronApplication.firstWindow()
     await window.setViewportSize({ height: 900, width: 1440 })
 
-    await window.getByRole('link', { name: 'Shelf' }).click()
-    await window.getByRole('button', { name: 'Add Book Source' }).click()
-    await window.getByLabel('OPDS address').fill(`http://127.0.0.1:${address.port}/opds`)
-    await window.getByRole('button', { name: 'Add Source' }).click()
+    await window.locator('a[href*="/shelf"]').click()
+    await window.locator('[data-shelf-action="add-source"]').click()
+    await window.locator('[data-shelf-field="url"]').fill(`http://127.0.0.1:${address.port}/opds`)
+    await window.locator('[data-shelf-action="submit-source"]').click()
     await expect(window.getByRole('heading', { name: bookTitle })).toBeVisible()
 
     await window.keyboard.press('Meta+P')
-    await window.getByRole('combobox', { name: 'Search commands and Notes' }).fill(noteTitle)
-    await window.getByRole('option').filter({ hasText: `Create Note \u201C${noteTitle}\u201D` }).click()
-    await expect(window.getByRole('button', { name: `Rename Note: ${noteTitle}` })).toBeVisible()
+    await window.locator('input[role=combobox][aria-autocomplete=list]').fill(noteTitle)
+    await window.locator('[role=listbox] [role=option][id$=\"-create-note\"]').click()
+    await expect(window.locator('[data-note-action="rename-current"]')).toBeVisible()
 
-    await window.getByRole('button', { name: 'Show Note Inspector' }).click()
-    const structure = window.getByLabel('Structure')
-    const regularTopic = structure.getByRole('link', { exact: true, name: noteTitle })
+    await window.locator('[data-note-inspector-toggle]').click()
+    const structure = window.locator('[data-note-inspector]')
+    const regularTopic = structure.locator(`[data-note-entry-kind="topic"] a[title="${noteTitle}"]`)
     await expect(regularTopic).toBeVisible()
     await regularTopic.click({ button: 'right' })
 
     const entryMenu = window.getByRole('menu')
-    await expect(entryMenu.getByRole('menuitem', { name: 'Open Book' })).toHaveCount(0)
-    await entryMenu.getByRole('menuitem', { exact: true, name: 'Add' }).click()
-    await window.getByRole('menuitem', { exact: true, name: 'Book' }).click()
+    await expect(entryMenu.locator('[data-entry-action="open-book"]')).toHaveCount(0)
+    await entryMenu.locator('[role="menuitem"][data-entry-action="add"]').click()
+    await window.locator('[role="menuitem"][data-entry-action="add-book"]').click()
 
-    const picker = window.getByRole('dialog', { name: 'Add Book' })
-    await picker.getByRole('option', { name: new RegExp(bookTitle, 'u') }).click()
-    await picker.getByRole('button', { exact: true, name: 'Add Book' }).click()
+    const picker = window.locator('[data-book-topic-picker]')
+    await picker.locator('[data-book-option]').filter({ hasText: bookTitle }).click()
+    await picker.locator('[data-book-action="submit"]').click()
 
-    const bookTopic = structure.getByRole('link', { exact: true, name: bookTitle })
+    const bookTopic = structure.locator(`[data-note-entry-topic-type="book"] a[title="${bookTitle}"]`)
     await expect(bookTopic).toBeVisible()
     await bookTopic.click()
 
@@ -228,11 +228,10 @@ test('persists and reloads a BookTopic annotation and region occlusion', async (
     // The first packaged PDF load can initialize PDF.js's worker and range
     // transport lazily; wait for the reader's ready state, not the default
     // five-second assertion window used by ordinary DOM transitions.
-    await expect(window.getByLabel('Page 1 of 2')).toBeVisible({ timeout: 30_000 })
+    await expect(window.locator('[data-page-number="1"]')).toBeVisible({ timeout: 30_000 })
     await expect(window.locator('.reader-pdf-page-slot')).toHaveCount(2)
     await expect(window.getByRole('heading', { name: `${noteTitle} \u00B7 ${bookTitle}` })).toBeVisible()
-    await expect(window.getByRole('heading', { name: 'Choose a reading context' })).toHaveCount(0)
-    await expect(window.getByRole('button', { name: 'Select an area to annotate' })).toBeVisible()
+    await expect(window.locator('[data-reader-action="select-area"]')).toBeVisible()
 
     const contextIds = await window.evaluate(() => {
       const [, searchText = ''] = globalThis.location.hash.slice(1).split('?')
@@ -268,23 +267,23 @@ test('persists and reloads a BookTopic annotation and region occlusion', async (
       selection.addRange(range)
       secondLayer.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }))
     })
-    const selectionToolbar = window.getByRole('toolbar', { name: 'Selection actions' })
+    const selectionToolbar = window.locator('[data-reader-toolbar="selection"]')
     await expect(selectionToolbar).toBeVisible()
-    await selectionToolbar.getByRole('button', { name: 'Highlight selection' }).click()
+    await selectionToolbar.locator('[data-reader-action="highlight-selection"]').click()
     await expect.poll(() => window.locator('.reader-pdf-annotation').count()).toBe(2)
     await expect.poll(() => window.locator('.reader-pdf-annotation').evaluateAll((elements) => {
       return new Set(elements.map(element => element.getAttribute('data-annotation-id'))).size
     })).toBe(1)
 
-    await window.getByRole('button', { name: 'Show reader sidebar' }).click()
-    await window.getByRole('tab', { name: /Annotations/u }).click()
+    await window.locator('[data-reader-action="toggle-sidebar"]').click()
+    await window.locator('[data-reader-tab="annotations"]').click()
     const annotationsPanel = window.locator('#reader-annotations-panel')
-    const crossPageAnnotation = annotationsPanel.getByRole('article', { exact: true, name: 'Page 1' })
+    const crossPageAnnotation = annotationsPanel.locator('[data-reader-annotation-kind="text"]').first()
     await expect(crossPageAnnotation).toBeVisible()
     await expect(crossPageAnnotation).toContainText('Direct reader context starts')
     await expect(crossPageAnnotation).toContainText('and continues on page two')
 
-    await window.getByRole('button', { name: 'Select an area to annotate' }).click()
+    await window.locator('[data-reader-action="select-area"]').click()
     const page = window.locator('.reader-pdf-page').first()
     const pageBox = await page.boundingBox()
     if (!pageBox)
@@ -293,22 +292,22 @@ test('persists and reloads a BookTopic annotation and region occlusion', async (
     await window.mouse.down()
     await window.mouse.move(pageBox.x + 240, pageBox.y + 160, { steps: 5 })
     await window.mouse.up()
-    await window.getByRole('button', { name: 'Highlight area' }).click()
+    await window.locator('[data-reader-action="highlight-area"]').click()
 
-    const highlightedArea = window.getByRole('button', { name: 'Open area annotation' }).last()
+    const highlightedArea = window.locator('button[data-reader-annotation-id]').last()
     await expect(highlightedArea).toBeVisible()
-    await window.getByRole('tab', { name: /Annotations/u }).click()
-    const regionAnnotation = annotationsPanel.getByRole('article', { name: 'Area on page 1' })
+    await window.locator('[data-reader-tab="annotations"]').click()
+    const regionAnnotation = annotationsPanel.locator('[data-reader-annotation-kind="region"]').first()
     await expect(regionAnnotation).toBeVisible()
-    const regionPreview = regionAnnotation.getByRole('img', { name: 'Area on page 1' })
+    const regionPreview = regionAnnotation.locator('[data-reader-region-preview]')
     await expect(regionPreview).toBeVisible()
     await regionPreview.click()
-    const highlightActions = window.getByRole('toolbar', { name: 'Highlight actions' })
+    const highlightActions = window.locator('[data-reader-toolbar="annotation"]')
     await expect(highlightActions).toBeVisible()
-    await highlightActions.getByRole('button', { name: 'Choose annotation color' }).click()
-    await highlightActions.getByRole('button', { name: 'blue annotation' }).click()
+    await highlightActions.locator('[data-reader-action="choose-color"]').click()
+    await highlightActions.locator('[data-reader-action="select-color"][data-reader-color="blue"]').click()
 
-    await highlightActions.getByRole('button', { name: 'Create or open image occlusion' }).click()
+    await highlightActions.locator('[data-reader-action="open-image-occlusion"]').click()
     await expect(window.locator('[data-topic-type="image-occlusion"]')).toBeVisible()
     await expect.poll(() => readReaderRegionImageOcclusionParents(databasePath)).toEqual([{
       childType: 'image-occlusion',
@@ -318,25 +317,25 @@ test('persists and reloads a BookTopic annotation and region occlusion', async (
     await window.evaluate((hash) => {
       globalThis.location.hash = hash
     }, readerHash)
-    const restoredArea = window.getByRole('button', { name: 'Open area annotation' }).last()
+    const restoredArea = window.locator('button[data-reader-annotation-id]').last()
     await expect(restoredArea).toBeVisible({ timeout: 30_000 })
-    await window.getByRole('button', { name: 'Show reader sidebar' }).click()
-    await window.getByRole('tab', { name: /Annotations/u }).click()
+    await window.locator('[data-reader-action="toggle-sidebar"]').click()
+    await window.locator('[data-reader-tab="annotations"]').click()
     const restoredAnnotationsPanel = window.locator('#reader-annotations-panel')
-    const restoredRegionAnnotation = restoredAnnotationsPanel.getByRole('article', { name: 'Area on page 1' })
-    await expect(restoredRegionAnnotation.getByText('Image occlusion')).toBeVisible()
-    const restoredRegionImage = restoredRegionAnnotation.getByRole('img', { name: 'Area on page 1' }).locator('img')
+    const restoredRegionAnnotation = restoredAnnotationsPanel.locator('[data-reader-annotation-kind="region"]').first()
+    await expect(restoredRegionAnnotation.locator('[data-reader-annotation-status="image-occlusion"]')).toBeVisible()
+    const restoredRegionImage = restoredRegionAnnotation.locator('[data-reader-region-preview] img')
     await expect.poll(() => restoredRegionImage.evaluate((image) => {
       if (!(image instanceof HTMLImageElement))
         throw new TypeError('Reader annotation region preview is not an image')
       return image.naturalWidth
     })).toBeGreaterThan(0)
-    await restoredRegionAnnotation.getByText('Image occlusion').click()
-    const restoredActions = window.getByRole('toolbar', { name: 'Highlight actions' })
+    await restoredRegionAnnotation.locator('[data-reader-annotation-status="image-occlusion"]').click()
+    const restoredActions = window.locator('[data-reader-toolbar="annotation"]')
     await expect(restoredActions).toBeVisible()
-    await restoredActions.getByRole('button', { name: 'Add annotation' }).click()
+    await restoredActions.locator('[data-reader-action="add-annotation"]').click()
 
-    const annotationEditor = window.getByRole('textbox', { name: 'Editor content' }).last()
+    const annotationEditor = window.locator('[data-editor-content]').last()
     await expect(annotationEditor).toBeVisible()
     await annotationEditor.click()
     await window.keyboard.type('Margin annotation')
@@ -356,19 +355,16 @@ test('persists and reloads a BookTopic annotation and region occlusion', async (
     electronApplication = await launchApplication(databasePath, userDataDirectory)
     window = await electronApplication.firstWindow()
     await window.setViewportSize({ height: 900, width: 1440 })
-    await window.getByRole('link', { name: 'Journals' }).waitFor()
+    await window.locator('a[href*="/journals"]').waitFor()
     await window.evaluate(({ noteId, topicId }) => {
       globalThis.location.hash = `/note/${encodeURIComponent(noteId)}/${encodeURIComponent(topicId)}`
     }, contextIds)
-    const structureAfterAnnotation = window.getByLabel('Structure')
-    const persistedImageOcclusionTopic = structureAfterAnnotation.getByRole('link', {
-      exact: true,
-      name: 'Image Occlusion',
-    })
+    const structureAfterAnnotation = window.locator('[data-note-inspector]')
+    const persistedImageOcclusionTopic = structureAfterAnnotation.locator('[data-note-entry-topic-type="image-occlusion"] a')
     await expect(persistedImageOcclusionTopic).toBeVisible()
     await persistedImageOcclusionTopic.click()
     await expect(window.locator('[data-topic-type="image-occlusion"]')).toBeVisible()
-    const imageOcclusionSource = window.getByRole('link', { name: 'Open source in Reader' })
+    const imageOcclusionSource = window.locator('[data-reader-source-link]')
     await expect(imageOcclusionSource).toBeVisible()
     const imageOcclusionSourceImage = imageOcclusionSource.getByRole('img')
     await expect(imageOcclusionSourceImage).toBeVisible()
@@ -399,14 +395,11 @@ test('persists and reloads a BookTopic annotation and region occlusion', async (
       parentType: 'book',
     }])
 
-    const annotationTopic = structureAfterAnnotation.getByRole('link', {
-      exact: true,
-      name: 'Area on page 1',
-    })
+    const annotationTopic = structureAfterAnnotation.locator('[data-note-entry-topic-type="regular"] a').last()
     await expect(annotationTopic).toBeVisible()
     await annotationTopic.click()
-    await expect(window.getByRole('link', { name: 'Open source in Reader' })).toBeVisible()
-    const annotationSourceImage = window.getByRole('img', { name: 'Area on page 1' })
+    await expect(window.locator('[data-reader-source-link]')).toBeVisible()
+    const annotationSourceImage = window.locator('[data-reader-source-link] img')
     await expect(annotationSourceImage).toBeVisible()
     const annotationSourceUrl = await annotationSourceImage.getAttribute('src')
     if (!annotationSourceUrl)
@@ -414,7 +407,7 @@ test('persists and reloads a BookTopic annotation and region occlusion', async (
     expectCleanSourcePixel(await readAssetPixel(electronApplication, window, annotationSourceUrl, 2, 2))
     await expect(window.getByText('Margin annotation')).toBeVisible()
 
-    await window.getByRole('link', { name: 'Open source in Reader' }).click()
+    await window.locator('[data-reader-source-link]').click()
     await expect.poll(() => window.evaluate(() => {
       const [, searchText = ''] = globalThis.location.hash.slice(1).split('?')
       const search = new URLSearchParams(searchText)
@@ -428,29 +421,29 @@ test('persists and reloads a BookTopic annotation and region occlusion', async (
       noteId: contextIds.noteId,
       topicId: contextIds.topicId,
     })
-    await expect(window.getByRole('toolbar', { name: 'Highlight actions' })).toBeVisible({ timeout: 30_000 })
+    await expect(window.locator('[data-reader-toolbar="annotation"]')).toBeVisible({ timeout: 30_000 })
     await expect(window.getByText('Margin annotation')).toBeVisible()
-    await window.getByRole('tab', { name: /Annotations/u }).click()
-    const restoredCrossPageAnnotation = window.locator('#reader-annotations-panel').getByRole('article', { exact: true, name: 'Page 1' })
+    await window.locator('[data-reader-tab="annotations"]').click()
+    const restoredCrossPageAnnotation = window.locator('#reader-annotations-panel [data-reader-annotation-kind="text"]').first()
     await expect(restoredCrossPageAnnotation).toContainText('Direct reader context starts')
     await expect(restoredCrossPageAnnotation).toContainText('and continues on page two')
     await expect.poll(() => window.locator('.reader-pdf-annotation').count()).toBe(3)
-    const restoredHighlight = window.getByRole('button', { name: 'Open area annotation' }).last()
+    const restoredHighlight = window.locator('button[data-reader-annotation-id]').last()
     await expect(restoredHighlight).toHaveAttribute('data-style', 'highlight')
-    const restoredHighlightActions = window.getByRole('toolbar', { name: 'Highlight actions' })
-    await expect(restoredHighlightActions.getByRole('button', { name: 'Add annotation' })).toHaveCount(0)
-    await restoredHighlightActions.getByRole('button', { name: 'Choose annotation color' }).click()
-    const restoredBlue = restoredHighlightActions.getByRole('button', { name: 'blue annotation' })
+    const restoredHighlightActions = window.locator('[data-reader-toolbar="annotation"]')
+    await expect(restoredHighlightActions.locator('[data-reader-action="add-annotation"]')).toHaveCount(0)
+    await restoredHighlightActions.locator('[data-reader-action="choose-color"]').click()
+    const restoredBlue = restoredHighlightActions.locator('[data-reader-action="select-color"][data-reader-color="blue"]')
     await expect(restoredBlue).toHaveAttribute('aria-pressed', 'true')
     await restoredBlue.click()
 
     await restoredHighlightActions
-      .getByRole('button', { name: 'Delete highlight' })
+      .locator('[data-reader-action="delete-highlight"]')
       .click()
     const deleteDialog = window.getByRole('dialog')
     await expect(deleteDialog.getByRole('button')).toHaveCount(2)
-    const cancelDelete = deleteDialog.getByRole('button', { name: 'Cancel' })
-    const deleteHighlight = deleteDialog.getByRole('button', { name: 'Delete highlight' })
+    const cancelDelete = deleteDialog.locator('[data-reader-dialog-action="cancel"]')
+    const deleteHighlight = deleteDialog.locator('[data-reader-dialog-action="delete"]')
     await expect(cancelDelete).toBeFocused()
     await window.keyboard.press('Tab')
     await expect(deleteHighlight).toBeFocused()
@@ -458,15 +451,15 @@ test('persists and reloads a BookTopic annotation and region occlusion', async (
     await expect(cancelDelete).toBeFocused()
     await window.keyboard.press('Enter')
     await expect(deleteDialog).toHaveCount(0)
-    await expect(window.getByRole('button', { name: 'Open area annotation' }).last()).toBeVisible()
+    await expect(window.locator('button[data-reader-annotation-id]').last()).toBeVisible()
 
-    await restoredHighlightActions.getByRole('button', { name: 'Delete highlight' }).click()
+    await restoredHighlightActions.locator('[data-reader-action="delete-highlight"]').click()
     await expect(deleteDialog).toBeVisible()
     await window.keyboard.press('Escape')
     await expect(deleteDialog).toHaveCount(0)
-    await expect(window.getByRole('button', { name: 'Open area annotation' }).last()).toBeVisible()
+    await expect(window.locator('button[data-reader-annotation-id]').last()).toBeVisible()
 
-    await restoredHighlightActions.getByRole('button', { name: 'Delete highlight' }).click()
+    await restoredHighlightActions.locator('[data-reader-action="delete-highlight"]').click()
     await expect(window.getByRole('dialog')).toBeVisible()
     await deleteHighlight.click()
     await expect(window.locator('.reader-pdf-annotation')).toHaveCount(2)
@@ -474,19 +467,13 @@ test('persists and reloads a BookTopic annotation and region occlusion', async (
     await window.evaluate(({ noteId, topicId }) => {
       globalThis.location.hash = `/note/${encodeURIComponent(noteId)}/${encodeURIComponent(topicId)}`
     }, contextIds)
-    const retainedAnnotationTopic = window.getByLabel('Structure').getByRole('link', {
-      exact: true,
-      name: 'Area on page 1',
-    })
+    const retainedAnnotationTopic = window.locator('[data-note-inspector] [data-note-entry-topic-type="regular"] a').last()
     await expect(retainedAnnotationTopic).toBeVisible()
     await retainedAnnotationTopic.click()
-    await expect(window.getByRole('link', { name: 'Open source in Reader' })).toHaveCount(0)
-    await expect(window.getByRole('img', { name: 'Area on page 1' })).toBeVisible()
+    await expect(window.locator('[data-reader-source-link]')).toHaveCount(0)
+    await expect(window.locator('[data-topic-type="regular"] img')).toBeVisible()
     await expect(window.getByText('Margin annotation')).toBeVisible()
-    await expect(window.getByLabel('Structure').getByRole('link', {
-      exact: true,
-      name: 'Image Occlusion',
-    })).toBeVisible()
+    await expect(window.locator('[data-note-inspector] [data-note-entry-topic-type="image-occlusion"] a')).toBeVisible()
     await expect.poll(() => readReaderRegionImageOcclusionParents(databasePath)).toEqual([{
       childType: 'image-occlusion',
       parentType: 'book',

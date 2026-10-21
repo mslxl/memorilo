@@ -98,7 +98,7 @@ export function MarkdownImportDialog({ fileName, onClose, onConfirm, source, tar
       <Dialog.Portal>
         <Dialog.Overlay variant="note" />
         <Dialog.Content aria-describedby="markdown-import-description" aria-labelledby="markdown-import-title" asChild variant="compact" xstyle={noteEditorDialogStyles.markdownImportDialog}>
-          <form onSubmit={submit}>
+          <form data-markdown-import-dialog="" onSubmit={submit}>
             <header {...stylex.props(noteEditorDialogStyles.bookPickerHeader)}>
               <div>
                 <h1 id="markdown-import-title" {...stylex.props(noteEditorDialogStyles.bookPickerTitle)}>
@@ -118,28 +118,28 @@ export function MarkdownImportDialog({ fileName, onClose, onConfirm, source, tar
                 ? (
                     <label {...stylex.props(noteEditorDialogStyles.entryCreationField)}>
                       <span>{t('markdownImport.noteTitle')}</span>
-                      <TextField autoFocus value={noteTitle} xstyle={noteEditorDialogStyles.entryCreationInput} onChange={event => setNoteTitle(event.target.value)} />
+                      <TextField autoFocus data-markdown-import-field="note-title" value={noteTitle} xstyle={noteEditorDialogStyles.entryCreationInput} onChange={event => setNoteTitle(event.target.value)} />
                     </label>
                   )
                 : null}
               <label {...stylex.props(noteEditorDialogStyles.entryCreationField)}>
                 <span>{t('markdownImport.topicTitle')}</span>
-                <TextField autoFocus={target !== 'new-note'} value={topicTitle} xstyle={noteEditorDialogStyles.entryCreationInput} onChange={event => setTopicTitle(event.target.value)} />
+                <TextField autoFocus={target !== 'new-note'} data-markdown-import-field="topic-title" value={topicTitle} xstyle={noteEditorDialogStyles.entryCreationInput} onChange={event => setTopicTitle(event.target.value)} />
               </label>
               <label {...stylex.props(noteEditorDialogStyles.entryCreationField)}>
                 <span>{t('markdownImport.flavor')}</span>
-                <select value={flavor} {...stylex.props(noteEditorDialogStyles.markdownImportSelect)} onChange={event => setFlavor(event.target.value as 'commonmark' | 'gfm')}>
+                <select data-markdown-import-field="flavor" value={flavor} {...stylex.props(noteEditorDialogStyles.markdownImportSelect)} onChange={event => setFlavor(event.target.value as 'commonmark' | 'gfm')}>
                   <option value="gfm">GFM</option>
                   <option value="commonmark">CommonMark</option>
                 </select>
               </label>
               <label {...stylex.props(noteEditorDialogStyles.markdownImportCheckbox)}>
-                <input checked={mapTasks} type="checkbox" onChange={event => setMapTasks(event.target.checked)} />
+                <input checked={mapTasks} data-markdown-import-field="map-tasks" type="checkbox" onChange={event => setMapTasks(event.target.checked)} />
                 <span>{t('markdownImport.mapTasks')}</span>
               </label>
               {parsed.diagnostics.length > 0
                 ? (
-                    <div {...stylex.props(noteEditorDialogStyles.markdownImportDiagnostics)} role="status">
+                    <div {...stylex.props(noteEditorDialogStyles.markdownImportDiagnostics)} data-markdown-import-diagnostics="" role="status">
                       <strong>{t('markdownImport.warnings', { count: parsed.diagnostics.length })}</strong>
                       <ul>
                         {parsed.diagnostics.map(diagnostic => <li key={`${diagnostic.line}:${diagnostic.message}`}>{t('markdownImport.lineWarning', { line: diagnostic.line, message: diagnostic.message })}</li>)}
@@ -151,7 +151,7 @@ export function MarkdownImportDialog({ fileName, onClose, onConfirm, source, tar
             </div>
             <footer {...stylex.props(noteEditorDialogStyles.bookPickerFooter)}>
               <Dialog.Close asChild><button {...stylex.props(noteEditorDialogStyles.bookPickerCancel)} disabled={submitting} type="button">{t('cancel')}</button></Dialog.Close>
-              <button {...stylex.props(noteEditorDialogStyles.bookPickerCreate)} disabled={submitting || noteTitle.trim().length === 0 || topicTitle.trim().length === 0} type="submit">
+              <button data-markdown-import-action="submit" {...stylex.props(noteEditorDialogStyles.bookPickerCreate)} disabled={submitting || noteTitle.trim().length === 0 || topicTitle.trim().length === 0} type="submit">
                 {submitting ? t('markdownImport.importing') : t('markdownImport.import')}
               </button>
             </footer>

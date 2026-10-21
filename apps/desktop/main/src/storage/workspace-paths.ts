@@ -25,7 +25,10 @@ export interface DesktopPaths {
 }
 
 export function createDesktopPaths(options: DesktopPathsOptions): DesktopPaths {
-  const dataDirectory = options.packaged ? options.userDataPath : options.developmentDirectory
+  // E2E app instances need isolated state instead of sharing the developer's .dev directory.
+  const dataDirectory = options.packaged || process.env.MEMORILO_E2E_USE_USER_DATA === '1'
+    ? options.userDataPath
+    : options.developmentDirectory
   const databasePath = join(dataDirectory, 'memorilo.sqlite')
   const workspace = workspaceDirectory(databasePath)
   const shelfImageCacheDatabasePath = configuredShelfImageCachePath(options)

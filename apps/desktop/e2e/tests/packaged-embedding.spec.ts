@@ -64,13 +64,13 @@ test('packaged desktop executes offline embedding search', async () => {
     try {
       const window = await electronApplication.firstWindow()
       await window.waitForLoadState('domcontentloaded')
-      const editor = window.getByRole('textbox', { name: 'Editor content' })
+      const editor = window.locator('[data-editor-content]')
       const noteTitle = 'Packaged embedding Note'
-      await window.getByRole('link', { name: 'Journals' }).waitFor()
+      await window.locator('a[href*="/journals"]').waitFor()
       await window.keyboard.press('Meta+P')
-      await window.getByRole('combobox', { name: 'Search commands and Notes' }).fill(noteTitle)
-      await window.getByRole('option').filter({ hasText: `Create Note “${noteTitle}”` }).click()
-      await expect(window.getByRole('button', { name: `Rename Note: ${noteTitle}` })).toBeVisible({
+      await window.locator('input[role=combobox][aria-autocomplete=list]').fill(noteTitle)
+      await window.locator('[role=listbox] [role=option][id$=\"-create-note\"]').click()
+      await expect(window.locator('[data-note-action="rename-current"]')).toBeVisible({
         timeout: 10_000,
       })
       const initialBlock = editor.locator('[data-block-id]').first()

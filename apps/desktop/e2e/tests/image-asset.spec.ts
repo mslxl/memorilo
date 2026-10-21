@@ -104,25 +104,25 @@ test('persists an uploaded image beside the database and renders it after restar
     application = await launchApplication(databasePath, userDataDirectory)
     let window = await application.firstWindow()
 
-    await window.getByRole('link', { name: 'Journals' }).waitFor()
+    await window.locator('a[href*="/journals"]').waitFor()
     await window.keyboard.press('Meta+P')
-    await window.getByRole('combobox', { name: 'Search commands and Notes' }).fill(title)
-    await window.getByRole('option').filter({ hasText: `Create Note “${title}”` }).click()
+    await window.locator('input[role=combobox][aria-autocomplete=list]').fill(title)
+    await window.locator('[role=listbox] [role=option][id$=\"-create-note\"]').click()
 
-    const editor = window.getByRole('textbox', { name: 'Editor content' })
+    const editor = window.locator('[data-editor-content]')
     await expect(editor.locator('[data-block-id]').first()).toBeVisible()
     await editor.click({ button: 'right' })
-    await window.getByRole('menuitem', { name: 'Insert image…' }).click()
+    await window.locator('[role="menuitem"][data-editor-action="insert-image"]').click()
 
-    const imageDialog = window.getByRole('dialog', { name: 'Insert image' })
-    await imageDialog.getByLabel('Upload').setInputFiles({
+    const imageDialog = window.locator('[data-image-dialog]')
+    await imageDialog.locator('[data-image-field="file"]').setInputFiles({
       buffer: imageContents,
       mimeType: 'image/png',
       name: 'sample-image.png',
     })
-    await imageDialog.getByRole('button', { name: 'Upload Image' }).click()
+    await imageDialog.locator('[data-image-action="upload"]').click()
 
-    const image = editor.getByRole('img', { name: 'upload preview' })
+    const image = editor.locator('[data-editor-image]')
     await expect(image).toHaveAttribute('src', /^memorilo:\/\/asset\/[0-9a-f-]+\.png$/)
     const assetUrl = await image.getAttribute('src')
     if (!assetUrl)
@@ -166,13 +166,13 @@ test('persists an uploaded image beside the database and renders it after restar
 
     application = await launchApplication(databasePath, userDataDirectory)
     window = await application.firstWindow()
-    await window.getByRole('link', { name: 'Journals' }).waitFor()
+    await window.locator('a[href*="/journals"]').waitFor()
     await window.evaluate((hash) => {
       globalThis.location.hash = hash
     }, noteHash)
 
-    const reopenedEditor = window.getByRole('textbox', { name: 'Editor content' })
-    const reopenedImage = reopenedEditor.getByRole('img', { name: 'upload preview' })
+    const reopenedEditor = window.locator('[data-editor-content]')
+    const reopenedImage = reopenedEditor.locator('[data-editor-image]')
     await expect(reopenedImage).toHaveAttribute('src', assetUrl)
     await expect.poll(() => reopenedImage.evaluate(element => ({
       complete: (element as HTMLImageElement).complete,
@@ -189,17 +189,17 @@ test('persists an uploaded image beside the database and renders it after restar
       unreferenced_at: null,
     }])
 
-    let openImageOcclusion = window.getByRole('button', { name: 'Open image occlusion' })
+    let openImageOcclusion = window.locator('[data-image-action="open-occlusion"]')
     if (!await openImageOcclusion.isVisible())
       await reopenedImage.click({ force: true })
     await openImageOcclusion.click()
     const occlusionEditor = window.locator('[data-topic-type="image-occlusion"]')
     await expect(occlusionEditor).toBeVisible()
-    await expect(occlusionEditor.getByRole('textbox', { name: 'Image occlusion topic title' }))
+    await expect(occlusionEditor.locator('[data-image-occlusion-field="title"]'))
       .toHaveValue('Image Occlusion')
     const occlusionHash = await window.evaluate(() => globalThis.location.hash)
 
-    await occlusionEditor.getByRole('button', { name: 'Rectangle' }).click()
+    await occlusionEditor.locator('[data-image-occlusion-tool="rectangle"]').click()
     const canvas = occlusionEditor.locator('canvas').first()
     const canvasBounds = await canvas.boundingBox()
     if (!canvasBounds)
@@ -214,16 +214,16 @@ test('persists an uploaded image beside the database and renders it after restar
       canvasBounds.y + canvasBounds.height * 0.6,
     )
     await window.mouse.up()
-    await expect(occlusionEditor.getByRole('button', { name: 'Delete' })).toBeEnabled()
+    await expect(occlusionEditor.locator('[data-image-occlusion-action="delete"]')).toBeEnabled()
 
     await window.evaluate((hash) => {
       globalThis.location.hash = hash
     }, noteHash)
-    const sourceEditor = window.getByRole('textbox', { name: 'Editor content' })
-    const sourceImage = sourceEditor.getByRole('img', { name: 'upload preview' })
+    const sourceEditor = window.locator('[data-editor-content]')
+    const sourceImage = sourceEditor.locator('[data-editor-image]')
     await expect(sourceImage).toBeVisible()
     await expect(sourceEditor.locator('[data-image-occlusion-preview]')).toBeVisible()
-    openImageOcclusion = window.getByRole('button', { name: 'Open image occlusion' })
+    openImageOcclusion = window.locator('[data-image-action="open-occlusion"]')
     if (!await openImageOcclusion.isVisible())
       await sourceImage.click({ force: true })
     await openImageOcclusion.click()

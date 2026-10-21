@@ -2,7 +2,7 @@ import type { BookTopicSnapshot, CardTopicSource, EditorNote, NoteEntrySnapshot 
 import type { MouseEvent as ReactMouseEvent } from 'react'
 import * as stylex from '@stylexjs/stylex'
 import { Link } from '@tanstack/react-router'
-import { BookOpen, Brackets, ChevronRight, CreditCard, FileText, Folder, FolderOpen, Highlighter, Link2, ListChecks, ListOrdered, PenLine, ScanLine, Table2, Unlink } from 'lucide-react'
+import { BookOpen, Brackets, ChevronRight, CreditCard, FileText, Folder, FolderOpen, Highlighter, Link2, ListChecks, ListOrdered, PenLine, ScanLine, Unlink } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -174,6 +174,7 @@ export function NoteInspector({
               {...stylex.props(noteInspectorStyles.inspector)}
               animate={inspectorAnimate}
               aria-label={t('noteInspector')}
+              data-note-inspector=""
               exit={inspectorExit}
               initial={inspectorInitial}
               transition={inspectorTransition}
@@ -324,6 +325,9 @@ export function NoteInspectorContent({
                     exit={{ opacity: 0, y: shouldReduceMotion ? 0 : -3 }}
                     initial={{ opacity: 0, y: shouldReduceMotion ? 0 : -3 }}
                     layout={shouldReduceMotion ? false : 'position'}
+                    data-note-entry-id={entry.id}
+                    data-note-entry-kind={entry.kind}
+                    data-note-entry-topic-type={entry.kind === 'topic' ? entry.topicType : undefined}
                     role="listitem"
                     transition={entryTransition}
                   >
@@ -432,9 +436,9 @@ export function NoteInspectorContent({
                                         strokeWidth={1.7}
                                       />
                                     )
-                                  : entry.topicType === 'spreadsheet'
+                                  : entry.topicType === 'whiteboard'
                                     ? (
-                                        <Table2
+                                        <PenLine
                                           {...stylex.props(
                                             noteInspectorStyles.topicIcon,
                                             current && noteInspectorStyles.topicIconCurrent,
@@ -444,29 +448,17 @@ export function NoteInspectorContent({
                                           strokeWidth={1.7}
                                         />
                                       )
-                                    : entry.topicType === 'whiteboard'
-                                      ? (
-                                          <PenLine
-                                            {...stylex.props(
-                                              noteInspectorStyles.topicIcon,
-                                              current && noteInspectorStyles.topicIconCurrent,
-                                            )}
-                                            aria-hidden="true"
-                                            size={14}
-                                            strokeWidth={1.7}
-                                          />
-                                        )
-                                      : (
-                                          <FileText
-                                            {...stylex.props(
-                                              noteInspectorStyles.topicIcon,
-                                              current && noteInspectorStyles.topicIconCurrent,
-                                            )}
-                                            aria-hidden="true"
-                                            size={14}
-                                            strokeWidth={1.7}
-                                          />
-                                        )}
+                                    : (
+                                        <FileText
+                                          {...stylex.props(
+                                            noteInspectorStyles.topicIcon,
+                                            current && noteInspectorStyles.topicIconCurrent,
+                                          )}
+                                          aria-hidden="true"
+                                          size={14}
+                                          strokeWidth={1.7}
+                                        />
+                                      )}
                             {entry.topicType === 'book'
                               ? renaming
                                 ? (

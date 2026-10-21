@@ -31,14 +31,14 @@ test('collapses the sidebar through the real Electron shell', async () => {
     try {
       const window = await electronApplication.firstWindow()
       await window.emulateMedia({ reducedMotion: 'no-preference' })
-      await window.getByRole('button', { name: 'Hide Sidebar' }).waitFor()
+      await window.locator('button[data-sidebar-toggle]').waitFor()
       await window.keyboard.press('Meta+P')
-      await window.getByRole('combobox', { name: 'Search commands and Notes' }).fill('Sidebar motion Note')
-      await window.getByRole('option').filter({ hasText: 'Create Note “Sidebar motion Note”' }).click()
+      await window.locator('input[role=combobox][aria-autocomplete=list]').fill('Sidebar motion Note')
+      await window.locator('[role=listbox] [role=option][id$=\"-create-note\"]').click()
       await window.locator('main > section[aria-label]').waitFor()
 
       const start = await window.evaluate(() => {
-        const button = document.querySelector('button[aria-label="Hide Sidebar"]')
+        const button = document.querySelector('button[data-sidebar-toggle]')
         const editor = document.querySelector('main > section[aria-label]')
         if (!(button instanceof HTMLButtonElement))
           throw new TypeError('Hide Sidebar button is unavailable')
@@ -50,7 +50,7 @@ test('collapses the sidebar through the real Electron shell', async () => {
       })
 
       const editor = window.locator('main > section[aria-label]')
-      await expect(window.locator('aside[aria-label="Workspace navigation"]')).toHaveCount(0)
+      await expect(window.locator('aside[data-ui=sidebar]')).toHaveCount(0)
 
       const end = await editor.evaluate(element => element.getBoundingClientRect().left)
 

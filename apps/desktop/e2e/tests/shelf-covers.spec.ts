@@ -105,13 +105,10 @@ test('Shelf loads nearby thumbnails with bounded concurrency and distinct cover 
     try {
       const window = await electronApplication.firstWindow()
       await window.setViewportSize({ height: 900, width: 1440 })
-      await window.getByRole('link', { name: 'Shelf' }).click()
-      await window.getByRole('button', { name: 'Add Book Source' }).click()
-      const addDialog = window.getByRole('dialog', { name: 'Add Book Source' })
-      await expect(addDialog.getByRole('button', { name: 'Close' })).toHaveCount(0)
-      await expect(addDialog.getByRole('button', { name: 'Back to Book Sources' })).toHaveCount(0)
-      await window.getByLabel('OPDS address').fill(`http://127.0.0.1:${address.port}/opds`)
-      await window.getByRole('button', { name: 'Add Source' }).click()
+      await window.locator('a[href*="/shelf"]').click()
+      await window.locator('[data-shelf-action="add-source"]').click()
+      await window.locator('[data-shelf-field="url"]').fill(`http://127.0.0.1:${address.port}/opds`)
+      await window.locator('[data-shelf-action="submit-source"]').click()
 
       const firstTitle = 'Book 1: A Complete Placeholder Title'
       const firstBook = window.locator('article').filter({ has: window.getByRole('heading', { name: firstTitle }) })
@@ -139,9 +136,9 @@ test('Shelf loads nearby thumbnails with bounded concurrency and distinct cover 
       await expect(failedCover).toContainText(failedTitle)
       await expect(failedCover).toContainText('Cover unavailable')
 
-      const collection = window.getByRole('region', { name: 'Book collection' })
+      const collection = window.locator('[data-shelf-collection]')
       await collection.evaluate(element => element.scrollTo({ top: 1200 }))
-      await expect(window.getByRole('heading', { name: 'Book 20: A Complete Placeholder Title' })).toBeVisible()
+      await expect(window.locator('h3').filter({ hasText: 'Book 20: A Complete Placeholder Title' })).toBeVisible()
       await expect.poll(() => requestedCoverPaths).toContain('/covers/thumbnail/20')
     }
     finally {

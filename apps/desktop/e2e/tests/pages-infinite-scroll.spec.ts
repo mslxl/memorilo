@@ -21,17 +21,17 @@ test('loads the next Note page when the virtual list reaches its end', async () 
   try {
     electronApplication = await launchPagesTestApplication(environment)
     const window = await electronApplication.firstWindow()
-    await window.getByRole('button', { name: 'Hide Sidebar' }).waitFor()
-    await window.getByRole('link', { name: 'Pages' }).click()
-    await window.getByRole('button', { name: /^Sort by Title/ }).click()
-    await expect(window.getByRole('button', { name: 'Rename Note: Page 000' })).toBeVisible()
+    await window.locator('button[data-sidebar-toggle]').waitFor()
+    await window.locator('a[href*="/pages"]').click()
+    await window.locator('button[data-column-id="title"]').click()
+    await expect(window.locator('button[data-note-action="open"]').filter({ hasText: 'Page 000' })).toBeVisible()
 
     await window.getByRole('table').hover()
     await window.mouse.wheel(0, 10_000)
-    await expect(window.getByRole('button', { name: 'Rename Note: Page 100' })).toBeVisible()
+    await expect(window.locator('button[data-note-action="open"]').filter({ hasText: 'Page 100' })).toBeVisible()
 
     await window.mouse.wheel(0, 10_000)
-    await expect(window.getByRole('button', { name: 'Rename Note: Page 129' })).toBeVisible()
+    await expect(window.locator('button[data-note-action="open"]').filter({ hasText: 'Page 129' })).toBeVisible()
   }
   finally {
     if (electronApplication)

@@ -38,10 +38,11 @@ describe('document interactions', () => {
     await rendered.findByText('Before')
 
     await userEvent.hover(page.getByText('Before', { exact: true }))
-    await userEvent.click(page.getByLabelText('Add block'))
+    await waitFor(() => expect(rendered.baseElement.querySelector('button[data-block-handle-action="add"]')).not.toBeNull())
+    await userEvent.click(rendered.baseElement.querySelector<HTMLButtonElement>('button[data-block-handle-action="add"]')!)
 
     await waitFor(() => {
-      const rootChildren = Array.from(rendered.getByRole('textbox', { name: 'Editor content' }).children)
+      const rootChildren = Array.from(rendered.container.querySelector<HTMLElement>('[data-editor-content]')!.children)
       expect(rootChildren).toHaveLength(3)
       expect(rootChildren.every(element => element.matches('[data-list-kind="outline"][data-block-id]'))).toBe(true)
       expect(rootChildren.map(element => element.textContent)).toEqual(['Before', '', 'After'])
@@ -304,7 +305,7 @@ describe('document interactions', () => {
     await userEvent.keyboard('{End}{Enter}{Enter}{Enter}')
 
     await waitFor(() => {
-      const rootChildren = Array.from(rendered.getByRole('textbox', { name: 'Editor content' }).children)
+      const rootChildren = Array.from(rendered.container.querySelector<HTMLElement>('[data-editor-content]')!.children)
       expect(rootChildren).toHaveLength(4)
       expect(rootChildren.every(element => element.matches('[data-list-kind="outline"][data-block-id]'))).toBe(true)
       expect(rootChildren.map(element => element.textContent)).toEqual(['Document paragraph', '', '', ''])
@@ -455,12 +456,12 @@ describe('document interactions', () => {
 
     await userEvent.click(rendered.getByText('First line'))
     await userEvent.keyboard(modShortcut('{Enter}'))
-    await rendered.findByRole('button', { name: 'Task status: todo' })
+    await waitFor(() => expect(rendered.container.querySelector('button[data-task-status-control][data-status="todo"]')).not.toBeNull())
 
     await userEvent.keyboard('{End}{Enter}Second line')
 
     await waitFor(() => {
-      const editor = rendered.getByRole('textbox', { name: 'Editor content' })
+      const editor = rendered.container.querySelector<HTMLElement>('[data-editor-content]')!
       const blocks = Array.from(editor.children)
       expect(blocks).toHaveLength(2)
       expect(blocks.map(block => block.getAttribute('data-list-kind'))).toEqual(['task', 'task'])
@@ -488,11 +489,11 @@ describe('document interactions', () => {
     const rendered = render(
       <Editor adapters={adapters} mode={EditorMode.Document} />,
     )
-    const editor = await rendered.findByRole('textbox', { name: 'Editor content' })
+    const editor = rendered.container.querySelector<HTMLElement>('[data-editor-content]')!
 
     await userEvent.click(editor)
     await userEvent.keyboard(modShortcut('{Enter}'))
-    await rendered.findByRole('button', { name: 'Task status: todo' })
+    await waitFor(() => expect(rendered.container.querySelector('button[data-task-status-control][data-status="todo"]')).not.toBeNull())
     await userEvent.keyboard('{Enter}')
 
     await waitFor(() => {
@@ -532,7 +533,7 @@ describe('document interactions', () => {
         }}
       />,
     )
-    const editor = await rendered.findByRole('textbox', { name: 'Editor content' })
+    const editor = rendered.container.querySelector<HTMLElement>('[data-editor-content]')!
 
     await userEvent.click(editor)
     await userEvent.keyboard('{Enter}')
@@ -580,7 +581,7 @@ describe('document interactions', () => {
     await userEvent.click(rendered.getByText(text))
     await userEvent.keyboard('{End}{Enter}')
     await waitFor(() => expect(rendered.container.querySelectorAll(`[data-list-kind="${kind}"]`)).toHaveLength(2))
-    const emptyItem = rendered.getByRole('textbox', { name: 'Editor content' }).lastElementChild
+    const emptyItem = rendered.container.querySelector<HTMLElement>('[data-editor-content]')!.lastElementChild
     const emptyItemId = emptyItem?.getAttribute('data-block-id')
     if (!emptyItemId)
       throw new Error(`The empty ${kind} item is missing its stable id before exiting the list`)
@@ -588,7 +589,7 @@ describe('document interactions', () => {
     await userEvent.keyboard('{Enter}')
 
     await waitFor(() => {
-      const rootChildren = Array.from(rendered.getByRole('textbox', { name: 'Editor content' }).children)
+      const rootChildren = Array.from(rendered.container.querySelector<HTMLElement>('[data-editor-content]')!.children)
       expect(rootChildren).toHaveLength(2)
       expect(rootChildren.map(element => element.getAttribute('data-list-kind'))).toEqual([kind, 'outline'])
       expect(rootChildren.map(element => element.textContent)).toEqual([text, ''])

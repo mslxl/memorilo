@@ -274,7 +274,7 @@ describe('document interactions', () => {
     await userEvent.keyboard('{Backspace}')
 
     await waitFor(() => {
-      const rootChildren = Array.from(rendered.getByRole('textbox', { name: 'Editor content' }).children)
+      const rootChildren = Array.from(rendered.container.querySelector<HTMLElement>('[data-editor-content]')!.children)
       expect(rootChildren).toHaveLength(2)
       expect(rootChildren.map(element => element.getAttribute('data-block-id'))).toEqual(['A', 'B'])
       expect(rootChildren.map(element => element.textContent)).toEqual(['A', 'B'])
@@ -303,7 +303,7 @@ describe('document interactions', () => {
     await userEvent.keyboard('{Backspace}')
 
     await waitFor(() => {
-      const rootChildren = Array.from(rendered.getByRole('textbox', { name: 'Editor content' }).children)
+      const rootChildren = Array.from(rendered.container.querySelector<HTMLElement>('[data-editor-content]')!.children)
       expect(rootChildren).toHaveLength(1)
       expect(rootChildren[0]).toHaveAttribute('data-block-id', 'A')
       expect(rootChildren[0]).toHaveAttribute('data-list-kind', 'outline')
@@ -520,11 +520,11 @@ describe('document interactions', () => {
         }}
       />,
     )
-    await rendered.findByRole('button', { name: 'Task status: todo' })
+    await waitFor(() => expect(rendered.container.querySelector('button[data-task-status-control][data-status="todo"]')).not.toBeNull())
 
-    await userEvent.click(page.getByRole('button', { name: 'Task status: todo' }))
+    await userEvent.click(rendered.container.querySelector('button[data-task-status-control][data-status="todo"]')!)
 
-    expect(await rendered.findByRole('button', { name: 'Task status: doing' })).toHaveAttribute('aria-pressed', 'false')
+    await waitFor(() => expect(rendered.container.querySelector('button[data-task-status-control][data-status="doing"]')).toHaveAttribute('aria-pressed', 'false'))
   })
 
   it('keeps toggle controls interactive in Document mode', async () => {

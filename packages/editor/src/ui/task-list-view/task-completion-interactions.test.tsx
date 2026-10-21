@@ -81,7 +81,7 @@ describe('recurring task completion entry points', () => {
     await rendered.findByText('Recurring task')
 
     await userEvent.click(page.getByText('Recurring task', { exact: true }))
-    fireEvent.keyDown(rendered.getByRole('textbox', { name: 'Editor content' }), {
+    fireEvent.keyDown(rendered.container.querySelector<HTMLElement>('[data-editor-content]')!, {
       ctrlKey: !isApple,
       key: 'Enter',
       metaKey: isApple,
@@ -100,7 +100,8 @@ describe('recurring task completion entry points', () => {
     if (!status)
       throw new Error('Recurring task status button was not rendered')
     fireEvent.contextMenu(status)
-    fireEvent.click(await rendered.findByRole('button', { name: 'Complete and schedule next' }))
+    await waitFor(() => expect(rendered.baseElement.querySelector('button[data-task-action="complete-and-repeat"]')).not.toBeNull())
+    fireEvent.click(rendered.baseElement.querySelector<HTMLButtonElement>('button[data-task-action="complete-and-repeat"]')!)
 
     await waitFor(() => expect(completeRecurring).toHaveBeenCalledWith({ blockId: 'recurring-task' }))
     expect(completeRecurring).toHaveBeenCalledOnce()
@@ -126,7 +127,7 @@ describe('recurring task completion entry points', () => {
     await rendered.findByText('Recurring task')
 
     await userEvent.click(page.getByText('Recurring task', { exact: true }))
-    fireEvent.keyDown(rendered.getByRole('textbox', { name: 'Editor content' }), {
+    fireEvent.keyDown(rendered.container.querySelector<HTMLElement>('[data-editor-content]')!, {
       ctrlKey: !isApple,
       key: 'Enter',
       metaKey: isApple,

@@ -281,6 +281,7 @@ export function TodoPage({
             {...stylex.props(todoPageStyles.titlebarViewOption, view === option.id && todoPageStyles.titlebarViewOptionSelected)}
             aria-label={t(option.descriptionKey)}
             aria-pressed={view === option.id}
+            data-todo-view-option={option.id}
             title={t(option.descriptionKey)}
             type="button"
             onClick={() => void onViewChange(option.id)}
@@ -481,7 +482,7 @@ export function TodoPage({
   }
 
   return (
-    <main {...stylex.props(todoPageStyles.page)} aria-label={t('title')}>
+    <main {...stylex.props(todoPageStyles.page)} aria-label={t('title')} data-page="todo">
       <section {...stylex.props(todoPageStyles.content)} aria-label={viewLabel(view, t)}>
         <div {...stylex.props(todoPageStyles.viewRegion)}>{viewContent}</div>
       </section>

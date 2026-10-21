@@ -37,7 +37,7 @@ export function SyncServerStatus({ serverStatus }: SyncServerStatusProps) {
   const stateLabel = t(serverStateLabelKeys[serverStatus.state])
 
   return (
-    <div {...stylex.props(styles.container)}>
+    <div {...stylex.props(styles.container)} data-sync-server-status="" data-sync-server-state={serverStatus.state}>
       <div {...stylex.props(styles.statusCard)}>
         <div {...stylex.props(styles.statusHeader)}>
           <div {...stylex.props(styles.statusIcon, isSynced && styles.statusIconSuccess, hasError && styles.statusIconError)}>

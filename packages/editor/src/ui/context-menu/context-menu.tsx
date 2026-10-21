@@ -221,6 +221,7 @@ export default function ContextMenu({ outlineRuntime, platform = 'other', upload
                       shortcut={`${primaryModifier}C`}
                     />
                     <ContextMenuItem
+                      dataAction="paste"
                       disabled={!canReadClipboard}
                       icon={<ClipboardPaste aria-hidden="true" size={16} />}
                       label={t('ui.paste')}
@@ -232,6 +233,7 @@ export default function ContextMenu({ outlineRuntime, platform = 'other', upload
                     <div {...stylex.props(contextMenuStyles.separator)} role="separator" />
 
                     <ContextMenuItem
+                      dataAction="select-all"
                       icon={<TextSelect aria-hidden="true" size={16} />}
                       label={t('ui.selectAll')}
                       onMouseEnter={() => setStyleMenuOpen(false)}
@@ -300,6 +302,7 @@ export default function ContextMenu({ outlineRuntime, platform = 'other', upload
                             />
                             <ContextMenuItem
                               disabled={!actions.insert.image.canExec}
+                              dataAction="insert-image"
                               icon={<ImagePlus aria-hidden="true" size={16} />}
                               label={t('ui.insertImageELLIPSIS')}
                               onMouseEnter={() => setStyleMenuOpen(false)}

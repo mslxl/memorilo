@@ -40,5 +40,5 @@ All decision tickets are resolved. The map is complete and execution can begin; 
 
 - Preserving or synchronizing the existing FSRS/CardTopic learning history when the migration decision intentionally discards it.
 - Implementing SuperMemo's proprietary algorithm as an exact replacement before the new product model is specified.
-- Unrelated changes to general Note editing, reader, whiteboard, spreadsheet, or sync behavior except where the new learning workspace needs an explicit integration seam.
+- Unrelated changes to general Note editing, reader, whiteboard, or sync behavior except where the new learning workspace needs an explicit integration seam.
 - Cloud synchronization, remote SuperMemo import, or third-party plugin support.

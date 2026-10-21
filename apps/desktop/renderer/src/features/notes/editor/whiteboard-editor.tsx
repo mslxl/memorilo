@@ -215,6 +215,7 @@ export function WhiteboardEditor({ adapters, inspectorVisible, learningEnabled, 
     <button
       {...stylex.props(whiteboardEditorStyles.insertEditorButton)}
       aria-label={t('insertWhiteboardEditor')}
+      data-whiteboard-action="insert-editor"
       title={t('insertWhiteboardEditor')}
       type="button"
       onClick={insertEditor}

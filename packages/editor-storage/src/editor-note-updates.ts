@@ -53,7 +53,7 @@ export function saveNoteUpdates(
   if (input.journalHasUserContent !== undefined && typeof input.journalHasUserContent !== 'boolean')
     throw new TypeError('Journal content state must be a boolean')
   input.updates.forEach((update, index) => validateBinary(update, `Note update ${index}`))
-  validateProjectionPatch(input.entries, input.topics, input.spreadsheets)
+  validateProjectionPatch(input.entries, input.topics)
   if (input.entries !== undefined && input.learningCards !== undefined)
     validateCompleteLearningProjection(input.entries, input.learningCards)
   if (input.assetReferences !== undefined)
@@ -122,7 +122,6 @@ export function saveNoteUpdates(
       note.row_id,
       saved.entries,
       saved.topics,
-      saved.spreadsheets ?? [],
     )
 
     const existingEntries = saved.entries

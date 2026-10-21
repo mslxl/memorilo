@@ -161,11 +161,9 @@ export function useEditorNoteSession<TStored extends DesktopNote>({
         throw new Error(`Note ${note.id} does not contain Topic ${topicId}`)
       return topic.topicType === 'image-occlusion'
         ? note.getImageOcclusionTopic(topic.id)
-        : topic.topicType === 'spreadsheet'
-          ? note.getSpreadsheetTopic(topic.id)
-          : topic.topicType === 'whiteboard'
-            ? note.getWhiteboardTopic(topic.id)
-            : note.getTopic(topic.id)
+        : topic.topicType === 'whiteboard'
+          ? note.getWhiteboardTopic(topic.id)
+          : note.getTopic(topic.id)
     }
     const currentResolver = resolveTopicRef.current
     if (!currentResolver)

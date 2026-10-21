@@ -125,7 +125,7 @@ export function LearningReadingWorkspace({ item, onNext }: {
   }
 
   return (
-    <main {...stylex.props(styles.readingPage)} aria-label={t('incrementalLearning')}>
+    <main {...stylex.props(styles.readingPage)} aria-label={t('incrementalLearning')} data-page="learning-reading-workspace">
       <div {...stylex.props(styles.workspace)}>
         <div {...stylex.props(styles.readingCanvas)}>
           <Editor
@@ -139,8 +139,8 @@ export function LearningReadingWorkspace({ item, onNext }: {
           {source.saveError ? <div {...stylex.props(styles.navigationError)} role="alert">{t('saveLearningSourceFailed', { message: source.saveError })}</div> : null}
           {error ? <div {...stylex.props(styles.navigationError)} role="alert">{error}</div> : null}
           <div {...stylex.props(styles.readingActions)}>
-            <Button disabled={pending || cardCreated} variant="plain" onClick={() => void makeCard()}>{cardCreated ? t('cardCreated') : t('makeCard')}</Button>
-            <Button disabled={pending} variant="plain" onClick={() => void next()}>{t('nextReadingItem')}</Button>
+            <Button data-learning-action="make-card" data-learning-state={cardCreated ? 'created' : 'available'} disabled={pending || cardCreated} variant="plain" onClick={() => void makeCard()}>{cardCreated ? t('cardCreated') : t('makeCard')}</Button>
+            <Button data-learning-action="next" disabled={pending} variant="plain" onClick={() => void next()}>{t('nextReadingItem')}</Button>
           </div>
         </div>
         <button
@@ -194,7 +194,7 @@ export function LearningReadingWorkspace({ item, onNext }: {
                       >
                         <FileText size={14} />
                         <span {...stylex.props(styles.topicLabel)}>{entry.title}</span>
-                        {entry.id === item.topicId ? <span {...stylex.props(styles.sourceMarker)} aria-label={t('learningSource')} /> : null}
+                        {entry.id === item.topicId ? <span {...stylex.props(styles.sourceMarker)} aria-label={t('learningSource')} data-learning-source-marker="" /> : null}
                       </button>
                     )}
               </div>

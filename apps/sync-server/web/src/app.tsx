@@ -75,20 +75,20 @@ export function AuthForm({ setup, registration, onAuthenticated, onSetupComplete
         <form {...stylex.props(styles.form)} onSubmit={submit}>
           <label {...stylex.props(styles.field)}>
             Username
-            <input {...stylex.props(styles.input)} autoComplete="username" required value={username} onChange={event => setUsername(event.target.value)} />
+            <input {...stylex.props(styles.input)} autoComplete="username" data-management-field="username" required value={username} onChange={event => setUsername(event.target.value)} />
           </label>
           <label {...stylex.props(styles.field)}>
             Password
-            <input {...stylex.props(styles.input)} autoComplete={setup ? 'new-password' : 'current-password'} minLength={12} required type="password" value={password} onChange={event => setPassword(event.target.value)} />
+            <input {...stylex.props(styles.input)} autoComplete={setup ? 'new-password' : 'current-password'} data-management-field="password" minLength={12} required type="password" value={password} onChange={event => setPassword(event.target.value)} />
           </label>
           {registering && registration === 'invite-only' && (
             <label {...stylex.props(styles.field)}>
               Invite token
-              <input {...stylex.props(styles.input)} autoComplete="off" required value={inviteToken} onChange={event => setInviteToken(event.target.value)} />
+              <input {...stylex.props(styles.input)} autoComplete="off" data-management-field="invite-token" required value={inviteToken} onChange={event => setInviteToken(event.target.value)} />
             </label>
           )}
-          {error && <p {...stylex.props(styles.formMessage)} role="alert">{error}</p>}
-          <Button type="submit" variant="primary" disabled={pending}>{pending ? 'Working…' : setup ? 'Create account' : registering ? 'Register' : 'Sign in'}</Button>
+          {error && <p {...stylex.props(styles.formMessage)} data-management-message={error.startsWith('Account created') ? 'account-created' : 'error'} role="alert">{error}</p>}
+          <Button data-management-action={setup ? 'create-account' : registering ? 'register' : 'sign-in'} type="submit" variant="primary" disabled={pending}>{pending ? 'Working…' : setup ? 'Create account' : registering ? 'Register' : 'Sign in'}</Button>
           {!setup && registration !== 'disabled' && (
             <button
               {...stylex.props(styles.textButton)}
@@ -342,9 +342,9 @@ export function OperationsConsole({ account, health, syncState, onSyncState, onL
         >
           {mobileNavOpen ? <X aria-hidden="true" size={20} /> : <Menu aria-hidden="true" size={20} />}
         </Button>
-        <nav id="management-navigation" {...stylex.props(styles.nav, mobileNavOpen && styles.navOpen)} aria-label="Management">
+        <nav id="management-navigation" {...stylex.props(styles.nav, mobileNavOpen && styles.navOpen)} aria-label="Management" data-management-navigation="">
           {sections.map(item => (
-            <button {...stylex.props(styles.navItem, visibleSection === item && styles.navItemActive)} key={item} type="button" onClick={() => selectSection(item)}>
+            <button {...stylex.props(styles.navItem, visibleSection === item && styles.navItemActive)} data-management-section={item.toLowerCase().replaceAll(' ', '-')} key={item} type="button" onClick={() => selectSection(item)}>
               {item}
               {item === 'Overview' && <span>●</span>}
             </button>
@@ -392,8 +392,8 @@ export function OperationsConsole({ account, health, syncState, onSyncState, onL
               <p {...stylex.props(styles.panelDescription)}>{syncState.enabledModes.includes('authoritative') ? 'The server stores plaintext synchronized data for this account.' : 'The server forwards sync traffic only while peers are connected and does not keep a recovery copy.'}</p>
               {!syncState.enabledModes.includes('authoritative') && <p {...stylex.props(styles.warning)} role="note">Relay cannot restore an offline or lost device. Keep another peer available or enable authoritative storage.</p>}
               <div {...stylex.props(styles.actions)}>
-                <Button variant="primary" onClick={() => selectSection('Devices')}>Pair a device</Button>
-                <Button variant="secondary" onClick={() => selectSection('Sync policy')}>Review sync policy</Button>
+                <Button data-management-action="open-devices" variant="primary" onClick={() => selectSection('Devices')}>Pair a device</Button>
+                <Button data-management-action="open-sync-policy" variant="secondary" onClick={() => selectSection('Sync policy')}>Review sync policy</Button>
               </div>
             </section>
           </>
@@ -412,6 +412,7 @@ export function OperationsConsole({ account, health, syncState, onSyncState, onL
             {syncState.enabledModes.includes('relay') && <p {...stylex.props(styles.warning)} role="note">Relay traffic is ephemeral. The server cannot recover data while every data-bearing peer is offline.</p>}
             <div {...stylex.props(styles.actions)}>
               <Button
+                data-management-action="toggle-authoritative"
                 variant={syncState.enabledModes.includes('authoritative') ? 'primary' : 'secondary'}
                 disabled={savingPolicy || (!syncState.availableModes.includes('authoritative') && !syncState.enabledModes.includes('authoritative'))}
                 onClick={() => toggleMode('authoritative')}
@@ -421,6 +422,7 @@ export function OperationsConsole({ account, health, syncState, onSyncState, onL
                 {syncState.enabledModes.includes('authoritative') ? 'enabled' : 'disabled'}
               </Button>
               <Button
+                data-management-action="toggle-relay"
                 variant={syncState.enabledModes.includes('relay') ? 'primary' : 'secondary'}
                 disabled={savingPolicy || (!syncState.availableModes.includes('relay') && !syncState.enabledModes.includes('relay'))}
                 onClick={() => toggleMode('relay')}
@@ -440,8 +442,8 @@ export function OperationsConsole({ account, health, syncState, onSyncState, onL
                   <>
                     <p {...stylex.props(styles.warning)}>Authoritative mode is being disabled. Choose whether the server retains its existing plaintext recovery data or queues it for permanent deletion.</p>
                     <div {...stylex.props(styles.actions)}>
-                      <Button variant="secondary" onClick={() => setPendingPolicy({ ...pendingPolicy, transition: 'retain-authoritative' })}>Retain server data</Button>
-                      <Button variant="danger" onClick={() => setPendingPolicy({ ...pendingPolicy, transition: 'clear-authoritative' })}>Clear server data</Button>
+                      <Button data-management-action="retain-server-data" variant="secondary" onClick={() => setPendingPolicy({ ...pendingPolicy, transition: 'retain-authoritative' })}>Retain server data</Button>
+                      <Button data-management-action="clear-server-data" variant="danger" onClick={() => setPendingPolicy({ ...pendingPolicy, transition: 'clear-authoritative' })}>Clear server data</Button>
                     </div>
                   </>
                 )}
@@ -449,24 +451,25 @@ export function OperationsConsole({ account, health, syncState, onSyncState, onL
                 {pendingPolicy.transition === 'clear-authoritative' && (
                   <label {...stylex.props(styles.field)}>
                     Type CLEAR SERVER DATA to confirm permanent deletion
-                    <input {...stylex.props(styles.input)} value={policyClearConfirmation} onChange={event => setPolicyClearConfirmation(event.target.value)} />
+                    <input {...stylex.props(styles.input)} data-management-field="policy-clear-confirmation" value={policyClearConfirmation} onChange={event => setPolicyClearConfirmation(event.target.value)} />
                   </label>
                 )}
                 {pendingPolicy.transition !== null && (
                   <>
                     <label {...stylex.props(styles.field)}>
                       Current password
-                      <input {...stylex.props(styles.input)} autoComplete="current-password" type="password" value={policyPassword} onChange={event => setPolicyPassword(event.target.value)} />
+                      <input {...stylex.props(styles.input)} autoComplete="current-password" data-management-field="policy-password" type="password" value={policyPassword} onChange={event => setPolicyPassword(event.target.value)} />
                     </label>
                     <div {...stylex.props(styles.actions)}>
                       <Button
+                        data-management-action="confirm-policy"
                         variant={pendingPolicy.transition === 'clear-authoritative' ? 'danger' : 'primary'}
                         disabled={savingPolicy || !policyPassword || (pendingPolicy.transition === 'clear-authoritative' && policyClearConfirmation !== 'CLEAR SERVER DATA')}
                         onClick={() => void savePolicy({ ...pendingPolicy, transition: pendingPolicy.transition! })}
                       >
                         Confirm change
                       </Button>
-                      <Button variant="secondary" disabled={savingPolicy} onClick={() => setPendingPolicy(null)}>Cancel</Button>
+                      <Button data-management-action="cancel-policy" variant="secondary" disabled={savingPolicy} onClick={() => setPendingPolicy(null)}>Cancel</Button>
                     </div>
                   </>
                 )}
@@ -480,24 +483,24 @@ export function OperationsConsole({ account, health, syncState, onSyncState, onL
             <h2 {...stylex.props(styles.panelTitle)}>Pair a client device</h2>
             <p {...stylex.props(styles.panelDescription)}>Create an invitation here, enter it in the client, then paste the client response below to finish the pairing.</p>
             <div {...stylex.props(styles.actions)}>
-              <Button variant="primary" onClick={() => void createPairingInvitation()}>Create invitation</Button>
+              <Button data-management-action="create-invitation" variant="primary" onClick={() => void createPairingInvitation()}>Create invitation</Button>
             </div>
             {pairingInvitation && (
               <label {...stylex.props(styles.field)}>
                 Invitation
-                <input {...stylex.props(styles.input)} readOnly value={pairingInvitation} />
+                <input {...stylex.props(styles.input)} data-management-field="invitation" readOnly value={pairingInvitation} />
               </label>
             )}
             <label {...stylex.props(styles.field)}>
               Client response
-              <input {...stylex.props(styles.input)} value={pairingResponse} onChange={event => setPairingResponse(event.target.value)} />
+              <input {...stylex.props(styles.input)} data-management-field="client-response" value={pairingResponse} onChange={event => setPairingResponse(event.target.value)} />
             </label>
-            <Button variant="secondary" disabled={!pairingResponse} onClick={() => void completePairing()}>Complete pairing</Button>
+            <Button data-management-action="complete-pairing" variant="secondary" disabled={!pairingResponse} onClick={() => void completePairing()}>Complete pairing</Button>
             {pairingCredential && (
               <>
                 <label {...stylex.props(styles.field)}>
                   Device credential (copy into the client)
-                  <input {...stylex.props(styles.input)} readOnly value={pairingCredential} />
+                  <input {...stylex.props(styles.input)} data-management-field="device-credential" readOnly value={pairingCredential} />
                 </label>
                 {pairingCredentialExpiresAt !== null && (
                   <p {...stylex.props(styles.panelDescription)}>
@@ -531,6 +534,7 @@ export function OperationsConsole({ account, health, syncState, onSyncState, onL
                     </span>
                   </div>
                   <Button
+                    data-management-action="revoke-device"
                     variant="danger"
                     onClick={() => {
                       setRevokePassword('')
@@ -555,6 +559,7 @@ export function OperationsConsole({ account, health, syncState, onSyncState, onL
                     <input
                       {...stylex.props(styles.input)}
                       autoComplete="current-password"
+                      data-management-field="revoke-password"
                       type="password"
                       value={revokePassword}
                       onChange={event => setRevokePassword(event.target.value)}
@@ -562,6 +567,7 @@ export function OperationsConsole({ account, health, syncState, onSyncState, onL
                   </label>
                   <div {...stylex.props(styles.actions)}>
                     <Button
+                      data-management-action="confirm-revoke"
                       variant="danger"
                       disabled={!revokePassword}
                       onClick={() => void revokeDevice(revokeTarget)}
@@ -569,6 +575,7 @@ export function OperationsConsole({ account, health, syncState, onSyncState, onL
                       Confirm revoke
                     </Button>
                     <Button
+                      data-management-action="cancel-revoke"
                       variant="secondary"
                       onClick={() => {
                         setRevokePassword('')
@@ -590,13 +597,13 @@ export function OperationsConsole({ account, health, syncState, onSyncState, onL
             <p {...stylex.props(styles.panelDescription)}>This advances the data generation and permanently removes server-held synchronized data. The server cannot restore it offline; only an authorized client or another peer can repopulate it.</p>
             <label {...stylex.props(styles.field)}>
               Current password
-              <input {...stylex.props(styles.input)} type="password" value={resetPassword} onChange={event => setResetPassword(event.target.value)} />
+              <input {...stylex.props(styles.input)} data-management-field="reset-password" type="password" value={resetPassword} onChange={event => setResetPassword(event.target.value)} />
             </label>
             <label {...stylex.props(styles.field)}>
               Type CLEAR SERVER DATA to confirm
-              <input {...stylex.props(styles.input)} value={resetConfirmation} onChange={event => setResetConfirmation(event.target.value)} />
+              <input {...stylex.props(styles.input)} data-management-field="reset-confirmation" value={resetConfirmation} onChange={event => setResetConfirmation(event.target.value)} />
             </label>
-            <Button variant="danger" disabled={!resetPassword || resetConfirmation !== 'CLEAR SERVER DATA'} onClick={() => void resetData()}>Clear server data</Button>
+            <Button data-management-action="clear-server-data" variant="danger" disabled={!resetPassword || resetConfirmation !== 'CLEAR SERVER DATA'} onClick={() => void resetData()}>Clear server data</Button>
           </section>
         )}
         {visibleSection === 'Audit' && (

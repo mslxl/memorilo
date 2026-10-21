@@ -294,6 +294,7 @@ function LearningReviewPageSession({
       <main
         {...stylex.props(styles.page, styles.centeredStatus)}
         aria-label={t('reviewTitle')}
+        data-learning-review-state="loading"
         role="status"
       >
         <LoaderCircle {...stylex.props(styles.spinner)} aria-hidden="true" size={18} />
@@ -307,6 +308,7 @@ function LearningReviewPageSession({
       <main
         {...stylex.props(styles.page, styles.centeredStatus, styles.errorStatus)}
         aria-label={t('reviewTitle')}
+        data-learning-review-state="error"
         role="alert"
       >
         <p {...stylex.props(styles.statusTitle)}>{t('reviewUnavailable')}</p>
@@ -332,6 +334,7 @@ function LearningReviewPageSession({
       <main
         {...stylex.props(styles.page, styles.completion)}
         aria-label={t('reviewTitle')}
+        data-learning-review-state="complete"
       >
         <span {...stylex.props(styles.completionIcon)}><Check aria-hidden="true" size={28} strokeWidth={1.8} /></span>
         <h1 {...stylex.props(styles.completionTitle)}>{t('reviewComplete')}</h1>

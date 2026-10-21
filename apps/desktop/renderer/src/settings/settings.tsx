@@ -542,6 +542,7 @@ export function Settings({ store }: { store: ConfigurationStore<DesktopConfigura
                 <Sidebar.Item
                   key={category.id}
                   aria-current={selected ? 'page' : undefined}
+                  data-settings-category={category.id}
                   data-state={selected ? 'active' : 'inactive'}
                   onClick={() => setActiveCategoryId(category.id)}
                 >

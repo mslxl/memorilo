@@ -16,6 +16,7 @@ import { NotePersistenceProvider } from './features/notes/persistence/note-persi
 import { desktopRequests } from './shared/desktop-requests'
 import { errorMessage } from './shared/error-message'
 import './styles/renderer-global.stylex'
+import './styles/renderer-stylex.css'
 
 const rootElement = document.querySelector('#root')
 

@@ -12,6 +12,7 @@ import { errorMessage } from '../shared/error-message'
 import { Settings } from './settings'
 import { settingsShellStyles as settingsStyles } from './settings-shell.stylex'
 import '../styles/renderer-global.stylex'
+import '../styles/renderer-stylex.css'
 
 const rootElement = document.querySelector('#root')
 

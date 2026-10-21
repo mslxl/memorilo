@@ -95,6 +95,7 @@ export function ReaderSelectionPopover({
       )}
       aria-label={t('reader.selectionActions')}
       data-reader-capture-overlay="true"
+      data-reader-toolbar="selection"
       role="toolbar"
       style={layout.style}
     >
@@ -110,6 +111,8 @@ export function ReaderSelectionPopover({
               )}
               aria-label={t('reader.colorAnnotation', { color: t(`reader.colors.${color}`) })}
               aria-pressed={selectedColor === color}
+              data-reader-action="select-color"
+              data-reader-color={color}
               title={t('reader.useColor', { color: t(`reader.colors.${color}`) })}
               type="button"
               onClick={() => {
@@ -125,6 +128,7 @@ export function ReaderSelectionPopover({
                     <button
                       {...stylex.props(readerStyles.paletteTool, readerStyles.paletteCopy)}
                       aria-label={t('reader.copySelection')}
+                      data-reader-action="copy-selection"
                       title={t('copy')}
                       type="button"
                       onClick={onCopy}
@@ -145,6 +149,7 @@ export function ReaderSelectionPopover({
                         )}
                         aria-label={t('reader.chooseAnnotationColor')}
                         aria-expanded={colorPaletteOpen}
+                        data-reader-action="choose-color"
                         title={t('reader.color')}
                         type="button"
                         onClick={() => onColorPaletteOpenChange(true)}
@@ -160,6 +165,7 @@ export function ReaderSelectionPopover({
                         aria-label={selection.selection.type === 'text'
                           ? t('reader.highlightSelection')
                           : t('reader.highlightArea')}
+                        data-reader-action={selection.selection.type === 'text' ? 'highlight-selection' : 'highlight-area'}
                         title={t('reader.highlight')}
                         type="button"
                         onClick={onCreateHighlight}
@@ -174,6 +180,7 @@ export function ReaderSelectionPopover({
       <button
         {...stylex.props(readerStyles.paletteTool, readerStyles.paletteClose)}
         aria-label={t('reader.dismissSelectionActions')}
+        data-reader-action="dismiss-selection"
         title={t('reader.close')}
         type="button"
         onClick={onDismiss}

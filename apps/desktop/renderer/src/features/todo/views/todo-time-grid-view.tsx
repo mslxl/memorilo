@@ -211,13 +211,13 @@ export function TodoTimeGridView({
         <div {...stylex.props(styles.controls)} role="group" aria-label={t('timelineRange')}>
           <div {...stylex.props(styles.range)}>
             {(['day', 'multi-day', 'week', 'multi-week'] as const).map(value => (
-              <button key={value} type="button" aria-pressed={mode === value} {...stylex.props(styles.rangeButton, mode === value && styles.rangeButtonSelected)} onClick={() => setMode(value)}>
+              <button key={value} data-todo-time-grid-mode={value} type="button" aria-pressed={mode === value} {...stylex.props(styles.rangeButton, mode === value && styles.rangeButtonSelected)} onClick={() => setMode(value)}>
                 {t(value === 'multi-day' ? 'multiDayView' : value === 'multi-week' ? 'multiWeekView' : value === 'week' ? 'weekView' : 'dayView')}
               </button>
             ))}
           </div>
           {(mode === 'multi-day' || mode === 'multi-week') && (
-            <select {...stylex.props(styles.spanSelect)} aria-label={rangeLabel} value={mode === 'multi-day' ? multiDay : multiWeek} onChange={event => changeSpan(Number(event.target.value))}>
+            <select {...stylex.props(styles.spanSelect)} aria-label={rangeLabel} data-todo-time-grid-span={mode} value={mode === 'multi-day' ? multiDay : multiWeek} onChange={event => changeSpan(Number(event.target.value))}>
               {Array.from({ length: mode === 'multi-day' ? 7 : 4 }, (_, index) => index + 1).map(value => <option key={value} value={value}>{value}</option>)}
             </select>
           )}

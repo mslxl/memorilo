@@ -32,16 +32,16 @@ test('creates a Note with an initial editable Outline Block from an unmatched se
       const window = await electronApplication.firstWindow()
       const title = 'Distributed garden planning 5e812c'
 
-      await window.getByRole('link', { name: 'Journals' }).waitFor()
+      await window.locator('a[href*="/journals"]').waitFor()
       await window.keyboard.press('Meta+P')
-      await window.getByRole('combobox', { name: 'Search commands and Notes' }).fill(title)
-      const createResult = window.getByRole('option').filter({ hasText: `Create Note “${title}”` })
+      await window.locator('input[role=combobox][aria-autocomplete=list]').fill(title)
+      const createResult = window.locator('[role=listbox] [role=option][id$=\"-create-note\"]')
       await expect(createResult).toHaveCount(1)
       await createResult.click()
 
-      await expect(window.getByRole('button', { name: `Rename Note: ${title}` })).toBeVisible()
+      await expect(window.locator('[data-note-action="rename-current"]')).toBeVisible()
       await expect.poll(() => window.evaluate(() => globalThis.location.hash)).toMatch(/^#\/note\/[^/]+\/[^/?]+$/)
-      const editor = window.getByRole('textbox', { name: 'Editor content' })
+      const editor = window.locator('[data-editor-content]')
       await expect(editor.locator('[data-block-id]').first()).toBeVisible()
     }
     finally {

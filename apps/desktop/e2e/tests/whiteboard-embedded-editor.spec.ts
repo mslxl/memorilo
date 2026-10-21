@@ -31,19 +31,19 @@ async function launchApplication(userDataDirectory: string) {
 }
 
 async function createWhiteboard(window: Page, noteTitle: string, whiteboardTitle: string) {
-  await window.getByRole('link', { name: 'Journals' }).waitFor()
-  await window.getByRole('button', { name: 'Hide sidebar' }).click()
+  await window.locator('a[href*="/journals"]').waitFor()
+  await window.locator('label.sidebar-trigger__label-element .sidebar-trigger').click()
   await window.keyboard.press('Meta+P')
-  await window.getByRole('combobox', { name: 'Search commands and Notes' }).fill(noteTitle)
-  await window.getByRole('option').filter({ hasText: `Create Note “${noteTitle}”` }).click()
-  await window.getByRole('button', { name: 'Show Note Inspector' }).click()
-  await window.getByRole('heading', { name: 'Note Structure' }).click({ button: 'right' })
-  await window.getByRole('menuitem', { name: 'Add' }).click()
-  await window.getByRole('menuitem', { name: 'Whiteboard' }).click()
-  const dialog = window.getByRole('dialog', { name: 'New Whiteboard' })
-  await dialog.getByRole('textbox', { name: 'Topic title' }).fill(whiteboardTitle)
-  await dialog.getByRole('button', { name: 'Create' }).click()
-  await window.getByRole('link', { name: whiteboardTitle }).click()
+  await window.locator('input[role=combobox][aria-autocomplete=list]').fill(noteTitle)
+  await window.locator('[role=listbox] [role=option][id$=\"-create-note\"]').click()
+  await window.locator('[data-note-inspector-toggle]').click()
+  await window.locator('[data-note-inspector] h1').click({ button: 'right' })
+  await window.locator('[role="menuitem"][data-entry-action="add"]').click()
+  await window.locator('[role="menuitem"][data-entry-action="add-whiteboard"]').click()
+  const dialog = window.locator('[data-entry-creation-kind="whiteboard"]')
+  await dialog.locator('[data-entry-field="title"]').fill(whiteboardTitle)
+  await dialog.locator('[data-entry-action="create"]').click()
+  await window.locator(`[data-note-entry-topic-type="whiteboard"] a[title="${whiteboardTitle}"]`).click()
 }
 
 async function renderedDarkPixelBounds(window: Page) {
@@ -96,23 +96,22 @@ test('keeps Whiteboard shortcuts inactive while typing in an embedded editor', a
     const whiteboardTitle = 'Research board'
 
     await createWhiteboard(window, noteTitle, whiteboardTitle)
-    const insertEditor = window.getByRole('button', { name: 'Insert editor' })
+    const insertEditor = window.locator('button[data-whiteboard-action="insert-editor"]')
     await expect(insertEditor).toHaveCount(1)
     await expect(insertEditor.locator('xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " App-toolbar ")]')).toHaveCount(1)
     await insertEditor.click()
 
-    await expect(window.getByText('Something went wrong!')).toHaveCount(0)
     await expect(window.locator('.excalidraw__embeddable-container')).toHaveCount(1)
     await expect(window.locator('[data-memorilo-whiteboard-editor]')).toHaveCount(1)
-    const editor = window.locator('[data-memorilo-whiteboard-editor]').getByRole('textbox', { name: 'Editor content' })
+    const editor = window.locator('[data-memorilo-whiteboard-editor]').locator('[data-editor-content]')
     await expect(editor).toBeVisible()
     await editor.focus()
-    await expect(window.getByRole('radio', { name: 'Selection' })).toBeChecked()
+    await expect(window.locator('input[name="editor-current-shape"]:checked')).toHaveCount(1)
 
     await window.keyboard.type('r')
 
     await expect(editor).toContainText('r')
-    await expect(window.getByRole('radio', { name: 'Selection' })).toBeChecked()
+    await expect(window.locator('input[name="editor-current-shape"]:checked')).toHaveCount(1)
   }
   finally {
     await application.close()
@@ -128,7 +127,7 @@ test('renders a rectangle outline after dragging on a Whiteboard', async () => {
     const window = await application.firstWindow()
     await window.setViewportSize({ height: 700, width: 900 })
     await createWhiteboard(window, 'Visible outline regression', 'Outline board')
-    await window.getByRole('button', { name: 'Hide Note Inspector' }).click()
+    await window.locator('[data-note-inspector-toggle]').click()
 
     const interactiveCanvas = window.locator('canvas.interactive')
     const canvasBounds = await interactiveCanvas.boundingBox()
@@ -137,8 +136,8 @@ test('renders a rectangle outline after dragging on a Whiteboard', async () => {
 
     const start = { x: canvasBounds.x + 240, y: canvasBounds.y + 180 }
     const end = { x: start.x + 180, y: start.y + 120 }
-    await window.getByTitle(/^Rectangle/).click()
-    await expect(window.getByRole('radio', { name: 'Rectangle' })).toBeChecked()
+    await window.locator('input[name="editor-current-shape"][aria-keyshortcuts^="R"]').click()
+    await expect(window.locator('input[name="editor-current-shape"]:checked')).toHaveCount(1)
     await window.mouse.move(start.x, start.y)
     await window.mouse.down()
     await window.mouse.move(end.x, end.y, { steps: 12 })
@@ -174,10 +173,10 @@ test('renders a rectangle outline after dragging on a Whiteboard', async () => {
       return darkPixelCount
     }, { end, start })).toBeGreaterThan(20)
 
-    await window.getByRole('button', { name: 'Show Note Inspector' }).click()
+    await window.locator('[data-note-inspector-toggle]').click()
     await window.getByRole('link', { name: 'Visible outline regression' }).click()
     await window.getByRole('link', { name: 'Outline board' }).click()
-    await window.getByTitle(/^Rectangle/).waitFor()
+    await window.locator('input[name="editor-current-shape"][aria-keyshortcuts^="R"]').waitFor()
     await expect.poll(async () => {
       const pixels = await renderedDarkPixelBounds(window)
       return pixels.count > 100

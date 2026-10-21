@@ -45,7 +45,7 @@ Typst 官方 CLI 的 smoke test 明确验证 `#image("https://example.org/image.
 
 ## 内容能力与投影影响
 
-Typst 原生支持 heading、paragraph、引用、列表、代码、表格、数学、图片和 `pagebreak()`；表格可跨页流动，`pagebreak()` 可在语义投影中表达显式分页。SVG/PNG 等图片可作为静态资源嵌入。HTML 中已有的 KaTeX/MathML 不能原样放进 Typst：math 节点必须另写 LaTeX-to-Typst（或受限数学）serializer；转换失败时输出源 LaTeX 和诊断。Spreadsheet、whiteboard、image-occlusion 应先变成静态表格/图片，再由 Typst serializer 输出。
+Typst 原生支持 heading、paragraph、引用、列表、代码、表格、数学、图片和 `pagebreak()`；表格可跨页流动，`pagebreak()` 可在语义投影中表达显式分页。SVG/PNG 等图片可作为静态资源嵌入。HTML 中已有的 KaTeX/MathML 不能原样放进 Typst：math 节点必须另写 LaTeX-to-Typst（或受限数学）serializer；转换失败时输出源 LaTeX 和诊断。whiteboard、image-occlusion 应先变成静态表格/图片，再由 Typst serializer 输出。
 
 因此 `ExportDocument` 至少需要：块层级和 marks、静态图片资源及 MIME/扩展名、数学源的目标格式、表格列/行数据、显式 page-break、以及结构化诊断。HTML 与 Typst 的分页和换行不可能逐像素一致；验收应比较语义内容和明确的版式规则，而不是复用 HTML CSS。
 

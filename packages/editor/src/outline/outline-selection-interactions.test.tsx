@@ -32,7 +32,7 @@ describe('outline interactions', () => {
     await userEvent.keyboard('{Backspace}')
 
     await waitFor(() => {
-      const rootChildren = Array.from(rendered.getByRole('textbox', { name: 'Editor content' }).children)
+      const rootChildren = Array.from(rendered.container.querySelector<HTMLElement>('[data-editor-content]')!.children)
       expect(rootChildren).toHaveLength(2)
       expect(rootChildren.map(element => element.getAttribute('data-block-id'))).toEqual(['A', 'B'])
       expect(rootChildren.map(element => element.textContent)).toEqual(['A', 'B'])
@@ -55,7 +55,7 @@ describe('outline interactions', () => {
     await userEvent.keyboard('{Backspace}')
 
     await waitFor(() => {
-      const rootChildren = Array.from(rendered.getByRole('textbox', { name: 'Editor content' }).children)
+      const rootChildren = Array.from(rendered.container.querySelector<HTMLElement>('[data-editor-content]')!.children)
       expect(rootChildren).toHaveLength(1)
       expect(rootChildren[0]).toHaveAttribute('data-block-id', 'A')
       expect(rootChildren[0]).toHaveAttribute('data-list-kind', 'outline')
@@ -95,8 +95,8 @@ describe('outline interactions', () => {
     await userEvent.click(marker(rendered.container, 'E'), { modifiers: ['Shift'] })
     expect(selectedIds(rendered.container)).toEqual(['B', 'C', 'D', 'E'])
 
-    await userEvent.click(rendered.getByRole('button', { name: 'Document mode' }))
-    await userEvent.click(rendered.getByRole('button', { name: 'Outline mode' }))
+    await userEvent.click(rendered.container.querySelector('button[data-editor-mode-control="document"]')!)
+    await userEvent.click(rendered.container.querySelector('button[data-editor-mode-control="outline"]')!)
     await waitFor(() => expect(selectedIds(rendered.container)).toEqual(['B', 'C', 'D', 'E']))
   })
 
@@ -230,10 +230,10 @@ describe('outline interactions', () => {
     expect(blockElement(rendered.container, 'A')).toHaveAttribute('hidden')
     expect(blockElement(rendered.container, 'C')).toHaveAttribute('hidden')
     expect(blockElement(rendered.container, 'Q')).toHaveAttribute('hidden')
-    expect(rendered.getByRole('button', { name: 'Show all blocks' })).toBeInTheDocument()
+    expect(rendered.container.querySelector('[data-outline-action="show-all"]')).toBeInTheDocument()
     expect(onDocumentChange).not.toHaveBeenCalled()
 
-    await userEvent.click(rendered.getByRole('button', { name: 'Show all blocks' }))
+    await userEvent.click(rendered.container.querySelector('[data-outline-action="show-all"]')!)
     await waitFor(() => expect(blockElement(rendered.container, 'A')).not.toHaveAttribute('hidden'))
     expect(blockElement(rendered.container, 'Q')).not.toHaveAttribute('hidden')
     expect(onDocumentChange).not.toHaveBeenCalled()
@@ -276,13 +276,13 @@ describe('outline interactions', () => {
     )
 
     await waitFor(() => expect(blockElement(rendered.container, 'Task root')).toHaveAttribute('data-outline-focus-root'))
-    expect(rendered.getByRole('textbox', { name: 'Editor content' }).closest('[data-editor-mode]')).toHaveAttribute(
+    expect(rendered.container.querySelector<HTMLElement>('[data-editor-content]')!.closest('[data-editor-mode]')).toHaveAttribute(
       'data-editor-outline-focus-presentation',
       'content-only',
     )
     expect(blockElement(rendered.container, 'Other block')).toHaveAttribute('hidden')
     expect(blockElement(rendered.container, 'Task child')).not.toHaveAttribute('hidden')
-    expect(rendered.queryByRole('button', { name: 'Show all blocks' })).toBeNull()
+    expect(rendered.container.querySelector('[data-outline-action="show-all"]')).toBeNull()
 
     const root = blockElement(rendered.container, 'Task root')
     const rootMarker = root.querySelector<HTMLElement>(':scope > .list-marker')
@@ -347,9 +347,9 @@ describe('outline interactions', () => {
     expect(blockElement(rendered.container, 'A')).not.toBeVisible()
     expect(onDocumentChange).not.toHaveBeenCalled()
 
-    await userEvent.click(rendered.getByRole('button', { name: 'Document mode' }))
+    await userEvent.click(rendered.container.querySelector('button[data-editor-mode-control="document"]')!)
     await waitFor(() => expect(blockElement(rendered.container, 'A')).toBeVisible())
-    await userEvent.click(rendered.getByRole('button', { name: 'Outline mode' }))
+    await userEvent.click(rendered.container.querySelector('button[data-editor-mode-control="outline"]')!)
     await waitFor(() => expect(blockElement(rendered.container, 'P')).toHaveAttribute('data-outline-view-collapsed'))
     expect(blockElement(rendered.container, 'A')).not.toBeVisible()
     expect(onDocumentChange).not.toHaveBeenCalled()

@@ -18,12 +18,21 @@ export const I18N_DEV_RENDERER_URL = 'http://127.0.0.1:5199'
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..')
 const desktopDirectory = resolve(repositoryRoot, 'apps/desktop')
+const desktopDist = resolve(desktopDirectory, 'dist')
 const desktopRequire = createRequire(resolve(desktopDirectory, 'package.json'))
 const viteExecutablePath = resolve(dirname(desktopRequire.resolve('vite')), '../../bin/vite.js')
-const electronModule: unknown = createRequire(import.meta.url)('electron')
-if (typeof electronModule !== 'string')
-  throw new TypeError('Electron package did not resolve to an executable path')
-const electronExecutablePath = electronModule
+
+function packagedExecutablePath(): string {
+  if (process.platform === 'darwin') {
+    const directory = process.arch === 'arm64' ? 'mac-arm64' : 'mac'
+    return resolve(desktopDist, directory, 'memorilo.app', 'Contents', 'MacOS', 'memorilo')
+  }
+  if (process.platform === 'win32')
+    return resolve(desktopDist, 'win-unpacked', 'memorilo.exe')
+  if (process.platform === 'linux')
+    return resolve(desktopDist, 'linux-unpacked', 'memorilo')
+  throw new Error(`Unsupported packaged test platform: ${process.platform}`)
+}
 
 function runnableConfiguration(configuration: DesktopLanguageConfiguration): Record<string, unknown> {
   return {
@@ -106,10 +115,10 @@ export async function launchI18nApplication(
     env.ELECTRON_RENDERER_URL = options.rendererUrl
 
   const electronApplication = await electron.launch({
-    args: [desktopDirectory, `--user-data-dir=${userDataDirectory}`],
+    args: [`--user-data-dir=${userDataDirectory}`],
     cwd: repositoryRoot,
     env,
-    executablePath: electronExecutablePath,
+    executablePath: packagedExecutablePath(),
   })
 
   return { directory, userDataDirectory, electronApplication }

@@ -8,7 +8,7 @@ Interactive state prototype: [note-transfer.html](note-transfer.html). It simula
 
 ## Entry Points
 
-- Add one `FileDown` icon menu to the Note titlebar trailing slot: HTML and Memo PDF. Memo PDF is saved as `<title>.memo.pdf`, a readable PDF with the re-importable `.memo` archive embedded; it exports the whole Note, including when a Whiteboard or Spreadsheet hides the text title. Topic context menus remain Topic-scoped.
+- Add one `FileDown` icon menu to the Note titlebar trailing slot: HTML and Memo PDF. Memo PDF is saved as `<title>.memo.pdf`, a readable PDF with the re-importable `.memo` archive embedded; it exports the whole Note, including when a Whiteboard hides the text title. Topic context menus remain Topic-scoped.
 - Add the same export submenu to the Library's single-Note context menu, using the clicked Note ID rather than the last active editor.
 - Keep one Library `FileUp` button labelled “Import…”. It opens one native picker accepting `.memo`, `.md`, and `.markdown`; after selection, the application chooses the import workflow. A `.memo` file always receives strict Memo validation and never falls back to Markdown after a parse error. Markdown extensions continue through the existing Markdown preview/options flow. Other extensions are rejected as unsupported.
 - Register format-specific export commands for the active Note and one global Note import command in the existing command palette. No additional shortcut is assigned by default. Native File-menu parity is deferred; the current menu lacks a general Note command bridge.

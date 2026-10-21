@@ -1,6 +1,6 @@
 import type { DesktopFavoriteNoteItem, DesktopRecentNoteItem } from '@memorilo/desktop-api'
 import type { LucideIcon } from 'lucide-react'
-import type { ReactNode } from 'react'
+import type { MouseEvent as ReactMouseEvent, ReactNode } from 'react'
 import type { DesktopClientError } from '../../shared/effect-query'
 import { Sidebar } from '@memorilo/ui'
 import * as stylex from '@stylexjs/stylex'
@@ -33,6 +33,7 @@ import {
   desktopEffectQuery,
 } from '../../shared/effect-query'
 import { getPlatform } from '../../shared/platform'
+import { router } from '../router'
 import { P2pSidebarStatus } from './p2p-sidebar-status'
 import { p2pSidebarStatusStyles } from './p2p-sidebar-status.stylex'
 import { workspaceSidebarStyles } from './workspace-sidebar.stylex'
@@ -69,7 +70,7 @@ interface SourceItemProps {
   }
   icon: LucideIcon
   label: string
-  onBeforeNavigate?: () => void
+  onBeforeNavigate?: () => Promise<void>
 }
 
 interface SourceItemContentProps {
@@ -158,12 +159,28 @@ function SourceItem({ destination, icon, label, onBeforeNavigate }: SourceItemPr
     )
   }
 
+  const handleRouteClick = (event: ReactMouseEvent<HTMLAnchorElement>): void => {
+    if (!onBeforeNavigate
+      || event.defaultPrevented
+      || event.button !== 0
+      || event.metaKey
+      || event.altKey
+      || event.ctrlKey
+      || event.shiftKey) {
+      return
+    }
+    event.preventDefault()
+    void onBeforeNavigate()
+      .then(() => router.navigate({ to: destination.to }))
+      .catch(error => console.error(`Failed to flush Note changes before opening ${destination.to}`, error))
+  }
+
   return (
     <Sidebar.Item asChild>
       <Link
         activeOptions={{ exact: destination.to !== '/learning', includeSearch: false }}
         activeProps={{ 'data-state': 'active' }}
-        onClick={onBeforeNavigate}
+        onClick={handleRouteClick}
         preload="intent"
         to={destination.to}
       >
@@ -371,8 +388,8 @@ export function WorkspaceSidebar({ compactCollapsed, onToggle, visible }: {
   const flushNotePersistence = useFlushNotePersistence()
   const favoritesQuery = useQuery(favoriteNotesQueryOptions())
   const recentQuery = useQuery(recentNotesQueryOptions())
-  const flushBeforeTodoNavigation = useCallback(() => {
-    void flushNotePersistence().catch(error => console.error('Failed to flush pending Note updates before opening Todo', error))
+  const flushBeforeRouteNavigation = useCallback(async () => {
+    await flushNotePersistence()
   }, [flushNotePersistence])
   const favoriteItems = (favoritesQuery.data ?? []).map(item => ({
     destination: item.kind === 'journal'
@@ -401,8 +418,8 @@ export function WorkspaceSidebar({ compactCollapsed, onToggle, visible }: {
               <SourceItem
                 key={item.label}
                 {...item}
-                onBeforeNavigate={item.destination.kind === 'route' && item.destination.to === '/todo'
-                  ? flushBeforeTodoNavigation
+                onBeforeNavigate={item.destination.kind === 'route'
+                  ? flushBeforeRouteNavigation
                   : undefined}
               />
             ))}

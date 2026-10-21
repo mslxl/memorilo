@@ -19,7 +19,7 @@ export interface ShelfBookOption {
 }
 
 export interface EntryCreationTarget {
-  kind: 'folder' | 'spreadsheet' | 'topic' | 'whiteboard'
+  kind: 'folder' | 'topic' | 'whiteboard'
   parentId: string | null
 }
 
@@ -151,7 +151,7 @@ export function BookTopicPickerDialog({
           variant="wide"
           xstyle={noteEditorDialogStyles.bookPickerDialog}
         >
-          <section>
+          <section data-book-topic-picker="">
             <header {...stylex.props(noteEditorDialogStyles.bookPickerHeader)}>
               <div>
                 <h1 id="book-topic-picker-title" {...stylex.props(noteEditorDialogStyles.bookPickerTitle)}>
@@ -200,6 +200,7 @@ export function BookTopicPickerDialog({
                                   selectedKey === key && noteEditorDialogStyles.bookPickerOptionSelected,
                                 )}
                                 aria-selected={selectedKey === key}
+                                data-book-option={`${option.source.id}:${option.publication.id}`}
                                 role="option"
                                 type="button"
                                 onClick={() => {
@@ -251,6 +252,7 @@ export function BookTopicPickerDialog({
               </Dialog.Close>
               <button
                 {...stylex.props(noteEditorDialogStyles.bookPickerCreate)}
+                data-book-action="submit"
                 disabled={submitting || selectedOption === undefined || activeFormat === null}
                 type="button"
                 onClick={() => void submit()}
@@ -281,11 +283,9 @@ export function EntryCreationDialog({
   const [label, setLabel] = useState('')
   const title = kind === 'folder'
     ? t('newFolder')
-    : kind === 'spreadsheet'
-      ? t('spreadsheet.new')
-      : kind === 'whiteboard'
-        ? t('newWhiteboard')
-        : t('newTopic')
+    : kind === 'whiteboard'
+      ? t('newWhiteboard')
+      : t('newTopic')
   const fieldLabel = kind === 'folder' ? t('folderName') : t('topicTitle')
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
@@ -314,7 +314,7 @@ export function EntryCreationDialog({
       <Dialog.Portal>
         <Dialog.Overlay variant="note" />
         <Dialog.Content aria-labelledby="entry-creation-title" asChild variant="compact" xstyle={noteEditorDialogStyles.entryCreationDialog}>
-          <form onSubmit={submit}>
+          <form data-entry-creation-kind={kind} onSubmit={submit}>
             <header {...stylex.props(noteEditorDialogStyles.bookPickerHeader)}>
               <h1 id="entry-creation-title" {...stylex.props(noteEditorDialogStyles.bookPickerTitle)}>{title}</h1>
               <Dialog.Close asChild>
@@ -328,6 +328,7 @@ export function EntryCreationDialog({
                 <span>{fieldLabel}</span>
                 <TextField
                   autoFocus
+                  data-entry-field="title"
                   required
                   value={label}
                   xstyle={noteEditorDialogStyles.entryCreationInput}
@@ -347,6 +348,7 @@ export function EntryCreationDialog({
               </Dialog.Close>
               <button
                 {...stylex.props(noteEditorDialogStyles.bookPickerCreate)}
+                data-entry-action="create"
                 disabled={label.trim().length === 0}
                 type="submit"
               >

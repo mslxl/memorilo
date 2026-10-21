@@ -350,63 +350,6 @@ CREATE TABLE `notes` (
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `notes_id_unique` ON `notes` (`id`);--> statement-breakpoint
-CREATE TABLE `spreadsheet_cells` (
-	`storage_row_id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
-	`note_row_id` integer NOT NULL,
-	`topic_id` text NOT NULL,
-	`sheet_id` text NOT NULL,
-	`sheet_row_id` text NOT NULL,
-	`column_id` text NOT NULL,
-	`input` text NOT NULL,
-	`display` text NOT NULL,
-	`format_json` text NOT NULL,
-	`formula_references_json` text NOT NULL,
-	FOREIGN KEY (`note_row_id`,`topic_id`,`sheet_id`,`column_id`) REFERENCES `spreadsheet_columns`(`note_row_id`,`topic_id`,`sheet_id`,`column_id`) ON UPDATE no action ON DELETE cascade,
-	FOREIGN KEY (`note_row_id`,`topic_id`,`sheet_id`,`sheet_row_id`) REFERENCES `spreadsheet_rows`(`note_row_id`,`topic_id`,`sheet_id`,`row_id`) ON UPDATE no action ON DELETE cascade
-);
---> statement-breakpoint
-CREATE INDEX `spreadsheet_cells_topic_idx` ON `spreadsheet_cells` (`note_row_id`,`topic_id`,`sheet_id`,`sheet_row_id`,`column_id`);--> statement-breakpoint
-CREATE UNIQUE INDEX `spreadsheet_cells_identity_unique` ON `spreadsheet_cells` (`note_row_id`,`topic_id`,`sheet_id`,`sheet_row_id`,`column_id`);--> statement-breakpoint
-CREATE TABLE `spreadsheet_columns` (
-	`note_row_id` integer NOT NULL,
-	`topic_id` text NOT NULL,
-	`sheet_id` text NOT NULL,
-	`column_id` text NOT NULL,
-	`ordinal` integer NOT NULL,
-	PRIMARY KEY(`note_row_id`, `topic_id`, `sheet_id`, `column_id`),
-	FOREIGN KEY (`note_row_id`,`topic_id`,`sheet_id`) REFERENCES `spreadsheet_sheets`(`note_row_id`,`topic_id`,`sheet_id`) ON UPDATE no action ON DELETE cascade,
-	CONSTRAINT "spreadsheet_columns_id_check" CHECK(length(trim(column_id)) > 0),
-	CONSTRAINT "spreadsheet_columns_ordinal_check" CHECK(ordinal >= 0)
-);
---> statement-breakpoint
-CREATE UNIQUE INDEX `spreadsheet_columns_note_topic_sheet_ordinal_unique` ON `spreadsheet_columns` (`note_row_id`,`topic_id`,`sheet_id`,`ordinal`);--> statement-breakpoint
-CREATE TABLE `spreadsheet_rows` (
-	`note_row_id` integer NOT NULL,
-	`topic_id` text NOT NULL,
-	`sheet_id` text NOT NULL,
-	`row_id` text NOT NULL,
-	`ordinal` integer NOT NULL,
-	PRIMARY KEY(`note_row_id`, `topic_id`, `sheet_id`, `row_id`),
-	FOREIGN KEY (`note_row_id`,`topic_id`,`sheet_id`) REFERENCES `spreadsheet_sheets`(`note_row_id`,`topic_id`,`sheet_id`) ON UPDATE no action ON DELETE cascade,
-	CONSTRAINT "spreadsheet_rows_id_check" CHECK(length(trim(row_id)) > 0),
-	CONSTRAINT "spreadsheet_rows_ordinal_check" CHECK(ordinal >= 0)
-);
---> statement-breakpoint
-CREATE UNIQUE INDEX `spreadsheet_rows_note_topic_sheet_ordinal_unique` ON `spreadsheet_rows` (`note_row_id`,`topic_id`,`sheet_id`,`ordinal`);--> statement-breakpoint
-CREATE TABLE `spreadsheet_sheets` (
-	`note_row_id` integer NOT NULL,
-	`topic_id` text NOT NULL,
-	`sheet_id` text NOT NULL,
-	`ordinal` integer NOT NULL,
-	`name` text NOT NULL,
-	PRIMARY KEY(`note_row_id`, `topic_id`, `sheet_id`),
-	FOREIGN KEY (`note_row_id`,`topic_id`) REFERENCES `topics`(`note_row_id`,`topic_id`) ON UPDATE no action ON DELETE cascade,
-	CONSTRAINT "spreadsheet_sheets_id_check" CHECK(length(trim(sheet_id)) > 0),
-	CONSTRAINT "spreadsheet_sheets_ordinal_check" CHECK(ordinal >= 0),
-	CONSTRAINT "spreadsheet_sheets_name_check" CHECK(length(trim(name)) > 0)
-);
---> statement-breakpoint
-CREATE UNIQUE INDEX `spreadsheet_sheets_note_topic_ordinal_unique` ON `spreadsheet_sheets` (`note_row_id`,`topic_id`,`ordinal`);--> statement-breakpoint
 CREATE TABLE `todo_calendar_events` (
 	`subscription_id` text NOT NULL,
 	`version` text NOT NULL,
@@ -484,7 +427,7 @@ CREATE TABLE `topics` (
 	`card_source_json` text,
 	`title` text NOT NULL,
 	FOREIGN KEY (`note_row_id`) REFERENCES `notes`(`row_id`) ON UPDATE no action ON DELETE cascade,
-	CONSTRAINT "topics_type_check" CHECK(topic_type IN ('regular', 'book', 'image-occlusion', 'spreadsheet', 'whiteboard')),
+	CONSTRAINT "topics_type_check" CHECK(topic_type IN ('regular', 'book', 'image-occlusion', 'whiteboard')),
 	CONSTRAINT "topics_editor_mode_check" CHECK(editor_mode IS NULL OR editor_mode IN (0, 1))
 );
 --> statement-breakpoint

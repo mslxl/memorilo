@@ -26,7 +26,6 @@ Orca Note 的差异化重点不是“又一个 Markdown 编辑器”，而是把
 | 白板 | 无限画布且与笔记深度整合；适合空间化整理，再回到结构化块。 | “深度整合”是官方营销表述，具体对象同步/嵌入规则未公开。 |
 | 块级图谱（Block Graph） | 以块级图谱可视化笔记连接，比文档级 graph 更适合追踪局部引用关系。 | 未公开图谱计算规模上限。 |
 | 思维导图 | 可将大纲转换成思维导图，用于头脑风暴和视觉组织；官方更新日志还显示它是持续优化的完整编辑视图。 | 布局算法和导图与大纲的双向编辑约束未公开。 |
-| 表格/公式 | 内置 spreadsheet block，支持公式和计算；把结构化数据留在同一知识库，而不是外链到表格应用。 | 官网没有列出公式兼容范围；更新日志只确认已加入 spreadsheet block。 |
 | AI 助手 | 可与笔记对话，辅助创作和知识管理；更新日志确认支持 AI chat 自定义 prompt 和 AI rewriting 自定义 prompt。 | AI 模型、数据发送边界、上下文选择和计费未在产品页完整说明。 |
 | MCP 工具 | 让 AI agent 直接读取、写入、查询或删除笔记库；这是面向 agent 工作流的高差异化能力。 | “删除”意味着高权限操作；使用前应核对权限、审计和确认机制，官网未说明细节。 |
 | Orca Note CLI | 支持脚本、批处理和命令行自动化；社区资源库将其定位为可供 AI agent 使用的 companion CLI。 | CLI 的命令/稳定性应以其独立仓库为准。 |
@@ -44,7 +43,7 @@ Orca Note 的差异化重点不是“又一个 Markdown 编辑器”，而是把
 官方 GitHub release notes 说明产品仍在高频迭代，且最近的改进集中在结构化视图和自动化：
 
 - `v1.83.0`（2026-06-30）：加入 mind map view（完整思维导图编辑器）、block graph 入口、跨块格式化。[Release v1.83.0](https://github.com/sethyuan/orca-note/releases/tag/v1.83.0)（访问于 2026-08-11）
-- `v1.85.0`（2026-07-17）：加入 spreadsheet block、MCP `s3_sync` 工具、白板双击选块、面板最大化、搜索语法提示和仓库切换弹窗。[Release v1.85.0](https://github.com/sethyuan/orca-note/releases/tag/v1.85.0)（访问于 2026-08-11）
+- `v1.85.0`（2026-07-17）：加入 MCP `s3_sync` 工具、白板双击选块、面板最大化、搜索语法提示和仓库切换弹窗。[Release v1.85.0](https://github.com/sethyuan/orca-note/releases/tag/v1.85.0)（访问于 2026-08-11）
 - `v1.87.0`（2026-07-24）：增强 computed properties，并为思维导图增加左右平衡/右侧树状两种布局及路径 breadcrumb。[Release v1.87.0](https://github.com/sethyuan/orca-note/releases/tag/v1.87.0)（访问于 2026-08-11）
 - `v1.88.0`（2026-08-01）：优化白板默认块样式、块图文字显示阈值、思维导图连线；增加 S3 同步退出提示、插件 API 的流式/非流式 AI 调用接口和实验性编辑器路径 breadcrumb。[Release v1.88.0](https://github.com/sethyuan/orca-note/releases/tag/v1.88.0)（访问于 2026-08-11）
 

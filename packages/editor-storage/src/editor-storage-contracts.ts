@@ -54,15 +54,10 @@ export interface WhiteboardTopicProjection extends TopicProjectionBase {
   topicType: 'whiteboard'
 }
 
-export interface SpreadsheetTopicEntryProjection extends TopicProjectionBase {
-  topicType: 'spreadsheet'
-}
-
 export type TopicProjection
   = | BookTopicProjection
     | ImageOcclusionTopicProjection
     | RegularTopicProjection
-    | SpreadsheetTopicEntryProjection
     | WhiteboardTopicProjection
 
 export type NoteEntryProjection = FolderProjection | TopicProjection
@@ -79,37 +74,6 @@ export interface TopicBlockProjection {
 export interface TopicContentProjection {
   blocks: readonly TopicBlockProjection[]
   title: string
-  topicId: string
-}
-
-export interface SpreadsheetFormulaReferenceProjection {
-  columnId: string
-  rowId: string
-  sheetId: string
-  sourceEnd: number
-  sourceStart: number
-  topicId: string
-}
-
-export interface SpreadsheetCellProjection {
-  columnId: string
-  display: string
-  format: Readonly<Record<string, unknown>>
-  formulaReferences: readonly SpreadsheetFormulaReferenceProjection[]
-  input: string
-  rowId: string
-}
-
-export interface SpreadsheetSheetProjection {
-  cells: readonly SpreadsheetCellProjection[]
-  columnIds: readonly string[]
-  id: string
-  name: string
-  rowIds: readonly string[]
-}
-
-export interface SpreadsheetProjection {
-  sheets: readonly SpreadsheetSheetProjection[]
   topicId: string
 }
 
@@ -149,7 +113,6 @@ export interface CreateInitializedNoteInput {
   learningCards?: readonly LearningTopicCardProjection[]
   learningReadingItems?: readonly ReadingItemProjection[]
   snapshot: Uint8Array
-  spreadsheets?: readonly SpreadsheetProjection[]
   title: string
   topics: readonly TopicContentProjection[]
 }
@@ -366,7 +329,6 @@ export interface SaveNoteUpdatesInput {
   learningCards?: readonly LearningTopicCardProjection[]
   learningReadingItems?: readonly ReadingItemProjection[]
   noteId: string
-  spreadsheets?: readonly SpreadsheetProjection[]
   title?: string
   topics: readonly TopicContentProjection[]
   updates: readonly Uint8Array[]

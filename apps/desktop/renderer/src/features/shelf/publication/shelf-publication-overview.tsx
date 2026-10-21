@@ -82,11 +82,12 @@ function SourcePreviewSection({
 
   return (
     <div ref={visibilityRef}>
-      <section {...stylex.props(shelfPublicationStyles.overviewSection)} aria-label={group.source.name} role="region">
+      <section {...stylex.props(shelfPublicationStyles.overviewSection)} data-shelf-source-preview="" aria-label={group.source.name} role="region">
         <header {...stylex.props(shelfPublicationStyles.overviewHeader)}>
           <button
             {...stylex.props(shelfPublicationStyles.overviewHeadingAction)}
             aria-label={t('shelfOpenSource', { name: group.source.name })}
+            data-shelf-action="open-source"
             type="button"
             onClick={() => onBrowseSource(group.source.id)}
           >

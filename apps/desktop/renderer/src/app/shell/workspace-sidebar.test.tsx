@@ -11,7 +11,7 @@ function SidebarMotionHarness() {
       <WorkspaceSidebarMotion visible={visible} onToggle={() => setVisible(current => !current)}>
         <nav aria-label="Test navigation" />
       </WorkspaceSidebarMotion>
-      <main data-testid="workspace-content" style={{ flex: 1 }} />
+      <main style={{ flex: 1 }} />
     </div>
   )
 }
@@ -25,7 +25,9 @@ function readInlineWidth(style: string | null): number | undefined {
 
 it('moves adjacent content through intermediate positions while collapsing', async () => {
   const rendered = render(<SidebarMotionHarness />)
-  const content = rendered.getByTestId('workspace-content')
+  const content = rendered.container.querySelector<HTMLElement>('main')
+  if (!content)
+    throw new Error('Workspace content was not rendered')
   const sidebar = rendered.getByRole('complementary', { name: 'Workspace navigation' })
   const start = content.getBoundingClientRect().left
   const animatedWidths: number[] = []

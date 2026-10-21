@@ -1,7 +1,7 @@
 import type { RenderResult } from '@testing-library/react'
 import type { NodeJSON } from 'prosekit/core'
 import type { EditorAdapters } from '../adapters/editor-adapters'
-import { act, fireEvent } from '@testing-library/react'
+import { act, fireEvent, waitFor } from '@testing-library/react'
 import { page } from '@vitest/browser/context'
 import { expect } from 'vitest'
 import { userEvent } from '../../test/browser/user-event'
@@ -213,7 +213,8 @@ export async function dragBlockToText(rendered: RenderResult, sourceText: string
     await new Promise<void>(resolve => setTimeout(resolve, 250))
   })
 
-  const dragHandle = rendered.getByLabelText('Drag block')
+  await waitFor(() => expect(rendered.baseElement.querySelector('[data-block-handle-action="drag"]')).not.toBeNull())
+  const dragHandle = rendered.baseElement.querySelector<HTMLElement>('[data-block-handle-action="drag"]')!
   expect(dragHandle).toBeVisible()
   await act(async () => {
     fireEvent.pointerDown(dragHandle)

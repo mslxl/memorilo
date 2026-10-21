@@ -299,7 +299,7 @@ export function JournalsPage({
 
   if (todayQuery.isPending) {
     return (
-      <main {...stylex.props(journalRouteStyles.initialStatus)} aria-label={t('journals')}>
+      <main {...stylex.props(journalRouteStyles.initialStatus)} aria-label={t('journals')} data-page="journals">
         <LoaderCircle
           {...stylex.props(journalRouteStyles.statusIcon, journalRouteStyles.loadingIcon)}
           aria-hidden="true"
@@ -312,7 +312,7 @@ export function JournalsPage({
 
   if (todayQuery.isError || !today) {
     return (
-      <main {...stylex.props(journalRouteStyles.initialStatus)} aria-label={t('journals')}>
+      <main {...stylex.props(journalRouteStyles.initialStatus)} aria-label={t('journals')} data-page="journals">
         <TriangleAlert
           {...stylex.props(journalRouteStyles.statusIcon)}
           aria-hidden="true"
@@ -331,7 +331,7 @@ export function JournalsPage({
   }
 
   return (
-    <main {...stylex.props(journalRouteStyles.page)} aria-label={t('journals')}>
+    <main {...stylex.props(journalRouteStyles.page)} aria-label={t('journals')} data-page="journals">
       <JournalFeed
         ref={feedRef}
         cache={sessionCache}

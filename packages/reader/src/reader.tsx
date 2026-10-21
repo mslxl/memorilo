@@ -133,6 +133,7 @@ function ReaderDeleteAnnotationDialog({
         <button
           {...stylex.props(readerStyles.dialogButton)}
           autoFocus
+          data-reader-dialog-action="cancel"
           disabled={pending}
           type="button"
           onClick={onCancel}
@@ -142,6 +143,7 @@ function ReaderDeleteAnnotationDialog({
         <button
           {...stylex.props(readerStyles.dialogButton, readerStyles.dialogPrimaryButton)}
           disabled={pending}
+          data-reader-dialog-action="delete"
           type="button"
           onClick={onConfirm}
         >

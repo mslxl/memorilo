@@ -83,6 +83,7 @@ export function LearningReviewTitlebar({
                 aria-valuemax={progressMaximum}
                 aria-valuemin={0}
                 aria-valuenow={progressValue}
+                data-learning-progress=""
                 role="progressbar"
               >
                 <motion.span

@@ -69,10 +69,10 @@ vi.mock('@fullcalendar/react', () => ({
         data-event-count={String(props.events?.length ?? 0)}
         data-initial-view={props.initialView}
         data-scroll-time={props.scrollTime}
-        data-testid="full-calendar"
+        data-calendar=""
       >
         <button
-          data-testid="calendar-select"
+          data-calendar-action="select"
           type="button"
           onClick={() => props.select?.({
             allDay: false,
@@ -83,21 +83,21 @@ vi.mock('@fullcalendar/react', () => ({
           Select empty slot
         </button>
         <button
-          data-testid="calendar-event-click"
+          data-calendar-action="event-click"
           type="button"
           onClick={() => props.eventClick?.({ event: draggedEvent } as unknown as EventClickArg)}
         >
           Open event
         </button>
         <button
-          data-testid="calendar-event-drag"
+          data-calendar-action="event-drag"
           type="button"
           onClick={() => props.eventChange?.({ event: draggedEvent } as unknown as EventChangeArg)}
         >
           Drag event
         </button>
         <button
-          data-testid="calendar-event-resize"
+          data-calendar-action="event-resize"
           type="button"
           onClick={() => props.eventChange?.({ event: resizedEvent } as unknown as EventChangeArg)}
         >
@@ -135,25 +135,28 @@ afterEach(() => {
 describe('todoTimeGridView', () => {
   it('switches day spans and remembers multi-day and multi-week ranges', async () => {
     const first = renderView()
-    expect(first.getByTestId('full-calendar')).toHaveAttribute('data-initial-view', 'timeGridDay')
+    const calendar = first.container.querySelector<HTMLElement>('[data-calendar]')
+    if (!calendar)
+      throw new Error('Todo calendar was not rendered')
+    expect(calendar).toHaveAttribute('data-initial-view', 'timeGridDay')
 
     fireEvent.click(first.getByRole('button', { name: 'Multi-day' }))
     const multiDay = first.getByRole('combobox', { name: 'Multi-day' })
     expect(multiDay).toHaveValue('3')
     expect(within(multiDay).getAllByRole('option')).toHaveLength(7)
     fireEvent.change(multiDay, { target: { value: '5' } })
-    await waitFor(() => expect(first.getByTestId('full-calendar')).toHaveAttribute('data-days', '5'))
+    await waitFor(() => expect(calendar).toHaveAttribute('data-days', '5'))
 
     fireEvent.click(first.getByRole('button', { name: 'Week' }))
-    expect(first.getByTestId('full-calendar')).toHaveAttribute('data-days', '7')
+    expect(calendar).toHaveAttribute('data-days', '7')
 
     fireEvent.click(first.getByRole('button', { name: 'Multi-week' }))
     const multiWeek = first.getByRole('combobox', { name: 'Multi-week' })
     expect(multiWeek).toHaveValue('2')
-    expect(first.getByTestId('full-calendar')).toHaveAttribute('data-days', '14')
+    expect(calendar).toHaveAttribute('data-days', '14')
     expect(within(multiWeek).getAllByRole('option')).toHaveLength(4)
     fireEvent.change(multiWeek, { target: { value: '4' } })
-    await waitFor(() => expect(first.getByTestId('full-calendar')).toHaveAttribute('data-days', '28'))
+    await waitFor(() => expect(calendar).toHaveAttribute('data-days', '28'))
     first.unmount()
 
     const second = renderView()
@@ -167,8 +170,14 @@ describe('todoTimeGridView', () => {
     const onCreateTask = vi.fn(async (input: CreateDesktopTodoTaskInput) => ({ ...taskFixture, ...input, blockId: 'created-task' }))
     const rendered = renderView({ onCreateTask })
 
-    expect(rendered.getByTestId('full-calendar')).toHaveAttribute('data-scroll-time', '07:00:00')
-    fireEvent.click(rendered.getByTestId('calendar-select'))
+    const calendar = rendered.container.querySelector<HTMLElement>('[data-calendar]')
+    if (!calendar)
+      throw new Error('Todo calendar was not rendered')
+    expect(calendar).toHaveAttribute('data-scroll-time', '07:00:00')
+    const selectButton = calendar.querySelector<HTMLButtonElement>('[data-calendar-action="select"]')
+    if (!selectButton)
+      throw new Error('Todo calendar select action was not rendered')
+    fireEvent.click(selectButton)
 
     await waitFor(() => expect(onCreateTask).toHaveBeenCalledWith({
       schedule: { allDay: false, end: '2026-08-20T13:45', kind: 'span', start: '2026-08-20T13:15' },
@@ -181,10 +190,16 @@ describe('todoTimeGridView', () => {
     const onUpdateTask = vi.fn(async () => undefined)
     const rendered = renderView({ onSelectTask, onUpdateTask })
 
-    fireEvent.click(rendered.getByTestId('calendar-event-click'))
+    const eventClickButton = rendered.container.querySelector<HTMLButtonElement>('[data-calendar-action="event-click"]')
+    if (!eventClickButton)
+      throw new Error('Todo calendar event click action was not rendered')
+    fireEvent.click(eventClickButton)
     expect(onSelectTask).toHaveBeenCalledWith(taskFixture)
 
-    fireEvent.click(rendered.getByTestId('calendar-event-drag'))
+    const eventDragButton = rendered.container.querySelector<HTMLButtonElement>('[data-calendar-action="event-drag"]')
+    if (!eventDragButton)
+      throw new Error('Todo calendar event drag action was not rendered')
+    fireEvent.click(eventDragButton)
     await waitFor(() => expect(onUpdateTask).toHaveBeenCalledWith({
       blockId: taskFixture.blockId,
       noteId: taskFixture.noteId,
@@ -198,7 +213,10 @@ describe('todoTimeGridView', () => {
     const onUpdateTask = vi.fn(async () => undefined)
     const rendered = renderView({ onUpdateTask })
 
-    fireEvent.click(rendered.getByTestId('calendar-event-resize'))
+    const eventResizeButton = rendered.container.querySelector<HTMLButtonElement>('[data-calendar-action="event-resize"]')
+    if (!eventResizeButton)
+      throw new Error('Todo calendar event resize action was not rendered')
+    fireEvent.click(eventResizeButton)
     await waitFor(() => expect(onUpdateTask).toHaveBeenCalledWith({
       blockId: taskFixture.blockId,
       noteId: taskFixture.noteId,

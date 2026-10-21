@@ -44,30 +44,6 @@ _Avoid_: OcclusionShape, CardID
 A Topic whose primary editable content is a spatial whiteboard scene with zero or more Embedded Editors. It remains a normal member of the Note hierarchy: it may have a Folder or Topic parent and may organize child Topics.
 _Avoid_: Canvas attachment, drawing block
 
-**SpreadsheetTopic**:
-A Topic whose primary editable content is one Workbook. It remains a normal member of the Note hierarchy and may organize child Topics.
-_Avoid_: Spreadsheet Block, database view, workbook attachment
-
-**Workbook**:
-The ordered collection of Sheets owned by exactly one SpreadsheetTopic.
-_Avoid_: SpreadsheetTopic, database
-
-**Sheet**:
-An ordered two-dimensional arrangement of Rows and Columns inside a Workbook.
-_Avoid_: Table view, SpreadsheetTopic
-
-**Cell**:
-The data position identified by one SpreadsheetTopic, Sheet, Row, and Column identity.
-_Avoid_: Block, A1 address
-
-**CellAddress**:
-A display coordinate such as `A1` derived from the current Row and Column order. It is not a Cell's identity.
-_Avoid_: CellID, FormulaReference
-
-**FormulaReference**:
-A stable reference from a formula to a Cell in a SpreadsheetTopic within the same Note. It may cross SpreadsheetTopic boundaries but never crosses the owning Note aggregate.
-_Avoid_: CellAddress, cross-Note link
-
 **Embedded Editor**:
 A complete rich-text editor owned by exactly one WhiteboardTopic and positioned by that WhiteboardTopic's scene. A WhiteboardTopic may own multiple independently editable Embedded Editors; they are not Topics and do not appear in the Note hierarchy.
 _Avoid_: Child Topic, hidden Topic, WhiteboardTopic document

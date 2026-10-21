@@ -34,12 +34,15 @@ import { defineImageUploadHandler } from 'prosekit/extensions/image'
 import { defineMath } from 'prosekit/extensions/math'
 import { definePlaceholder } from 'prosekit/extensions/placeholder'
 import { defineReadonly } from 'prosekit/extensions/readonly'
+import { Fragment, Slice } from 'prosekit/pm/model'
+import { Plugin } from 'prosekit/pm/state'
 import { defaultAttributesGetter, listToDOM } from 'prosemirror-flat-list'
 import { defineCardExtension } from '../card/card-extension'
 import { defineCardReviewExtension } from '../card/card-review-extension'
 import { defineBlockIdExtension } from '../common/block-id-extension'
 import { defineEditorKeymapExtension } from '../common/editor-keymap-extension'
 import { defineFormattingShortcutGuards, defineFormattingShortcuts } from '../common/formatting-shortcuts'
+import { normalizeOutlineDocument } from '../common/outline-document'
 import { defineOutlineKeymapExtension } from '../common/outline-keymap-extension'
 import { defineOutlineViewExtension } from '../common/outline-view-extension'
 import { defineTableKeymapExtension } from '../common/table-keymap-extension'
@@ -90,6 +93,152 @@ function defineTaskClipboardSerializer() {
   }), Priority.highest)
 }
 
+function transformOutlineClipboardHTML(html: string): string {
+  if (!html.includes('data-list-kind="outline"'))
+    return html
+
+  const document = new DOMParser().parseFromString(html, 'text/html')
+  for (const list of Array.from(document.body.querySelectorAll('ul, ol'))) {
+    const items = Array.from(list.children).filter((child): child is HTMLLIElement => child.tagName === 'LI')
+    if (!items.some(item => item.dataset.listKind === 'outline'))
+      continue
+
+    const fragment = document.createDocumentFragment()
+    let nativeList: HTMLElement | null = null
+    const flushNativeList = () => {
+      if (nativeList) {
+        fragment.append(nativeList)
+        nativeList = null
+      }
+    }
+
+    for (const item of items) {
+      if (item.dataset.listKind === 'outline') {
+        flushNativeList()
+        const outline = document.createElement('div')
+        outline.className = 'prosemirror-flat-list'
+        for (const attribute of Array.from(item.attributes))
+          outline.setAttribute(attribute.name, attribute.value)
+        while (item.firstChild)
+          outline.append(item.firstChild)
+        fragment.append(outline)
+        continue
+      }
+
+      if (!nativeList)
+        nativeList = document.createElement(list.tagName.toLowerCase())
+      nativeList.append(item)
+    }
+    flushNativeList()
+
+    const firstChild = fragment.firstChild
+    const slice = list.getAttribute('data-pm-slice')
+    if (slice && firstChild instanceof HTMLElement)
+      firstChild.setAttribute('data-pm-slice', slice)
+    list.replaceWith(fragment)
+  }
+  return document.body.innerHTML
+}
+
+function defineOutlineClipboardParser() {
+  return definePlugin(new Plugin({
+    props: {
+      transformPastedHTML: transformOutlineClipboardHTML,
+    },
+  }))
+}
+
+const pastedLearningIdentityKeys = new Set([
+  'backwardCardId',
+  'blockHighlightId',
+  'cardItemDefinitionId',
+  'cardId',
+  'definitionId',
+  'forwardCardId',
+  'groupId',
+  'highlightId',
+  'id',
+  'targetGroupId',
+])
+
+function remapPastedLearningIdentities(slice: Slice): Slice {
+  const jsonNodes = slice.content.content.map(node => node.toJSON() as NodeJSON)
+  const remappableIds = new Set<string>()
+  const collect = (node: NodeJSON): void => {
+    if (node.type === 'cardDelimiter') {
+      for (const key of ['backwardCardId', 'definitionId', 'forwardCardId']) {
+        const value = node.attrs?.[key]
+        if (typeof value === 'string')
+          remappableIds.add(value)
+      }
+    }
+    for (const key of ['blockHighlightId', 'cardItemDefinitionId']) {
+      const value = node.attrs?.[key]
+      if (typeof value === 'string')
+        remappableIds.add(value)
+    }
+    for (const mark of node.marks ?? []) {
+      if (mark.type === 'cloze') {
+        for (const key of ['cardId', 'definitionId', 'groupId']) {
+          const value = mark.attrs?.[key]
+          if (typeof value === 'string')
+            remappableIds.add(value)
+        }
+      }
+      if (mark.type === 'inlineHighlight' && typeof mark.attrs?.id === 'string')
+        remappableIds.add(mark.attrs.id)
+    }
+    node.content?.forEach(collect)
+  }
+  jsonNodes.forEach(collect)
+
+  const identities = new Map<string, string>()
+  const remap = (value: unknown, key: string): unknown => {
+    if (!pastedLearningIdentityKeys.has(key) || typeof value !== 'string' || !remappableIds.has(value))
+      return value
+    const mapped = identities.get(value) ?? crypto.randomUUID()
+    identities.set(value, mapped)
+    return mapped
+  }
+  const rewrite = (value: unknown): unknown => {
+    if (Array.isArray(value))
+      return value.map(rewrite)
+    if (value === null || typeof value !== 'object')
+      return value
+    return Object.fromEntries(Object.entries(value).map(([key, child]) => [
+      key,
+      pastedLearningIdentityKeys.has(key) ? remap(child, key) : rewrite(child),
+    ]))
+  }
+  const children = slice.content.content.map((node, index) => {
+    const json = rewrite(jsonNodes[index]!) as NodeJSON
+    return node.type.schema.nodeFromJSON(json)
+  })
+  return new Slice(Fragment.fromArray(children), slice.openStart, slice.openEnd)
+}
+
+function defineLearningIdentityClipboardParser() {
+  return definePlugin(new Plugin({
+    props: {
+      transformPasted: remapPastedLearningIdentities,
+    },
+  }))
+}
+
+function defineOutlineDocumentNormalization() {
+  return definePlugin(new Plugin({
+    appendTransaction: (transactions, _oldState, newState) => {
+      if (!transactions.some(transaction => transaction.docChanged))
+        return null
+      if (newState.doc.content.content.every(node => node.type.name === 'list'))
+        return null
+
+      const normalized = newState.schema.nodeFromJSON(normalizeOutlineDocument(newState.doc.toJSON()))
+      return newState.tr.replaceWith(0, newState.doc.content.size, normalized.content)
+    },
+  }))
+}
+
 function defineLoroTree(topic: EditorTopicRuntime) {
   const keymap = {
     'Mod-z': undo,
@@ -101,6 +250,7 @@ function defineLoroTree(topic: EditorTopicRuntime) {
     defineCommands({ redo: () => redo, undo: () => undo }),
     definePlugin(LoroTreeEphemeralCursorPlugin(topic.presence)),
     definePlugin(LoroTreeUndoPlugin({ doc: topic.doc, manageSelection: false, undoManager: topic.undoManager })),
+    defineOutlineDocumentNormalization(),
     definePlugin(LoroTreeSyncPlugin(topic)),
   ), Priority.high)
 }
@@ -160,6 +310,8 @@ export function createEditorExtension(
     defineTagView(tagRuntime),
     defineTaskListView(adapters.taskActions),
     defineTaskClipboardSerializer(),
+    defineOutlineClipboardParser(),
+    defineLearningIdentityClipboardParser(),
     defineImageUploadHandler({
       uploader,
       onError: ({ error }) => {

@@ -413,8 +413,8 @@ describe('card surface', () => {
         topic={fixture.topic}
       />,
     )
-    const redToggle = await rendered.findByRole('button', { name: 'Remembered set-red' })
-    const blueToggle = rendered.getByRole('button', { name: 'Forgotten set-blue' })
+    const redToggle = rendered.container.querySelector<HTMLButtonElement>('[data-card-review-item="set-red"] [data-card-review-item-toggle]')!
+    const blueToggle = rendered.container.querySelector<HTMLButtonElement>('[data-card-review-item="set-blue"] [data-card-review-item-toggle]')!
     expect(redToggle).toHaveAttribute('aria-pressed', 'true')
     expect(blueToggle).toHaveAttribute('aria-pressed', 'false')
     expect(visibleText(source)).toContain('Red')
@@ -463,14 +463,14 @@ describe('card surface', () => {
     const rendered = render(
       <CardSurface adapters={adapters} card={card} side="question" topic={fixture.topic} />,
     )
-    await waitFor(() => expect(rendered.getByLabelText('Hidden cloze')).toBeVisible())
+    await waitFor(() => expect(rendered.container.querySelector('[data-card-review-placeholder="cloze"]')).toBeVisible())
     const surface = cardSurface(rendered.container)
     const source = reviewSource(surface)
     const mountedEditor = surface.querySelector('.ProseMirror')
     if (!mountedEditor)
       throw new Error('Cloze Card did not mount its Editor')
 
-    expect(rendered.getByLabelText('Hidden cloze')).toBeVisible()
+    expect(rendered.container.querySelector('[data-card-review-placeholder="cloze"]')).toBeVisible()
     expect(visibleText(source)).not.toContain('Euler')
     expect(visibleText(source)).toContain('Gauss')
     expect(surface.querySelector('[data-card-delimiter]')).toBeNull()
@@ -482,7 +482,7 @@ describe('card surface', () => {
     rendered.rerender(
       <CardSurface adapters={adapters} card={card} side="answer" topic={fixture.topic} />,
     )
-    await waitFor(() => expect(rendered.queryByLabelText('Hidden cloze')).toBeNull())
+    await waitFor(() => expect(rendered.container.querySelector('[data-card-review-placeholder="cloze"]')).toBeNull())
     expect(visibleText(source)).toContain('Euler')
     expect(visibleText(source)).toContain('Gauss')
     expect(surface.querySelector('.prosemirror-math-display')).toHaveAttribute(

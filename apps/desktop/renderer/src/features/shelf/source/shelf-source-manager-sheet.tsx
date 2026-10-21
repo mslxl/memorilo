@@ -94,6 +94,7 @@ export function SourceManagerSheet({
                   />
                   <Dialog.Content aria-labelledby="shelf-source-manager-title" asChild position="custom" variant="sheet" xstyle={shelfSourceManagerStyles.sheet}>
                     <motion.section
+                      data-shelf-source-manager=""
                       animate={sheetAnimate}
                       exit={sheetExit}
                       initial={sheetExit}

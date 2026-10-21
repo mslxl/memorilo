@@ -34,17 +34,17 @@ describe('outline interactions', () => {
     )
     await rendered.findByText('Before')
 
-    await userEvent.click(rendered.getByRole('button', { name: 'Outline mode' }))
+    await userEvent.click(rendered.container.querySelector('button[data-editor-mode-control="outline"]')!)
     await waitFor(() => expect(rendered.container.querySelector('[data-editor-mode="outline"]')).not.toBeNull())
     const before = rendered.getByText('Before')
-    const editor = rendered.getByRole('textbox', { name: 'Editor content' })
+    const editor = rendered.container.querySelector<HTMLElement>('[data-editor-content]')!
     await userEvent.click(before)
     await userEvent.keyboard('{End}{Enter}/')
 
     expect(editor).toHaveTextContent('Before/')
-    await rendered.findByRole('option', { name: 'Text' })
-    expect(rendered.getByRole('option', { name: 'Text' })).toBeVisible()
-    expect(rendered.getByRole('option', { name: /^Quote/ })).toBeVisible()
+    await waitFor(() => expect(rendered.container.querySelector('[data-slash-command="paragraph"]')).not.toBeNull())
+    expect(rendered.container.querySelector('[data-slash-command="paragraph"]')).toBeVisible()
+    expect(rendered.container.querySelector('[data-slash-command="blockquote"]')).toBeVisible()
   })
 
   it('moves the slash menu highlight with ArrowDown in Outline mode', async () => {
@@ -59,8 +59,9 @@ describe('outline interactions', () => {
     await userEvent.click(page.getByText('Before', { exact: true }))
     await userEvent.keyboard('{End}{Enter}/')
 
-    const textOption = await rendered.findByRole('option', { name: 'Text' })
-    const headingOption = rendered.getByRole('option', { name: 'Heading 1 #' })
+    await waitFor(() => expect(rendered.container.querySelector('[data-slash-command="paragraph"]')).not.toBeNull())
+    const textOption = rendered.container.querySelector<HTMLElement>('[data-slash-command="paragraph"]')!
+    const headingOption = rendered.container.querySelector<HTMLElement>('[data-slash-command="heading-1"]')!
     await waitFor(() => expect(textOption).toHaveAttribute('data-highlighted'))
 
     await userEvent.keyboard('{ArrowDown}')
@@ -84,10 +85,11 @@ describe('outline interactions', () => {
     await rendered.findByText('Before')
 
     await userEvent.hover(page.getByText('Before', { exact: true }))
-    await userEvent.click(page.getByLabelText('Add block'))
+    await waitFor(() => expect(rendered.baseElement.querySelector('button[data-block-handle-action="add"]')).not.toBeNull())
+    await userEvent.click(rendered.baseElement.querySelector<HTMLButtonElement>('button[data-block-handle-action="add"]')!)
 
     await waitFor(() => {
-      const rootChildren = Array.from(rendered.getByRole('textbox', { name: 'Editor content' }).children)
+      const rootChildren = Array.from(rendered.container.querySelector<HTMLElement>('[data-editor-content]')!.children)
       expect(rootChildren).toHaveLength(3)
       expect(rootChildren.every(element => element.matches('[data-list-kind="outline"][data-block-id]'))).toBe(true)
       expect(rootChildren.map(element => element.textContent)).toEqual(['Before', '', 'After'])
@@ -125,7 +127,8 @@ describe('outline interactions', () => {
     await act(async () => {
       await new Promise<void>(resolve => setTimeout(resolve, 250))
     })
-    const dragHandle = rendered.getByLabelText('Drag block')
+    await waitFor(() => expect(rendered.baseElement.querySelector('[data-block-handle-action="drag"]')).not.toBeNull())
+    const dragHandle = rendered.baseElement.querySelector<HTMLElement>('[data-block-handle-action="drag"]')!
     expect(dragHandle).toBeVisible()
     await act(async () => {
       fireEvent.pointerDown(dragHandle)
@@ -170,7 +173,7 @@ describe('outline interactions', () => {
     await userEvent.keyboard('{End}{Enter}{Enter}{Enter}')
 
     await waitFor(() => {
-      const rootChildren = Array.from(rendered.getByRole('textbox', { name: 'Editor content' }).children)
+      const rootChildren = Array.from(rendered.container.querySelector<HTMLElement>('[data-editor-content]')!.children)
       expect(rootChildren).toHaveLength(5)
       expect(rootChildren.every(element => element.matches('[data-list-kind="outline"][data-block-id]'))).toBe(true)
       expect(rootChildren.map(element => element.textContent)).toEqual(['Before', '', '', '', 'After'])
@@ -252,7 +255,7 @@ describe('outline interactions', () => {
     await userEvent.keyboard('{Enter}{Tab}{Enter}{Tab}')
     await userEvent.keyboard('Still editing')
 
-    expect(rendered.getByRole('textbox', { name: 'Editor content' })).toBeInTheDocument()
+    expect(rendered.container.querySelector<HTMLElement>('[data-editor-content]')!).toBeInTheDocument()
     expect(rendered.getByText('Still editing')).toBeInTheDocument()
     expect(parentBlockId(rendered.container, 'Child')).toBe('Branch')
     const ids = Array.from(rendered.container.querySelectorAll<HTMLElement>('[data-block-id]')).map((element) => {

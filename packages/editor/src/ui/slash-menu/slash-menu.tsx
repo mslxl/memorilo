@@ -89,12 +89,14 @@ export default function SlashMenu({ learningEnabled = true }: { learningEnabled?
             <div {...stylex.props(autocompleteMenuStyles.content)}>
               <SlashMenuItem
                 aliases={['paragraph', 'p']}
+                command="paragraph"
                 label={t('ui.text')}
                 onSelect={actions.heading.paragraph.run}
               />
 
               <SlashMenuItem
                 aliases={['h1']}
+                command="heading-1"
                 label={t('ui.heading', { level: 1 })}
                 kbd="#"
                 onSelect={actions.heading.heading1.run}
@@ -102,6 +104,7 @@ export default function SlashMenu({ learningEnabled = true }: { learningEnabled?
 
               <SlashMenuItem
                 aliases={['h2']}
+                command="heading-2"
                 label={t('ui.heading', { level: 2 })}
                 kbd="##"
                 onSelect={actions.heading.heading2.run}
@@ -109,6 +112,7 @@ export default function SlashMenu({ learningEnabled = true }: { learningEnabled?
 
               <SlashMenuItem
                 aliases={['h3']}
+                command="heading-3"
                 label={t('ui.heading', { level: 3 })}
                 kbd="###"
                 onSelect={actions.heading.heading3.run}
@@ -116,6 +120,7 @@ export default function SlashMenu({ learningEnabled = true }: { learningEnabled?
 
               <SlashMenuItem
                 aliases={['h4']}
+                command="heading-4"
                 label={t('ui.heading', { level: 4 })}
                 kbd="####"
                 onSelect={actions.heading.heading4.run}
@@ -123,6 +128,7 @@ export default function SlashMenu({ learningEnabled = true }: { learningEnabled?
 
               <SlashMenuItem
                 aliases={['h5']}
+                command="heading-5"
                 label={t('ui.heading', { level: 5 })}
                 kbd="#####"
                 onSelect={actions.heading.heading5.run}
@@ -130,6 +136,7 @@ export default function SlashMenu({ learningEnabled = true }: { learningEnabled?
 
               <SlashMenuItem
                 aliases={['h6']}
+                command="heading-6"
                 label={t('ui.heading', { level: 6 })}
                 kbd="######"
                 onSelect={actions.heading.heading6.run}
@@ -137,6 +144,7 @@ export default function SlashMenu({ learningEnabled = true }: { learningEnabled?
 
               <SlashMenuItem
                 aliases={['unordered list', 'ul']}
+                command="bullet-list"
                 label={t('ui.bulletList')}
                 kbd="-"
                 onSelect={actions.block.bulletList.run}
@@ -144,6 +152,7 @@ export default function SlashMenu({ learningEnabled = true }: { learningEnabled?
 
               <SlashMenuItem
                 aliases={['numbered list', 'ol']}
+                command="ordered-list"
                 label={t('ui.orderedList')}
                 kbd="1."
                 onSelect={actions.block.orderedList.run}
@@ -151,6 +160,7 @@ export default function SlashMenu({ learningEnabled = true }: { learningEnabled?
 
               <SlashMenuItem
                 aliases={['todo', 'checklist']}
+                command="task-list"
                 label={t('ui.taskList')}
                 kbd="[]"
                 onSelect={actions.block.taskList.run}
@@ -158,6 +168,7 @@ export default function SlashMenu({ learningEnabled = true }: { learningEnabled?
 
               <SlashMenuItem
                 aliases={['collapsible', 'details']}
+                command="toggle-list"
                 label={t('ui.toggleList')}
                 kbd=">>"
                 onSelect={actions.block.toggleList.run}
@@ -165,6 +176,7 @@ export default function SlashMenu({ learningEnabled = true }: { learningEnabled?
 
               <SlashMenuItem
                 aliases={['blockquote']}
+                command="blockquote"
                 label={t('ui.quote')}
                 kbd=">"
                 onSelect={actions.block.blockquote.run}
@@ -172,12 +184,14 @@ export default function SlashMenu({ learningEnabled = true }: { learningEnabled?
 
               <SlashMenuItem
                 aliases={['grid']}
+                command="table"
                 label={t('ui.table')}
                 onSelect={actions.insert.table.run}
               />
 
               <SlashMenuItem
                 aliases={['horizontal rule', 'hr']}
+                command="divider"
                 label={t('ui.divider')}
                 kbd="---"
                 onSelect={actions.insert.divider.run}
@@ -185,6 +199,7 @@ export default function SlashMenu({ learningEnabled = true }: { learningEnabled?
 
               <SlashMenuItem
                 aliases={['code block', 'pre']}
+                command="code-block"
                 label={t('ui.code')}
                 kbd="```"
                 onSelect={actions.block.codeBlock.run}
@@ -192,33 +207,35 @@ export default function SlashMenu({ learningEnabled = true }: { learningEnabled?
 
               <SlashMenuItem
                 aliases={['math', 'formula', 'equation', 'latex']}
+                command="inline-math"
                 label={t('ui.inlineMath')}
                 kbd="$"
                 onSelect={actions.insert.inlineMath.run}
               />
 
               {cardActions.canInsert.forward
-                ? <SlashMenuItem label={t('ui.basicCard')} kbd=":->" onSelect={() => editor.commands.insertBasicCard({ direction: 'forward' })} />
+                ? <SlashMenuItem command="basic-card" label={t('ui.basicCard')} kbd=":->" onSelect={() => editor.commands.insertBasicCard({ direction: 'forward' })} />
                 : null}
               {cardActions.canInsert.backward
-                ? <SlashMenuItem label={t('ui.reverseCard')} kbd=":-<" onSelect={() => editor.commands.insertBasicCard({ direction: 'backward' })} />
+                ? <SlashMenuItem command="reverse-card" label={t('ui.reverseCard')} kbd=":-<" onSelect={() => editor.commands.insertBasicCard({ direction: 'backward' })} />
                 : null}
               {cardActions.canInsert.both
-                ? <SlashMenuItem label={t('ui.bidirectionalCard')} kbd=":<>" onSelect={() => editor.commands.insertBasicCard({ direction: 'both' })} />
+                ? <SlashMenuItem command="bidirectional-card" label={t('ui.bidirectionalCard')} kbd=":<>" onSelect={() => editor.commands.insertBasicCard({ direction: 'both' })} />
                 : null}
               {cardActions.canSetPresentation
-                ? <SlashMenuItem label={t('ui.setCardAnswers')} onSelect={() => editor.commands.setCardPresentation({ presentation: 'set' })} />
+                ? <SlashMenuItem command="set-card-answers" label={t('ui.setCardAnswers')} onSelect={() => editor.commands.setCardPresentation({ presentation: 'set' })} />
                 : null}
               {cardActions.canSetPresentation
-                ? <SlashMenuItem label={t('ui.listCardAnswers')} onSelect={() => editor.commands.setCardPresentation({ presentation: 'list' })} />
+                ? <SlashMenuItem command="list-card-answers" label={t('ui.listCardAnswers')} onSelect={() => editor.commands.setCardPresentation({ presentation: 'list' })} />
                 : null}
               {cardActions.addToBack
-                ? <SlashMenuItem label={t('ui.addToCardBack')} onSelect={() => editor.commands.addBlockToCardBack()} />
+                ? <SlashMenuItem command="add-to-card-back" label={t('ui.addToCardBack')} onSelect={() => editor.commands.addBlockToCardBack()} />
                 : null}
               {cardActions.cardMember
-                ? <SlashMenuItem label={t('ui.removeFromCardBack')} onSelect={() => editor.commands.removeBlockFromCardBack()} />
+                ? <SlashMenuItem command="remove-from-card-back" label={t('ui.removeFromCardBack')} onSelect={() => editor.commands.removeBlockFromCardBack()} />
                 : null}
               <SlashMenuItem
+                command="block-highlight"
                 label={cardActions.blockHighlighted ? t('ui.removeBlockHighlight') : t('ui.highlightBlock')}
                 onSelect={() => {
                   if (cardActions.blockHighlighted)

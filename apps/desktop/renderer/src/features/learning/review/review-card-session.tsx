@@ -97,6 +97,7 @@ export function ReviewCardSession<Rating extends number | string>({
           {!revealed
             ? (
                 <Button
+                  data-learning-action="reveal-answer"
                   disabled={revealDisabled}
                   variant="plain"
                   xstyle={styles.showAnswerButton}
@@ -106,10 +107,11 @@ export function ReviewCardSession<Rating extends number | string>({
                 </Button>
               )
             : (
-                <ButtonGroup aria-label={rateAriaLabel} xstyle={styles.ratingGrid}>
+                <ButtonGroup aria-label={rateAriaLabel} data-learning-rating-group="" xstyle={styles.ratingGrid}>
                   {ratings.map(rating => (
                     <Button
                       key={String(rating.id)}
+                      data-learning-rating={rating.id}
                       disabled={actionPending || ratingsDisabled}
                       variant="plain"
                       xstyle={[styles.ratingButton, ratingToneStyle(rating.tone)]}

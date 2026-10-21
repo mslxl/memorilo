@@ -220,6 +220,7 @@ export function TodoListView({
                     {...stylex.props(styles.rowButton, selected && styles.rowButtonSelected)}
                     aria-label={t('selectTask', { note: task.noteTitle, task: task.text })}
                     aria-pressed={selected}
+                    data-task-block-id={task.blockId}
                     title={t('selectTask', { note: task.noteTitle, task: task.text })}
                     type="button"
                     onClick={() => void onSelectTask(task)}

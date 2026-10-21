@@ -133,7 +133,7 @@ export function createEditorNoteCollaborationRuntime(
           ...(importedEvents
             ? noteTree(doc).getNodes().flatMap((node) => {
                 if (node.data.get(ENTRY_KIND_KEY) !== 'topic'
-                  || (node.data.get(TOPIC_TYPE_KEY) !== 'spreadsheet' && node.data.get(TOPIC_TYPE_KEY) !== 'whiteboard')) {
+                  || node.data.get(TOPIC_TYPE_KEY) !== 'whiteboard') {
                   return []
                 }
                 return [readString(node.data, ENTRY_ID_KEY, 'container-backed Topic id')]

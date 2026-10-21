@@ -56,18 +56,19 @@ test('arrow keys scroll before turning PDF pages at viewport boundaries', async 
   })
   try {
     const window = await electronApplication.firstWindow()
+    await window.setViewportSize({ height: 720, width: 1280 })
     await window.evaluate(() => {
       location.hash = '/reader'
     })
-    await window.getByLabel('Open PDF or EPUB').setInputFiles({
+    await window.locator('[data-reader-file-input]').setInputFiles({
       buffer: twoPagePdf(),
       mimeType: 'application/pdf',
       name: 'keyboard-navigation.pdf',
     })
-    await expect(window.getByText('1 of 2', { exact: true })).toBeVisible()
+    await expect(window.locator('[data-reader-location]')).toHaveText('1 of 2')
     await expect(window.locator('.reader-pdf-page-slot')).toHaveCount(2)
 
-    const scroller = window.locator('.reader-pdf-scroller')
+    const scroller = window.locator('[data-ui="reader-pdf-scroller"]')
     await expect.poll(() => scroller.evaluate(element => element.scrollHeight > element.clientHeight)).toBe(true)
     await expect.poll(() => scroller.evaluate(element => element.scrollTop)).toBe(0)
     await expect.poll(() => window.evaluate(() => document.activeElement?.tagName)).toBe('BODY')
@@ -75,7 +76,7 @@ test('arrow keys scroll before turning PDF pages at viewport boundaries', async 
     await window.keyboard.press('ArrowDown')
 
     await expect.poll(() => scroller.evaluate(element => element.scrollTop)).toBeGreaterThan(0)
-    await expect(window.getByText('1 of 2', { exact: true })).toBeVisible()
+    await expect(window.locator('[data-reader-location]')).toHaveText('1 of 2')
 
     await window.keyboard.down('ArrowDown')
     for (let index = 0; index < 60; index += 1)
@@ -94,18 +95,18 @@ test('arrow keys scroll before turning PDF pages at viewport boundaries', async 
     for (let index = 0; index < 60; index += 1)
       await window.keyboard.down('ArrowUp')
     await expect.poll(() => scroller.evaluate(element => element.scrollTop)).toBe(0)
-    await expect(window.getByText('1 of 2', { exact: true })).toBeVisible()
+    await expect(window.locator('[data-reader-location]')).toHaveText('1 of 2')
     await window.keyboard.up('ArrowUp')
 
     await window.keyboard.press('ArrowUp')
-    await expect(window.getByText('1 of 2', { exact: true })).toBeVisible()
+    await expect(window.locator('[data-reader-location]')).toHaveText('1 of 2')
 
     await window.keyboard.press('ArrowRight')
-    await expect(window.getByText('2 of 2', { exact: true })).toBeVisible()
+    await expect(window.locator('[data-reader-location]')).toHaveText('2 of 2')
     await expect.poll(() => scroller.evaluate(element => element.scrollTop)).toBeGreaterThan(0)
 
     await window.keyboard.press('ArrowLeft')
-    await expect(window.getByText('1 of 2', { exact: true })).toBeVisible()
+    await expect(window.locator('[data-reader-location]')).toHaveText('1 of 2')
     await expect.poll(() => scroller.evaluate(element => element.scrollTop)).toBeGreaterThan(0)
 
     await window.keyboard.down('ArrowUp')
@@ -116,15 +117,15 @@ test('arrow keys scroll before turning PDF pages at viewport boundaries', async 
 
     const beforePageDown = await scroller.evaluate(element => element.scrollTop)
     await window.keyboard.press('PageDown')
-    await expect(window.getByText('1 of 2', { exact: true })).toBeVisible()
+    await expect(window.locator('[data-reader-location]')).toHaveText('1 of 2')
     await expect.poll(() => scroller.evaluate(element => element.scrollTop)).toBeGreaterThan(beforePageDown)
     const afterPageDown = await scroller.evaluate(element => element.scrollTop)
     await window.keyboard.press('PageUp')
-    await expect(window.getByText('1 of 2', { exact: true })).toBeVisible()
+    await expect(window.locator('[data-reader-location]')).toHaveText('1 of 2')
     await expect.poll(() => scroller.evaluate(element => element.scrollTop)).toBeLessThan(afterPageDown)
 
     await window.keyboard.press('ArrowRight')
-    await expect(window.getByText('2 of 2', { exact: true })).toBeVisible()
+    await expect(window.locator('[data-reader-location]')).toHaveText('2 of 2')
     await window.keyboard.press('ArrowDown')
     await expect.poll(() => scroller.evaluate(element => element.scrollTop)).toBeGreaterThan(0)
 
@@ -137,7 +138,7 @@ test('arrow keys scroll before turning PDF pages at viewport boundaries', async 
       if (!response.ok)
         throw new Error(`Failed to update reader page mode: ${response.status}`)
     })
-    await expect(window.getByText('2 of 2', { exact: true })).toBeVisible()
+    await expect(window.locator('[data-reader-location]')).toHaveText('2 of 2')
     await expect.poll(() => window.locator('.reader-pdf-page-slot').count()).toBe(0)
 
     await window.evaluate(async () => {
@@ -149,7 +150,7 @@ test('arrow keys scroll before turning PDF pages at viewport boundaries', async 
       if (!response.ok)
         throw new Error(`Failed to update reader page mode: ${response.status}`)
     })
-    await expect(window.getByText('2 of 2', { exact: true })).toBeVisible()
+    await expect(window.locator('[data-reader-location]')).toHaveText('2 of 2')
     await expect.poll(() => window.locator('.reader-pdf-page-slot').count()).toBe(2)
   }
   finally {

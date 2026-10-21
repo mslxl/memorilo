@@ -27,7 +27,6 @@ import {
   assertLinkedReaderAnnotationExists,
   readerAnnotationBindingKey,
 } from './editor-note-reader-bindings'
-import { projectSpreadsheetContent } from './editor-note-spreadsheet'
 import { projectWhiteboardContent } from './editor-note-whiteboard'
 import { projectTopicContent } from './topic-projection'
 import { isLinkedTopicReaderReference } from './topic-reader-reference'
@@ -94,13 +93,11 @@ export function projectEditorNote(doc: LoroDoc, includeTopics = true): EditorNot
                 doc,
                 noteId: readString(doc.getMap(NOTE_META_KEY), 'id', 'Note id'),
               }, id)
-            : topicType === 'spreadsheet'
-              ? projectSpreadsheetContent(runtime, id)
-              : projectTopicContentFromTree(
-                  doc.getTree(readString(node.meta, TOPIC_BLOCK_TREE_KEY, `Topic ${id} Block tree key`)),
-                  id,
-                  readTopicTitle(node.meta, `Topic ${id} title`),
-                )
+            : projectTopicContentFromTree(
+                doc.getTree(readString(node.meta, TOPIC_BLOCK_TREE_KEY, `Topic ${id} Block tree key`)),
+                id,
+                readTopicTitle(node.meta, `Topic ${id} title`),
+              )
         if (topicType === 'image-occlusion') {
           const state = getImageOcclusionState(runtime, id)
           if (parentId !== state.source.topicId)

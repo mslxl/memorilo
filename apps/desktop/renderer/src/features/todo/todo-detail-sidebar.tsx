@@ -108,6 +108,7 @@ export function TodoDetailSidebar({
               {...stylex.props(styles.sidebar)}
               animate={motionAnimate}
               aria-label={t('taskDetail')}
+              data-task-detail-sidebar=""
               exit={motionInitial}
               initial={motionInitial}
               transition={motionTransition}
@@ -124,6 +125,7 @@ export function TodoDetailSidebar({
                       current: t(todoStatusLabelKeys[task.status]),
                       next: t(todoStatusLabelKeys[nextTodoStatus(task.status)]),
                     })}
+                    data-task-detail-action="status"
                     disabled={statusUpdating}
                     title={t(todoStatusLabelKeys[task.status])}
                     type="button"
@@ -134,6 +136,7 @@ export function TodoDetailSidebar({
                   <TodoTaskActions
                     calendarEvents={calendarEvents}
                     calendarSubscriptions={calendarSubscriptions}
+                    dataTaskAction="schedule"
                     onUpdateTask={onUpdateTask}
                     t={t}
                     task={task}
@@ -148,6 +151,7 @@ export function TodoDetailSidebar({
                 <button
                   {...stylex.props(styles.closeButton)}
                   aria-label={t('closeTaskDetail')}
+                  data-task-detail-action="close"
                   title={t('closeTaskDetail')}
                   type="button"
                   onClick={onClose}

@@ -75,7 +75,7 @@ describe('editor modes', () => {
     )
     await within(rendered.container).findByText('Plain block')
 
-    expect(within(rendered.container).queryByRole('group', { name: 'Editor mode' })).not.toBeInTheDocument()
+    expect(rendered.container.querySelector('[data-editor-mode-picker]')).toBeNull()
     expect(rendered.container.querySelector('[data-editor-mode="document"]')).not.toBeNull()
 
     act(() => topic.setMode(EditorMode.Outline))
@@ -96,13 +96,13 @@ describe('editor modes', () => {
     await waitFor(() => expect(rendered.container.querySelector('[data-editor-mode="document"]')).not.toBeNull())
     expect(rendered.container.querySelector('[data-list-kind="ordered"]')).not.toBeNull()
 
-    await userEvent.click(rendered.getByRole('button', { name: 'Outline mode' }))
+    await userEvent.click(rendered.container.querySelector('button[data-editor-mode-control="outline"]')!)
 
     await waitFor(() => expect(rendered.container.querySelector('[data-editor-mode="outline"]')).not.toBeNull())
     await waitFor(() => expect(rendered.container.querySelector('[data-list-kind="outline"] > .list-marker')).not.toBeNull())
     expect(rendered.container.querySelector('[data-list-kind="ordered"]')).not.toBeNull()
 
-    await userEvent.click(rendered.getByRole('button', { name: 'Document mode' }))
+    await userEvent.click(rendered.container.querySelector('button[data-editor-mode-control="document"]')!)
 
     await within(rendered.container).findByText('Plain block')
     await waitFor(() => expect(rendered.container.querySelector('[data-editor-mode="document"]')).not.toBeNull())
@@ -144,7 +144,7 @@ describe('editor modes', () => {
     expect(ordered).toHaveAttribute('data-list-kind', 'ordered')
     expect(ordered).toHaveAttribute('data-list-order', '7')
 
-    await userEvent.click(rendered.getByRole('button', { name: 'Outline mode' }))
+    await userEvent.click(rendered.container.querySelector('button[data-editor-mode-control="outline"]')!)
     await waitFor(() => {
       const outlineOrdinary = rendered.container.querySelector<HTMLElement>('[data-list-kind="outline"]')
       if (!outlineOrdinary)
@@ -289,11 +289,12 @@ describe('editor modes', () => {
     }
     else {
       fireEvent.contextMenu(rendered.getByText('First root', { exact: true }), { clientX: 320, clientY: 180 })
-      await userEvent.click(await rendered.findByRole('menuitem', { name: /Select all/ }))
+      await waitFor(() => expect(rendered.baseElement.querySelector('button[data-editor-action="select-all"]')).not.toBeNull())
+      await userEvent.click(rendered.baseElement.querySelector<HTMLButtonElement>('button[data-editor-action="select-all"]')!)
     }
     await userEvent.keyboard('{Delete}')
 
-    const editor = rendered.getByRole('textbox', { name: 'Editor content' })
+    const editor = rendered.container.querySelector<HTMLElement>('[data-editor-content]')!
     await waitFor(() => {
       expect(editor.querySelectorAll('[data-block-id]')).toHaveLength(1)
       expect(editor.children).toHaveLength(1)
@@ -328,12 +329,12 @@ describe('editor modes', () => {
     if (!paragraph)
       throw new Error('Expected an empty Outline paragraph')
 
-    await userEvent.click(page.getByRole('textbox', { name: 'Editor content' }))
+    await userEvent.click(rendered.container.querySelector<HTMLElement>('[data-editor-content]')!)
     await userEvent.keyboard('/')
     await userEvent.click(page.getByText(label, { exact: true }))
 
     await waitFor(() => expect(rendered.container.querySelector(`[data-list-kind="${kind}"]`)).not.toBeNull())
-    await userEvent.click(page.getByRole('button', { name: 'Document mode' }))
+    await userEvent.click(rendered.container.querySelector('button[data-editor-mode-control="document"]')!)
     await waitFor(() => expect(rendered.container.querySelector(`[data-list-kind="${kind}"]`)).not.toBeNull())
   })
 
@@ -354,7 +355,7 @@ describe('editor modes', () => {
     await userEvent.keyboard('{End} changed')
     expect(await within(rendered.container).findByText('History block changed')).toBeInTheDocument()
 
-    await userEvent.click(page.getByRole('button', { name: 'Document mode' }))
+    await userEvent.click(rendered.container.querySelector('button[data-editor-mode-control="document"]')!)
     await userEvent.click(page.getByText('History block changed'))
     await userEvent.keyboard(modShortcut('z'))
     expect(await within(rendered.container).findByText('History block')).toBeInTheDocument()

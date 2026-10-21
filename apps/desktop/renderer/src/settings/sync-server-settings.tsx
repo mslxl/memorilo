@@ -14,6 +14,7 @@ export function SyncServerSettings() {
   const available = typeof window.desktop !== 'undefined'
   const [serverStatus, setServerStatus] = useState<DesktopSyncServerStatus | null>(null)
   const [message, setMessage] = useState<string | null>(null)
+  const [messageKind, setMessageKind] = useState<string | null>(null)
 
   useEffect(() => {
     if (!available)
@@ -21,17 +22,23 @@ export function SyncServerSettings() {
     let active = true
     const unsubscribe = window.desktop.subscribeSyncServerEvents((event) => {
       setServerStatus(event.status)
-      if (event.type === 'account-data-reset')
+      if (event.type === 'account-data-reset') {
+        setMessageKind(event.type)
         setMessage(t('syncServerDataResetDetected'))
-      else if (event.type === 'policy-changed')
+      }
+      else if (event.type === 'policy-changed') {
+        setMessageKind(event.type)
         setMessage(t('syncServerPolicyChanged'))
+      }
     })
     void window.desktop.p2p.getServerStatus().then((next) => {
       if (active)
         setServerStatus(next)
     }).catch((error) => {
-      if (active)
+      if (active) {
+        setMessageKind('error')
         setMessage(errorMessage(error))
+      }
     })
     return () => {
       active = false
@@ -56,7 +63,7 @@ export function SyncServerSettings() {
 
       {message
         ? (
-            <Status xstyle={styles.feedback}>
+            <Status data-sync-server-event={messageKind ?? ''} xstyle={styles.feedback}>
               <Server aria-hidden="true" size={13} strokeWidth={2} />
               {message}
             </Status>

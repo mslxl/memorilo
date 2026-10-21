@@ -56,13 +56,14 @@ export default function ImageUploadForm(props: {
   }
 
   return (
-    <div {...stylex.props(imageUploadFormStyles.form)}>
+    <div {...stylex.props(imageUploadFormStyles.form)} data-image-form="">
       {file
         ? null
         : (
             <>
               <label {...stylex.props(imageUploadFormStyles.label)} htmlFor={`id-link-${ariaId}`}>{t('ui.embedLink')}</label>
               <TextField
+                data-image-field="url"
                 id={`id-link-${ariaId}`}
                 placeholder={t('ui.pasteImageLinkPlaceholder')}
                 type="url"
@@ -78,6 +79,7 @@ export default function ImageUploadForm(props: {
             <>
               <label {...stylex.props(imageUploadFormStyles.label)} htmlFor={`id-upload-${ariaId}`}>{t('ui.upload')}</label>
               <TextField
+                data-image-field="file"
                 id={`id-upload-${ariaId}`}
                 xstyle={imageUploadFormStyles.fileInput}
                 accept="image/*"
@@ -89,14 +91,14 @@ export default function ImageUploadForm(props: {
 
       {url
         ? (
-            <Button variant="primary" type="button" onClick={handleSubmit}>
+            <Button data-image-action="insert" variant="primary" type="button" onClick={handleSubmit}>
               {t('ui.insertImageButton')}
             </Button>
           )
         : null}
       {file
         ? (
-            <Button variant="primary" type="button" onClick={handleSubmit}>
+            <Button data-image-action="upload" variant="primary" type="button" onClick={handleSubmit}>
               {t('ui.uploadImage')}
             </Button>
           )

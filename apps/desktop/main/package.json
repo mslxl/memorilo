@@ -24,7 +24,6 @@
     "@memorilo/effect-lifecycle": "workspace:*",
     "@memorilo/reading-model": "workspace:*",
     "@memorilo/shelf": "workspace:*",
-    "@memorilo/spreadsheet": "workspace:*",
     "@memorilo/sync": "workspace:*",
     "@memorilo/sync-protocol": "workspace:*",
     "@modelcontextprotocol/sdk": "1.30.0",

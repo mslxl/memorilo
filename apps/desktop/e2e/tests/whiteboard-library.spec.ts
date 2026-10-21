@@ -57,20 +57,20 @@ function readLibrarySnapshot(databasePath: string): Uint8Array {
 
 async function waitForApplication(window: Page) {
   await expect.poll(async () => (
-    await window.getByRole('link', { name: 'Journals' }).isVisible()
-    || await window.getByRole('button', { name: 'Show sidebar' }).isVisible()
+    await window.locator('a[href*="/journals"]').isVisible()
+    || await window.locator('label.sidebar-trigger__label-element').isVisible()
   )).toBe(true)
 }
 
 async function createWhiteboard(window: Page, noteTitle: string, whiteboardTitle: string) {
   await window.keyboard.press('Meta+P')
-  const commandSearch = window.getByRole('combobox', { name: 'Search commands and Notes' })
+  const commandSearch = window.locator('input[role=combobox][aria-autocomplete=list]')
   await expect(commandSearch).toBeVisible()
   await commandSearch.fill(noteTitle)
-  await window.getByRole('option').filter({ hasText: `Create Note “${noteTitle}”` }).click()
+  await window.locator('[role=listbox] [role=option][id$=\"-create-note\"]').click()
 
-  const inspectorHeading = window.getByRole('heading', { name: 'Note Structure' })
-  const showInspector = window.getByRole('button', { name: 'Show Note Inspector' })
+  const inspectorHeading = window.locator('[data-note-inspector] h1')
+  const showInspector = window.locator('[data-note-inspector-toggle]')
   await expect.poll(async () => (
     await inspectorHeading.isVisible() || await showInspector.isVisible()
   )).toBe(true)
@@ -79,25 +79,25 @@ async function createWhiteboard(window: Page, noteTitle: string, whiteboardTitle
 
   await expect(inspectorHeading).toBeVisible()
   await inspectorHeading.click({ button: 'right' })
-  await window.getByRole('menuitem', { name: 'Add' }).click()
-  await window.getByRole('menuitem', { name: 'Whiteboard' }).click()
-  const dialog = window.getByRole('dialog', { name: 'New Whiteboard' })
-  await dialog.getByRole('textbox', { name: 'Topic title' }).fill(whiteboardTitle)
-  await dialog.getByRole('button', { name: 'Create' }).click()
-  await window.getByRole('link', { name: whiteboardTitle }).click()
+  await window.locator('[role="menuitem"][data-entry-action="add"]').click()
+  await window.locator('[role="menuitem"][data-entry-action="add-whiteboard"]').click()
+  const dialog = window.locator('[data-entry-creation-kind="whiteboard"]')
+  await dialog.locator('[data-entry-field="title"]').fill(whiteboardTitle)
+  await dialog.locator('[data-entry-action="create"]').click()
+  await window.locator(`[data-note-entry-topic-type="whiteboard"] a[title="${whiteboardTitle}"]`).click()
 
-  const hideInspector = window.getByRole('button', { name: 'Hide Note Inspector' })
+  const hideInspector = window.locator('[data-note-inspector-toggle]')
   if (await hideInspector.isVisible())
     await hideInspector.click()
-  await window.getByTitle(/^Rectangle/).waitFor()
+  await window.locator('input[name="editor-current-shape"][aria-keyshortcuts^="R"]').waitFor()
 }
 
 function libraryTrigger(window: Page) {
-  return window.locator('label.sidebar-trigger__label-element[title="Library"] .sidebar-trigger')
+  return window.locator('label.sidebar-trigger__label-element .sidebar-trigger')
 }
 
 async function openLibrary(window: Page) {
-  const checkbox = window.getByRole('checkbox', { name: 'Library' })
+  const checkbox = window.locator('input[type="checkbox"].ToolIcon_type_checkbox')
   if (!await checkbox.isChecked())
     await libraryTrigger(window).click()
 }
@@ -108,7 +108,7 @@ async function addRectangleToLibrary(window: Page) {
   if (!canvasBounds)
     throw new Error('Whiteboard interactive canvas has no layout bounds')
 
-  await window.getByTitle(/^Rectangle/).click()
+  await window.locator('input[name="editor-current-shape"][aria-keyshortcuts^="R"]').click()
   await window.mouse.move(canvasBounds.x + 250, canvasBounds.y + 180)
   await window.mouse.down()
   await window.mouse.move(canvasBounds.x + 430, canvasBounds.y + 300, { steps: 12 })

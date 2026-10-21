@@ -45,8 +45,8 @@ export default function BlockHandle(props: Props) {
         placement={props.dir === 'rtl' ? 'right' : 'left'}
       >
         <BlockHandlePopup {...stylex.props(editorPositionerAdapterStyles.motion, blockHandleStyles.popup)}>
-          <button {...stylex.props(blockHandleStyles.button)} aria-label={t('ui.addBlock')} type="button" onPointerDown={addBlock}><Plus size={20} /></button>
-          <BlockHandleDraggable {...stylex.props(blockHandleStyles.button, blockHandleStyles.dragButton)} aria-label={t('ui.dragBlock')}><GripVertical size={20} /></BlockHandleDraggable>
+          <button {...stylex.props(blockHandleStyles.button)} aria-label={t('ui.addBlock')} data-block-handle-action="add" type="button" onPointerDown={addBlock}><Plus size={20} /></button>
+          <BlockHandleDraggable {...stylex.props(blockHandleStyles.button, blockHandleStyles.dragButton)} aria-label={t('ui.dragBlock')} data-block-handle-action="drag"><GripVertical size={20} /></BlockHandleDraggable>
         </BlockHandlePopup>
       </BlockHandlePositioner>
     </BlockHandleRoot>

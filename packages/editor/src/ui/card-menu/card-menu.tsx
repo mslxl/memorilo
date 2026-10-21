@@ -89,11 +89,15 @@ function getSelectedCard(editor: Editor<CardExtension>): SelectedCard | null {
 
 function CardMenuButton({
   children,
+  dataDirection,
+  dataPresentation,
   label,
   onClick,
   selected,
 }: {
   children: string
+  dataDirection?: 'backward' | 'forward'
+  dataPresentation?: 'list' | 'set'
   label: string
   onClick: () => void
   selected: boolean
@@ -103,6 +107,8 @@ function CardMenuButton({
       {...stylex.props(cardMenuStyles.button, selected && cardMenuStyles.selected)}
       aria-label={label}
       aria-pressed={selected}
+      data-card-direction={dataDirection}
+      data-card-presentation={dataPresentation}
       type="button"
       onClick={onClick}
       onMouseDown={event => event.preventDefault()}
@@ -322,6 +328,7 @@ export default function CardMenu({ adapters, topic }: {
             ref={floatingRef}
             aria-label={t('ui.cardPreview')}
             aria-modal="false"
+            data-card-preview-dialog=""
             role="dialog"
             style={popupStyle}
           >
@@ -333,6 +340,7 @@ export default function CardMenu({ adapters, topic }: {
               <button
                 {...stylex.props(cardMenuStyles.iconButton)}
                 aria-label={t('ui.closePreview')}
+                data-card-action="close-preview"
                 type="button"
                 onClick={closePreview}
                 onMouseDown={event => event.preventDefault()}
@@ -346,6 +354,7 @@ export default function CardMenu({ adapters, topic }: {
                     {directionalCards.map(candidate => (
                       <CardMenuButton
                         key={candidate.id}
+                        dataDirection={candidate.direction}
                         label={candidate.direction === 'forward' ? t('ui.previewForwardCard') : t('ui.previewReverseCard')}
                         selected={candidate.id === card.id}
                         onClick={() => setPreviewState({
@@ -375,6 +384,7 @@ export default function CardMenu({ adapters, topic }: {
                     <div {...stylex.props(cardMenuStyles.previewActions)}>
                       <button
                         {...stylex.props(cardMenuStyles.previewRevealButton)}
+                        data-card-action={nextItem ? 'reveal-next' : 'reveal-answer'}
                         type="button"
                         onClick={reveal}
                         onMouseDown={event => event.preventDefault()}
@@ -404,6 +414,7 @@ export default function CardMenu({ adapters, topic }: {
         <div
           ref={floatingRef}
           aria-label={t('ui.cardOptions')}
+          data-card-options-dialog=""
           role="toolbar"
           style={popupStyle}
         >
@@ -418,16 +429,16 @@ export default function CardMenu({ adapters, topic }: {
                   runDirectionCommand(value)
               }}
             >
-              <SegmentedControl.Item aria-label={t('ui.basicDirection')} value="forward" xstyle={[cardMenuStyles.button, selected.delimiter.attrs.direction === 'forward' && cardMenuStyles.selected]} onMouseDown={event => event.preventDefault()}>→</SegmentedControl.Item>
-              <SegmentedControl.Item aria-label={t('ui.reverseDirection')} value="backward" xstyle={[cardMenuStyles.button, selected.delimiter.attrs.direction === 'backward' && cardMenuStyles.selected]} onMouseDown={event => event.preventDefault()}>←</SegmentedControl.Item>
-              <SegmentedControl.Item aria-label={t('ui.bidirectional')} value="both" xstyle={[cardMenuStyles.button, selected.delimiter.attrs.direction === 'both' && cardMenuStyles.selected]} onMouseDown={event => event.preventDefault()}>↔</SegmentedControl.Item>
+              <SegmentedControl.Item aria-label={t('ui.basicDirection')} data-card-direction-choice="forward" value="forward" xstyle={[cardMenuStyles.button, selected.delimiter.attrs.direction === 'forward' && cardMenuStyles.selected]} onMouseDown={event => event.preventDefault()}>→</SegmentedControl.Item>
+              <SegmentedControl.Item aria-label={t('ui.reverseDirection')} data-card-direction-choice="backward" value="backward" xstyle={[cardMenuStyles.button, selected.delimiter.attrs.direction === 'backward' && cardMenuStyles.selected]} onMouseDown={event => event.preventDefault()}>←</SegmentedControl.Item>
+              <SegmentedControl.Item aria-label={t('ui.bidirectional')} data-card-direction-choice="both" value="both" xstyle={[cardMenuStyles.button, selected.delimiter.attrs.direction === 'both' && cardMenuStyles.selected]} onMouseDown={event => event.preventDefault()}>↔</SegmentedControl.Item>
             </SegmentedControl.Root>
           </div>
           <div {...stylex.props(cardMenuStyles.row)}>
             <span {...stylex.props(cardMenuStyles.label)}>{t('ui.multiLine')}</span>
             <div {...stylex.props(cardMenuStyles.group)} aria-label={t('ui.cardAnswerPresentation')} role="group">
-              <CardMenuButton label={t('ui.setAnswer')} selected={selected.delimiter.presentation === 'set'} onClick={() => runPresentationCommand('set')}>{t('ui.set')}</CardMenuButton>
-              <CardMenuButton label={t('ui.listAnswer')} selected={selected.delimiter.presentation === 'list'} onClick={() => runPresentationCommand('list')}>{t('ui.list')}</CardMenuButton>
+              <CardMenuButton dataPresentation="set" label={t('ui.setAnswer')} selected={selected.delimiter.presentation === 'set'} onClick={() => runPresentationCommand('set')}>{t('ui.set')}</CardMenuButton>
+              <CardMenuButton dataPresentation="list" label={t('ui.listAnswer')} selected={selected.delimiter.presentation === 'list'} onClick={() => runPresentationCommand('list')}>{t('ui.list')}</CardMenuButton>
             </div>
           </div>
         </div>

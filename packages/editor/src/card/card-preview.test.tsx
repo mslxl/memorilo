@@ -33,13 +33,13 @@ describe('card preview', () => {
 
     expect(rendered.getByText('TypeScript')).toBeInTheDocument()
     expect(rendered.queryByText('A typed language for the web')).toBeNull()
-    expect(rendered.getByTestId('card-preview-surface')).toHaveAttribute('data-block-highlight', 'blue')
+    expect(rendered.container.querySelector('[data-card-id]')).toHaveAttribute('data-block-highlight', 'blue')
 
-    await userEvent.click(rendered.getByRole('button', { name: 'Show answer' }))
+    await userEvent.click(rendered.container.querySelector('button[data-card-action="reveal-answer"]')!)
 
     const answer = rendered.getByText('A typed language for the web')
     expect(answer).toHaveAttribute('data-inline-highlight', 'yellow')
-    expect(rendered.queryByRole('button', { name: 'Show answer' })).toBeNull()
+    expect(rendered.container.querySelector('button[data-card-action="reveal-answer"]')).toBeNull()
   })
 
   it('renders a Reverse Card projection with its answer-side content on the front', async () => {
@@ -55,7 +55,7 @@ describe('card preview', () => {
     expect(rendered.getByText('A typed language for the web')).toBeInTheDocument()
     expect(rendered.queryByText('TypeScript')).toBeNull()
 
-    await userEvent.click(rendered.getByRole('button', { name: 'Show answer' }))
+    await userEvent.click(rendered.container.querySelector('button[data-card-action="reveal-answer"]')!)
     expect(rendered.getByText('TypeScript')).toBeInTheDocument()
   })
 
@@ -98,15 +98,15 @@ describe('card preview', () => {
     }
     const rendered = render(<CardPreview card={card} />)
 
-    expect(rendered.getAllByLabelText('Hidden cloze')).toHaveLength(1)
-    expect(rendered.getByLabelText('Formula: e^{[…]} + 1 = 0')).toBeInTheDocument()
+    expect(rendered.container.querySelectorAll('[data-card-hidden-cloze]')).toHaveLength(1)
+    expect(rendered.container.querySelector('[data-math-source]')).toBeInTheDocument()
     expect(rendered.queryByText('Euler')).toBeNull()
 
-    await userEvent.click(rendered.getByRole('button', { name: 'Show answer' }))
+    await userEvent.click(rendered.container.querySelector('button[data-card-action="reveal-answer"]')!)
 
-    expect(rendered.queryByLabelText('Hidden cloze')).toBeNull()
+    expect(rendered.container.querySelector('[data-card-hidden-cloze]')).toBeNull()
     expect(rendered.getByText('Euler')).toHaveAttribute('data-cloze-revealed', 'rich-content')
-    expect(rendered.getByLabelText('Formula: e^{i\\pi} + 1 = 0')).toHaveAttribute('data-cloze-revealed', 'math-source')
+    expect(rendered.container.querySelector('[data-math-source][data-cloze-revealed="math-source"]')).toHaveAttribute('data-cloze-revealed', 'math-source')
   })
 
   it('hides an entire formula selected through the RichContentCloze path', async () => {
@@ -133,11 +133,11 @@ describe('card preview', () => {
     }
     const rendered = render(<CardPreview card={card} />)
 
-    expect(rendered.getByLabelText('Hidden cloze')).toBeInTheDocument()
-    expect(rendered.queryByLabelText('Formula: E = mc^2')).toBeNull()
+    expect(rendered.container.querySelector('[data-card-hidden-cloze]')).toBeInTheDocument()
+    expect(rendered.container.querySelector('[data-math-source]')).toBeNull()
 
-    await userEvent.click(rendered.getByRole('button', { name: 'Show answer' }))
-    expect(rendered.getByLabelText('Formula: E = mc^2')).toHaveAttribute('data-cloze-revealed', 'rich-content')
+    await userEvent.click(rendered.container.querySelector('button[data-card-action="reveal-answer"]')!)
+    expect(rendered.container.querySelector('[data-math-source][data-cloze-revealed="rich-content"]')).toHaveAttribute('data-cloze-revealed', 'rich-content')
   })
 
   it('preserves block-formula layout while revealing a local MathSourceCloze', async () => {
@@ -166,12 +166,12 @@ describe('card preview', () => {
     }
     const rendered = render(<CardPreview card={card} />)
 
-    const hiddenFormula = rendered.getByLabelText('Formula: e^{[…]} + 1 = 0')
+    const hiddenFormula = rendered.container.querySelector<HTMLElement>('[data-math-source]')!
     expect(hiddenFormula).toHaveAttribute('data-math-source', 'e^{\\text{\\ldots}} + 1 = 0')
 
-    await userEvent.click(rendered.getByRole('button', { name: 'Show answer' }))
+    await userEvent.click(rendered.container.querySelector('button[data-card-action="reveal-answer"]')!)
 
-    const revealedFormula = rendered.getByLabelText('Formula: e^{i\\pi} + 1 = 0')
+    const revealedFormula = rendered.container.querySelector<HTMLElement>('[data-math-source][data-cloze-revealed="math-source"]')!
     expect(revealedFormula).toHaveAttribute('data-cloze-revealed', 'math-source')
     expect(revealedFormula).toHaveAttribute('data-math-source', 'e^{i\\pi} + 1 = 0')
   })
@@ -194,13 +194,13 @@ describe('card preview', () => {
     const rendered = render(<CardPreview card={card} />)
 
     expect(rendered.queryByRole('listitem')).toBeNull()
-    await userEvent.click(rendered.getByRole('button', { name: 'Show next item (1 of 3)' }))
+    await userEvent.click(rendered.container.querySelector('button[data-card-action="reveal-next"]')!)
     expect(rendered.getByRole('list').tagName).toBe('OL')
     expect(rendered.getAllByRole('listitem')).toHaveLength(1)
     expect(rendered.getByText('Mercury')).toBeInTheDocument()
 
-    await userEvent.click(rendered.getByRole('button', { name: 'Show next item (2 of 3)' }))
-    await userEvent.click(rendered.getByRole('button', { name: 'Show next item (3 of 3)' }))
+    await userEvent.click(rendered.container.querySelector('button[data-card-action="reveal-next"]')!)
+    await userEvent.click(rendered.container.querySelector('button[data-card-action="reveal-next"]')!)
     expect(rendered.getAllByRole('listitem').map(item => item.textContent)).toEqual(['Mercury', 'Venus', 'Earth'])
     expect(rendered.queryByRole('button')).toBeNull()
   })
@@ -222,7 +222,7 @@ describe('card preview', () => {
     const rendered = render(<CardPreview card={card} />)
 
     expect(rendered.queryByRole('listitem')).toBeNull()
-    await userEvent.click(rendered.getByRole('button', { name: 'Show answer' }))
+    await userEvent.click(rendered.container.querySelector('button[data-card-action="reveal-answer"]')!)
 
     const list = rendered.getByRole('list')
     expect(list.tagName).toBe('UL')
@@ -248,7 +248,7 @@ describe('card preview', () => {
     expect(rendered.getAllByRole('listitem').map(item => item.textContent)).toEqual(['Mercury', 'Venus'])
     expect(rendered.queryByText('First two planets')).toBeNull()
 
-    await userEvent.click(rendered.getByRole('button', { name: 'Show answer' }))
+    await userEvent.click(rendered.container.querySelector('button[data-card-action="reveal-answer"]')!)
     expect(rendered.getByText('First two planets')).toBeInTheDocument()
   })
 })

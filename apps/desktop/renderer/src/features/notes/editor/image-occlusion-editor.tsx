@@ -294,6 +294,7 @@ export function ImageOcclusionEditor({
         <input
           {...stylex.props(styles.titleInput)}
           aria-label={t('imageOcclusion.title')}
+          data-image-occlusion-field="title"
           value={titleDraft}
           onBlur={() => {
             if (titleDraft !== title)
@@ -318,6 +319,7 @@ export function ImageOcclusionEditor({
               {...stylex.props(styles.iconButton, tool === id && styles.iconButtonActive)}
               aria-label={t(`imageOcclusion.tool.${id}`)}
               aria-pressed={tool === id}
+              data-image-occlusion-tool={id}
               title={t(`imageOcclusion.tool.${id}`)}
               type="button"
               onClick={() => setTool(id)}
@@ -332,6 +334,7 @@ export function ImageOcclusionEditor({
               key={mode}
               {...stylex.props(styles.modeButton, state.mode === mode && styles.modeButtonActive)}
               aria-pressed={state.mode === mode}
+              data-image-occlusion-mode={mode}
               type="button"
               onClick={() => history.write({ ...state, mode })}
             >
@@ -341,16 +344,16 @@ export function ImageOcclusionEditor({
         </div>
         <span {...stylex.props(styles.separator)} />
         <div {...stylex.props(styles.controlGroup)} role="toolbar" aria-label={t('imageOcclusion.editSelection')}>
-          <button {...stylex.props(styles.iconButton)} aria-label={t('imageOcclusion.copy')} disabled={selectedShapeIds.length === 0} title={t('imageOcclusion.copy')} type="button" onClick={copySelection}>
+          <button {...stylex.props(styles.iconButton)} aria-label={t('imageOcclusion.copy')} data-image-occlusion-action="copy" disabled={selectedShapeIds.length === 0} title={t('imageOcclusion.copy')} type="button" onClick={copySelection}>
             <Copy aria-hidden="true" size={15} strokeWidth={1.8} />
           </button>
-          <button {...stylex.props(styles.iconButton)} aria-label={t('imageOcclusion.group')} disabled={!canGroup} title={t('imageOcclusion.group')} type="button" onClick={groupSelection}>
+          <button {...stylex.props(styles.iconButton)} aria-label={t('imageOcclusion.group')} data-image-occlusion-action="group" disabled={!canGroup} title={t('imageOcclusion.group')} type="button" onClick={groupSelection}>
             <Combine aria-hidden="true" size={15} strokeWidth={1.8} />
           </button>
-          <button {...stylex.props(styles.iconButton)} aria-label={t('imageOcclusion.ungroup')} disabled={!canUngroup} title={t('imageOcclusion.ungroup')} type="button" onClick={ungroupSelection}>
+          <button {...stylex.props(styles.iconButton)} aria-label={t('imageOcclusion.ungroup')} data-image-occlusion-action="ungroup" disabled={!canUngroup} title={t('imageOcclusion.ungroup')} type="button" onClick={ungroupSelection}>
             <Unlink aria-hidden="true" size={15} strokeWidth={1.8} />
           </button>
-          <button {...stylex.props(styles.iconButton)} aria-label={t('imageOcclusion.delete')} disabled={selectedShapeIds.length === 0} title={t('imageOcclusion.delete')} type="button" onClick={deleteSelection}>
+          <button {...stylex.props(styles.iconButton)} aria-label={t('imageOcclusion.delete')} data-image-occlusion-action="delete" disabled={selectedShapeIds.length === 0} title={t('imageOcclusion.delete')} type="button" onClick={deleteSelection}>
             <Trash2 aria-hidden="true" size={15} strokeWidth={1.8} />
           </button>
         </div>

@@ -245,6 +245,7 @@ export function OutlineEditor({
               <button
                 {...stylex.props(outlineEditorStyles.backButton)}
                 aria-label={t('ui.showAllBlocks')}
+                data-outline-action="show-all"
                 title={t('ui.showAllBlocks')}
                 type="button"
                 onClick={() => requestFocus(null)}

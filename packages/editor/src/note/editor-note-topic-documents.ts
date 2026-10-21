@@ -12,7 +12,6 @@ import type {
   EditorBookTopicDocument,
   EditorEmbeddedDocument,
   EditorImageOcclusionTopicDocument,
-  EditorSpreadsheetTopicDocument,
   EditorTopicBinding,
   EditorTopicDocument,
   EditorWhiteboardTopicDocument,
@@ -63,12 +62,6 @@ import {
 } from './editor-note-image-occlusion'
 import { projectTopicContentFromTree } from './editor-note-projection'
 import { readerAnnotationTopicBindings } from './editor-note-reader-bindings'
-import {
-  applySpreadsheetEdits,
-  projectSpreadsheetContent,
-  projectSpreadsheetWorkbook,
-  readSpreadsheetValidationInput,
-} from './editor-note-spreadsheet'
 import { normalizeNonEmptyString } from './editor-note-validation'
 import {
   createWhiteboardEmbeddedEditor,
@@ -139,8 +132,6 @@ export function readTopicValidationInput(runtime: EditorNoteDocument, topicId: s
     return readImageOcclusionValidationInput(runtime, topicId)
   if (topicType === 'whiteboard')
     return readWhiteboardValidationInput(runtime, topicId)
-  if (topicType === 'spreadsheet')
-    return readSpreadsheetValidationInput(runtime, topicId)
   const blockTree = topicBlockTree(runtime, node)
   const document = createNodeJsonFromLoroTree(blockTree)
   if (!document)
@@ -191,8 +182,6 @@ function createTopicDocument(runtime: EditorNoteDocument, topicId: string): Edit
     throw new TypeError(`ImageOcclusionTopic ${normalizedTopicId} does not have a ProseMirror document`)
   if (topicType === 'whiteboard')
     throw new TypeError(`WhiteboardTopic ${normalizedTopicId} does not have a single Topic document`)
-  if (topicType === 'spreadsheet')
-    throw new TypeError(`SpreadsheetTopic ${normalizedTopicId} does not have a ProseMirror document`)
   topicBlockTree(runtime, node)
   assertEditorMode(node.data.get(TOPIC_EDITOR_MODE_KEY), `Topic ${normalizedTopicId} Editor mode`)
   const document: EditorTopicDocument = {
@@ -491,8 +480,6 @@ export class EditorNoteTopics {
       return projectImageOcclusionContent(this.#runtime, normalizedTopicId)
     if (topicType === 'whiteboard')
       return projectWhiteboardContent(this.#runtime, normalizedTopicId)
-    if (topicType === 'spreadsheet')
-      return projectSpreadsheetContent(this.#runtime, normalizedTopicId)
     return projectTopicContentFromTree(
       topicBlockTree(this.#runtime, node),
       normalizedTopicId,
@@ -532,18 +519,6 @@ export class EditorNoteTopics {
       getScene: () => getWhiteboardScene(this.#runtime, normalizedTopicId),
       noteId: this.#runtime.noteId,
       setScene: scene => setWhiteboardScene(this.#runtime, normalizedTopicId, scene),
-      subscribe: listener => this.#runtime.doc.subscribe(() => listener()),
-      topicId: normalizedTopicId,
-    }
-  }
-
-  getSpreadsheet(topicId: string): EditorSpreadsheetTopicDocument {
-    const normalizedTopicId = normalizeNonEmptyString(topicId, 'SpreadsheetTopic id')
-    readSpreadsheetValidationInput(this.#runtime, normalizedTopicId)
-    return {
-      apply: edits => applySpreadsheetEdits(this.#runtime, normalizedTopicId, edits),
-      getWorkbook: () => projectSpreadsheetWorkbook(this.#runtime, normalizedTopicId),
-      noteId: this.#runtime.noteId,
       subscribe: listener => this.#runtime.doc.subscribe(() => listener()),
       topicId: normalizedTopicId,
     }

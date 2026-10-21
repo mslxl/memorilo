@@ -40,22 +40,17 @@ export async function createPagesTestEnvironment(
 ): Promise<PagesTestEnvironment> {
   const directory = await mkdtemp(resolve(tmpdir(), prefix))
   const databasePath = resolve(directory, 'memorilo.sqlite')
+  const environment = {
+    databasePath,
+    directory,
+    userDataDirectory: resolve(directory, 'user-data'),
+  }
+  const bootstrap = await launchPagesTestApplication(environment)
+  await bootstrap.firstWindow()
+  await bootstrap.close()
+
   const database: Database.Database = new BetterSqlite3(databasePath)
   try {
-    database.exec(`
-      CREATE TABLE notes (
-        row_id INTEGER PRIMARY KEY AUTOINCREMENT,
-        id TEXT NOT NULL UNIQUE,
-        title TEXT NOT NULL,
-        kind TEXT NOT NULL DEFAULT 'regular' CHECK (kind IN ('regular', 'journal')),
-        checkpoint_snapshot BLOB,
-        checkpoint_sequence INTEGER NOT NULL DEFAULT 0 CHECK (checkpoint_sequence >= 0),
-        latest_sequence INTEGER NOT NULL DEFAULT 0 CHECK (latest_sequence >= checkpoint_sequence),
-        created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL
-      )
-    `)
-    database.exec('PRAGMA user_version = 1')
     const insert = database.prepare(`
       INSERT INTO notes (
         id,
@@ -75,11 +70,7 @@ export async function createPagesTestEnvironment(
     database.close()
   }
 
-  return {
-    databasePath,
-    directory,
-    userDataDirectory: resolve(directory, 'user-data'),
-  }
+  return environment
 }
 
 export async function launchPagesTestApplication(

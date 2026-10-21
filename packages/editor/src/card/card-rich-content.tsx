@@ -37,7 +37,7 @@ function readClozeAttrs(node: NodeJSON, cardId: string | undefined): ClozeMarkAt
 
 function hiddenCloze(key: string): ReactNode {
   return (
-    <span key={key} {...stylex.props(cardPreviewStyles.hiddenCloze)} aria-label={i18next.t('ui.hiddenCloze', { ns: 'editor' })}>
+    <span key={key} {...stylex.props(cardPreviewStyles.hiddenCloze)} aria-label={i18next.t('ui.hiddenCloze', { ns: 'editor' })} data-card-hidden-cloze="">
       ···
     </span>
   )

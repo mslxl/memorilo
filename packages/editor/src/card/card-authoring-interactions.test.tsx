@@ -12,6 +12,13 @@ import {
   selectTextRange,
 } from './card-authoring-interactions.fixture'
 
+function cardSurface(root: HTMLElement): HTMLElement {
+  const surface = root.querySelector<HTMLElement>('[data-card-id]')
+  if (!surface)
+    throw new Error('Card Preview surface was not rendered')
+  return surface
+}
+
 describe('card authoring interactions', () => {
   it.each([
     { direction: 'forward', mode: EditorMode.Document, modeName: 'Document', symbol: '→', trigger: '：-》' },
@@ -35,8 +42,8 @@ describe('card authoring interactions', () => {
 
     await waitFor(() => {
       expect(rendered.container.querySelector('[data-card-delimiter]')).toHaveAttribute('data-card-direction', direction)
-      expect(rendered.getByRole('textbox', { name: 'Editor content' })).toHaveTextContent(`Question${symbol}`)
-      expect(rendered.getByRole('textbox', { name: 'Editor content' })).not.toHaveTextContent(trigger)
+      expect(rendered.container.querySelector<HTMLElement>('[data-editor-content]')!).toHaveTextContent(`Question${symbol}`)
+      expect(rendered.container.querySelector<HTMLElement>('[data-editor-content]')!).not.toHaveTextContent(trigger)
     })
   })
 
@@ -52,15 +59,16 @@ describe('card authoring interactions', () => {
     await userEvent.click(rendered.getByText('Question'))
     await userEvent.keyboard('{End}{Enter}/')
 
-    expect(await rendered.findByRole('option', { name: 'Basic card :->' })).toBeVisible()
-    expect(rendered.getByRole('option', { name: 'Reverse card :-<' })).toBeVisible()
-    expect(rendered.getByRole('option', { name: 'Bidirectional card :<>' })).toBeVisible()
+    await waitFor(() => expect(rendered.container.querySelector('[data-slash-command="basic-card"]')).not.toBeNull())
+    expect(rendered.container.querySelector('[data-slash-command="basic-card"]')).toBeVisible()
+    expect(rendered.container.querySelector('[data-slash-command="reverse-card"]')).toBeVisible()
+    expect(rendered.container.querySelector('[data-slash-command="bidirectional-card"]')).toBeVisible()
 
-    await userEvent.click(rendered.getByRole('option', { name: 'Basic card :->' }))
+    await userEvent.click(rendered.container.querySelector('[data-slash-command="basic-card"]')!)
 
     await waitFor(() => {
       expect(rendered.container.querySelector('[data-card-delimiter]')).toHaveAttribute('data-card-direction', 'forward')
-      expect(rendered.getByRole('textbox', { name: 'Editor content' })).toHaveTextContent('Question→')
+      expect(rendered.container.querySelector<HTMLElement>('[data-editor-content]')!).toHaveTextContent('Question→')
     })
   })
 
@@ -76,8 +84,8 @@ describe('card authoring interactions', () => {
     await userEvent.click(rendered.getByText('Euler identity'))
     await userEvent.keyboard(modShortcut('a'))
 
-    const cloze = await rendered.findByRole('button', { name: 'Cloze' })
-    expect(rendered.queryByRole('button', { name: /New Cloze Card/i })).toBeNull()
+    const cloze = rendered.container.querySelector<HTMLButtonElement>('button[data-editor-action="cloze"]')!
+    expect(rendered.container.querySelector('button[data-card-control="new-cloze"]')).toBeNull()
     await userEvent.click(cloze)
 
     await waitFor(() => {
@@ -112,11 +120,10 @@ describe('card authoring interactions', () => {
     const source = await openInlineMathSource(rendered.container)
     await selectTextRange(source, 3, 7)
 
-    const formulaSelection = await rendered.findByRole('toolbar', { name: 'Formula selection' })
-    expect(rendered.queryByTestId('inline-menu-main')).toBeNull()
-    await userEvent.click(within(formulaSelection).getByRole('button', {
-      name: 'Create Cloze from formula selection',
-    }))
+    await waitFor(() => expect(rendered.baseElement.querySelector('[data-math-cloze-kind]')).not.toBeNull())
+    const formulaSelection = rendered.baseElement.querySelector<HTMLElement>('[data-math-cloze-kind]')!
+    expect(rendered.baseElement.querySelector('[data-inline-menu="main"]')).toBeNull()
+    await userEvent.click(formulaSelection.querySelector('button')!)
 
     await waitFor(() => {
       const anchor = rendered.container.querySelector('[data-cloze-anchor-kind="math-source"]')
@@ -155,12 +162,11 @@ describe('card authoring interactions', () => {
     })
     await selectTextRange(source, 3, 7)
 
-    const formulaSelection = await rendered.findByRole('toolbar', { name: 'Formula selection' })
+    await waitFor(() => expect(rendered.baseElement.querySelector('[data-math-cloze-kind]')).not.toBeNull())
+    const formulaSelection = rendered.baseElement.querySelector<HTMLElement>('[data-math-cloze-kind]')!
     expect(formulaSelection).toHaveAttribute('data-math-cloze-kind', 'block')
-    expect(rendered.queryByTestId('inline-menu-main')).toBeNull()
-    await userEvent.click(within(formulaSelection).getByRole('button', {
-      name: 'Create Cloze from formula selection',
-    }))
+    expect(rendered.baseElement.querySelector('[data-inline-menu="main"]')).toBeNull()
+    await userEvent.click(formulaSelection.querySelector('button')!)
 
     await waitFor(() => {
       const anchor = rendered.container.querySelector('[data-cloze-anchor-kind="math-source"]')
@@ -213,9 +219,9 @@ describe('card authoring interactions', () => {
     const source = await openInlineMathSource(rendered.container)
     await selectTextRange(source, 3, 7)
 
-    const remove = await rendered.findByRole('button', { name: 'Remove Cloze from formula selection' })
+    const remove = await rendered.baseElement.querySelector('[data-math-cloze-kind] button')!
     expect(remove).toHaveAttribute('aria-pressed', 'true')
-    expect(rendered.queryByTestId('inline-menu-main')).toBeNull()
+    expect(rendered.baseElement.querySelector('[data-inline-menu="main"]')).toBeNull()
     await userEvent.click(remove)
 
     await waitFor(() => {
@@ -235,7 +241,7 @@ describe('card authoring interactions', () => {
 
     await userEvent.click(rendered.getByText('Euler identity'))
     await userEvent.keyboard(modShortcut('a'))
-    await userEvent.click(await rendered.findByRole('button', { name: 'Cloze' }))
+    await userEvent.click(await rendered.container.querySelector('button[data-editor-action="cloze"]')!)
 
     const anchor = await waitFor(() => {
       const element = rendered.container.querySelector<HTMLElement>('[data-cloze-group-id]')
@@ -253,12 +259,13 @@ describe('card authoring interactions', () => {
     expect(source).toHaveAttribute('data-card-definition-scope', definitionId)
     await userEvent.keyboard('{ArrowRight}')
     await userEvent.hover(page.getByText('Euler identity', { exact: true }))
-    await waitFor(() => expect(rendered.getByRole('button', { name: 'Preview card' })).toBeVisible())
-    expect(rendered.queryByRole('button', { name: 'Card options' })).toBeNull()
+    await waitFor(() => expect(rendered.container.querySelector('button[data-card-control="preview"]')!).toBeVisible())
+    expect(rendered.container.querySelector('button[data-card-control="options"]')).toBeNull()
 
-    await userEvent.click(rendered.getByRole('button', { name: 'Preview card' }))
-    expect(await rendered.findByRole('dialog', { name: 'Card preview' })).toBeVisible()
-    expect(rendered.getByLabelText('Hidden cloze')).toBeVisible()
+    await userEvent.click(rendered.container.querySelector('button[data-card-control="preview"]')!)
+    const dialog = await rendered.findByRole('dialog')
+    expect(dialog).toBeVisible()
+    expect(dialog.querySelector('[data-card-review-placeholder="cloze"]')!).toBeVisible()
   })
 
   it('dismisses the selection bubble when Cloze Preview opens', async () => {
@@ -272,18 +279,18 @@ describe('card authoring interactions', () => {
 
     await userEvent.click(rendered.getByText('Euler identity'))
     await userEvent.keyboard(modShortcut('a'))
-    await userEvent.click(await rendered.findByRole('button', { name: 'Cloze' }))
+    await userEvent.click(await rendered.container.querySelector('button[data-editor-action="cloze"]')!)
 
     const source = rendered.container.querySelector<HTMLElement>('[data-block-id="fact"]')
     if (!source)
       throw new Error('Cloze source Block was not rendered')
     await userEvent.hover(source)
-    expect(await rendered.findByTestId('inline-menu-main')).toBeVisible()
+    await waitFor(() => expect(rendered.baseElement.querySelector('[data-inline-menu="main"]')).not.toBeNull())
 
-    await userEvent.click(await rendered.findByRole('button', { name: 'Preview card' }))
+    await userEvent.click(await rendered.container.querySelector('button[data-card-control="preview"]')!)
 
-    expect(await rendered.findByRole('dialog', { name: 'Card preview' })).toBeVisible()
-    expect(rendered.queryByTestId('inline-menu-main')).toBeNull()
+    expect(await rendered.findByRole('dialog')).toBeVisible()
+    expect(rendered.baseElement.querySelector('[data-inline-menu="main"]')).toBeNull()
   })
 
   it('keeps MathSourceCloze Preview available while an inline formula is rendered', async () => {
@@ -326,7 +333,7 @@ describe('card authoring interactions', () => {
     await userEvent.hover(source)
     const preview = await waitFor(() => {
       const control = rendered.container.querySelector<HTMLButtonElement>(
-        '[data-block-id="formula"] button[aria-label="Preview card"]',
+        '[data-block-id="formula"] button[data-card-control="preview"]',
       )
       if (!control)
         throw new Error('MathSourceCloze Preview control was not rendered')
@@ -335,10 +342,10 @@ describe('card authoring interactions', () => {
     })
 
     await userEvent.click(preview)
-    const dialog = await rendered.findByRole('dialog', { name: 'Card preview' })
+    const dialog = await rendered.findByRole('dialog')
     expect(dialog).toBeVisible()
-    const surface = within(dialog).getByTestId('card-preview-surface')
-    expect(within(surface).queryByLabelText('Hidden cloze')).toBeNull()
+    const surface = cardSurface(dialog)
+    expect(surface.querySelector('[data-card-hidden-cloze]')).toBeNull()
     expect(surface.querySelector('.prosemirror-math-display')).toHaveAttribute(
       'data-card-review-math-source',
       'e^{\\text{\\ldots}} + 1 = 0',
@@ -397,7 +404,7 @@ describe('card authoring interactions', () => {
         const controlsElement = rendered.container.querySelector<HTMLElement>(`[data-cloze-card-controls="${definitionId}"]`)
         if (!controlsElement)
           throw new Error(`Cloze controls for ${definitionId} were not rendered`)
-        expect(within(controlsElement).getByRole('button', { name: 'Preview card' })).toBeVisible()
+        expect(controlsElement.querySelector('button[data-card-control="preview"]')!).toBeVisible()
       })
     }
 
@@ -408,7 +415,7 @@ describe('card authoring interactions', () => {
     const betaControls = currentSource.querySelector<HTMLElement>('[data-cloze-card-controls="definition-beta"]')
     if (!alphaControls || !betaControls)
       throw new Error('Each Cloze definition must render its own Preview controls')
-    const alphaPreview = within(alphaControls).getByRole('button', { name: 'Preview card' })
+    const alphaPreview = alphaControls.querySelector<HTMLButtonElement>('button[data-card-control="preview"]')!
     const alphaRect = alphaControls.getBoundingClientRect()
     const betaRect = betaControls.getBoundingClientRect()
     expect(Math.min(alphaRect.right, betaRect.right)).toBeLessThanOrEqual(
@@ -416,21 +423,21 @@ describe('card authoring interactions', () => {
     )
 
     await userEvent.click(alphaPreview)
-    const alphaDialog = await rendered.findByRole('dialog', { name: 'Card preview' })
-    expect(within(alphaDialog).getByLabelText('Hidden cloze')).toBeVisible()
-    const alphaSurface = within(alphaDialog).getByTestId('card-preview-surface')
+    const alphaDialog = await rendered.findByRole('dialog')
+    expect(alphaDialog.querySelector('[data-card-review-placeholder="cloze"]')!).toBeVisible()
+    const alphaSurface = cardSurface(alphaDialog)
     expect(within(alphaSurface).getByText('Beta')).toBeVisible()
     expect(within(alphaSurface).getByText('Alpha')).not.toBeVisible()
 
-    await userEvent.click(within(alphaDialog).getByRole('button', { name: 'Close preview' }))
-    await waitFor(() => expect(rendered.queryByRole('dialog', { name: 'Card preview' })).toBeNull())
+    await userEvent.click(alphaDialog.querySelector('button[data-card-action="close-preview"]')!)
+    await waitFor(() => expect(rendered.queryByRole('dialog')).toBeNull())
     const currentBetaControls = rendered.container.querySelector<HTMLElement>('[data-cloze-card-controls="definition-beta"]')
     if (!currentBetaControls)
       throw new Error('Beta Cloze controls disappeared after closing Preview')
-    await userEvent.click(within(currentBetaControls).getByRole('button', { name: 'Preview card' }))
-    const betaDialog = await rendered.findByRole('dialog', { name: 'Card preview' })
-    expect(within(betaDialog).getByLabelText('Hidden cloze')).toBeVisible()
-    const betaSurface = within(betaDialog).getByTestId('card-preview-surface')
+    await userEvent.click(currentBetaControls.querySelector('button[data-card-control="preview"]')!)
+    const betaDialog = await rendered.findByRole('dialog')
+    expect(betaDialog.querySelector('[data-card-review-placeholder="cloze"]')!).toBeVisible()
+    const betaSurface = cardSurface(betaDialog)
     expect(within(betaSurface).getByText('Alpha')).toBeVisible()
     expect(within(betaSurface).getByText('Beta')).not.toBeVisible()
   })
@@ -485,17 +492,18 @@ describe('card authoring interactions', () => {
       const clozeControls = rendered.container.querySelector<HTMLElement>('[data-cloze-card-controls="definition-cloze"]')
       if (!currentDelimiter || !clozeControls)
         throw new Error('Shared Source Block controls were not rendered')
-      expect(within(currentDelimiter).getByRole('button', { name: 'Card options' })).toBeVisible()
-      expect(within(clozeControls).getByRole('button', { name: 'Preview card' })).toBeVisible()
-      expect(within(clozeControls).queryByRole('button', { name: 'Card options' })).toBeNull()
+      expect(currentDelimiter.querySelector('button[data-card-control="options"]')!).toBeVisible()
+      expect(clozeControls.querySelector('button[data-card-control="preview"]')!).toBeVisible()
+      expect(clozeControls.querySelector('button[data-card-control="options"]')).toBeNull()
     })
 
     const currentDelimiter = rendered.container.querySelector<HTMLElement>('[data-card-delimiter]')
     if (!currentDelimiter)
       throw new Error('Basic delimiter disappeared before opening Card options')
-    await userEvent.click(within(currentDelimiter).getByRole('button', { name: 'Card options' }))
-    expect(await rendered.findByRole('toolbar', { name: 'Card options' })).toBeVisible()
-    expect(rendered.getByRole('radio', { name: 'Basic direction' })).toHaveAttribute('aria-checked', 'true')
+    await userEvent.click(currentDelimiter.querySelector('button[data-card-control="options"]')!)
+    await waitFor(() => expect(rendered.baseElement.querySelector('[data-card-options-dialog]')).not.toBeNull())
+    expect(rendered.baseElement.querySelector('[data-card-options-dialog]')).toBeVisible()
+    expect(rendered.baseElement.querySelector('[data-card-direction-choice="forward"]')!).toHaveAttribute('aria-checked', 'true')
     const selectedDelimiter = rendered.container.querySelector<HTMLElement>('[data-card-delimiter]')
     if (!selectedDelimiter)
       throw new Error('Basic delimiter disappeared while Card options were open')
@@ -504,19 +512,19 @@ describe('card authoring interactions', () => {
     const previewDelimiter = rendered.container.querySelector<HTMLElement>('[data-card-delimiter]')
     if (!previewDelimiter)
       throw new Error('Basic delimiter disappeared before opening Preview')
-    await userEvent.click(within(previewDelimiter).getByRole('button', { name: 'Preview card' }))
-    const basicDialog = await rendered.findByRole('dialog', { name: 'Card preview' })
-    expect(basicDialog).toHaveAttribute('aria-label', 'Card preview')
-    expect(within(basicDialog).getByTestId('card-preview-surface')).toHaveAttribute('data-card-id', 'card-basic')
-    await userEvent.click(within(basicDialog).getByRole('button', { name: 'Close preview' }))
-    await waitFor(() => expect(rendered.queryByRole('dialog', { name: 'Card preview' })).toBeNull())
+    await userEvent.click(previewDelimiter.querySelector('button[data-card-control="preview"]')!)
+    const basicDialog = await rendered.findByRole('dialog')
+    expect(basicDialog).toHaveAttribute('data-card-preview-dialog', '')
+    expect(cardSurface(basicDialog)).toHaveAttribute('data-card-id', 'card-basic')
+    await userEvent.click(basicDialog.querySelector('button[data-card-action="close-preview"]')!)
+    await waitFor(() => expect(rendered.queryByRole('dialog')).toBeNull())
 
     const currentClozeControls = rendered.container.querySelector<HTMLElement>('[data-cloze-card-controls="definition-cloze"]')
     if (!currentClozeControls)
       throw new Error('Cloze Preview controls disappeared after closing Basic Preview')
-    await userEvent.click(within(currentClozeControls).getByRole('button', { name: 'Preview card' }))
-    const clozeDialog = await rendered.findByRole('dialog', { name: 'Card preview' })
-    expect(within(clozeDialog).getByTestId('card-preview-surface')).toHaveAttribute('data-card-id', 'card-cloze')
-    expect(within(clozeDialog).getByLabelText('Hidden cloze')).toBeVisible()
+    await userEvent.click(currentClozeControls.querySelector('button[data-card-control="preview"]')!)
+    const clozeDialog = await rendered.findByRole('dialog')
+    expect(cardSurface(clozeDialog)).toHaveAttribute('data-card-id', 'card-cloze')
+    expect(clozeDialog.querySelector('[data-card-review-placeholder="cloze"]')!).toBeVisible()
   })
 })

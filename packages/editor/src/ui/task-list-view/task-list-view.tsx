@@ -46,6 +46,7 @@ function createTaskControl(status: ReturnType<typeof effectiveStatus>) {
   button.type = 'button'
   button.setAttribute('aria-label', taskStatusLabel(status))
   button.setAttribute('aria-pressed', String(status === 'done'))
+  button.dataset.taskStatusControl = ''
   button.dataset.status = status
   applyStylex(button, stylex.props(taskStyles.control))
 

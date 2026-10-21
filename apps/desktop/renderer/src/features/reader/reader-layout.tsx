@@ -34,6 +34,7 @@ export function ReaderLayout() {
         {...stylex.props(readerPageStyles.fileInput)}
         accept={readingFileAccept}
         aria-label="Open PDF or EPUB, TXT, CBZ, or CBR"
+        data-reader-file-input=""
         type="file"
         onChange={selectFile}
       />

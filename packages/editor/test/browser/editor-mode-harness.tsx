@@ -15,10 +15,10 @@ export function EditorModeHarness({ initialMode = EditorMode.Document, ...editor
   return (
     <>
       <div aria-label="Editor mode" role="group">
-        <button aria-label="Document mode" aria-pressed={mode === EditorMode.Document} type="button" onClick={() => setMode(EditorMode.Document)}>
+        <button aria-label="Document mode" aria-pressed={mode === EditorMode.Document} data-editor-mode-control="document" type="button" onClick={() => setMode(EditorMode.Document)}>
           Document
         </button>
-        <button aria-label="Outline mode" aria-pressed={mode === EditorMode.Outline} type="button" onClick={() => setMode(EditorMode.Outline)}>
+        <button aria-label="Outline mode" aria-pressed={mode === EditorMode.Outline} data-editor-mode-control="outline" type="button" onClick={() => setMode(EditorMode.Outline)}>
           Outline
         </button>
       </div>
