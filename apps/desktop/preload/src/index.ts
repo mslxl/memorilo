@@ -5,6 +5,7 @@ import { desktopConfigurationChangedChannel } from '@memorilo/desktop-config/con
 import { Match } from 'effect'
 import { contextBridge, ipcRenderer } from 'electron'
 
+import { desktopCustomTitlebarArgument } from './contract'
 import { createDesktopApi } from './desktop-api'
 import { createDesktopIpcClient } from './ipc-client'
 import { createNoteSaveCoordinator } from './note-save-coordinator'
@@ -99,6 +100,8 @@ const noteSaveCoordinator = createNoteSaveCoordinator(result => ipcRenderer.send
 // Sandboxed preloads expose process.platform but cannot require node:process.
 // eslint-disable-next-line node/prefer-global/process
 const nativePlatform = process.platform
+// eslint-disable-next-line node/prefer-global/process
+const customTitlebarEnabled = process.argv.includes(desktopCustomTitlebarArgument)
 const platform = Match.value(nativePlatform).pipe(
   Match.when('darwin', () => 'macos' as const),
   Match.when('win32', () => 'windows' as const),
@@ -159,5 +162,6 @@ contextBridge.exposeInMainWorld(
     subscribeLearningUpdates,
     subscribeSyncServerEvents,
     deviceProvisioning,
+    customTitlebarEnabled,
   ),
 )

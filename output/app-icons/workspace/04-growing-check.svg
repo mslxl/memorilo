@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <title>Memorilo - Growing Check</title>
+  <desc>A leaf integrated into an ascending check, expressing progress through knowledge and action.</desc>
+  <rect x="64" y="64" width="896" height="896" rx="198" fill="#46644F"/>
+  <path d="M301 541L436 675L713 382" fill="none" stroke="#F7F0D7" stroke-width="78" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M619 480C508 487 425 419 410 295C536 278 624 359 619 480Z" fill="#F7F0D7"/>
+</svg>

@@ -12,6 +12,10 @@
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
+  "dependencies": {
+    "@memorilo/sync-protocol": "workspace:*",
+    "protobufjs": "7.6.5"
+  },
   "devDependencies": {
     "@types/node": "^22.15.30"
   }

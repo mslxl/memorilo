@@ -28,12 +28,13 @@ export function installApplicationMenu(openSettings: () => void): () => void {
           ],
         }]
       : [{
+          id: 'file',
           label: 'File',
           submenu: [settingsItem, { type: 'separator' as const }, { role: 'quit' as const }],
         }]),
-    { role: 'editMenu' },
-    { role: 'viewMenu' },
-    { role: 'windowMenu' },
+    { id: 'edit', role: 'editMenu' },
+    { id: 'view', role: 'viewMenu' },
+    { id: 'window', role: 'windowMenu' },
   ]
   Menu.setApplicationMenu(Menu.buildFromTemplate(template))
   return () => Menu.setApplicationMenu(null)

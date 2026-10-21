@@ -4,6 +4,7 @@ import { Hono } from 'hono'
 import { encodeDesktopHonoValue } from './wire'
 
 export const RuntimeInfoSchema = Schema.Struct({
+  applicationIcon: Schema.optional(Schema.NullOr(Schema.NonEmptyString)),
   platform: Schema.NonEmptyString,
   version: Schema.NonEmptyString,
 })

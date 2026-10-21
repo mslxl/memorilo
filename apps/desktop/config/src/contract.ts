@@ -133,6 +133,7 @@ export interface DesktopConfiguration {
   readerAnnotationCopyFormat: DesktopReaderAnnotationCopyFormat
   readerEpubPresentationMode: DesktopReaderEpubPresentationMode
   readerPageMode: DesktopReaderPageMode
+  redrawTitlebar: boolean
   reduceMotion: boolean
   shortcuts: DesktopShortcutConfiguration
   syncServer: DesktopSyncServerConfiguration

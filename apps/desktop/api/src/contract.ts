@@ -631,6 +631,18 @@ export type DesktopTopicSearchHit = DesktopTopicSearchHitBase & DesktopNoteSearc
 
 export type DesktopNoteSearchHit = DesktopNoteTitleSearchHit | DesktopTopicSearchHit
 
+export type DesktopApplicationMenu = 'file' | 'edit' | 'view' | 'window'
+
+export interface ShowDesktopApplicationMenuInput {
+  anchor: { x: number, y: number }
+  menu: DesktopApplicationMenu
+}
+
+export interface DesktopTitlebarAppearance {
+  backgroundColor: string
+  symbolColor: string
+}
+
 export interface DesktopApi {
   addShelfSource: (input: AddShelfSourceInput) => Promise<ShelfSource>
   checkAssets: () => Promise<DesktopAssetCheckResult>
@@ -698,10 +710,13 @@ export interface DesktopApi {
   setNoteFavorite: (input: SetDesktopNoteFavoriteInput) => Promise<DesktopNoteFavoriteState>
   selectBookContext: (input: { noteId: string, readingId: string, topicId: string }) => Promise<OpenDesktopBookContextResult>
   showColumnVisibilityMenu: (input: ShowDesktopColumnVisibilityMenuInput) => Promise<DesktopColumnVisibilityMenuSelection | null>
+  showApplicationMenu: (input: ShowDesktopApplicationMenuInput) => Promise<null>
+  setTitlebarAppearance: (input: DesktopTitlebarAppearance) => Promise<null>
   updateShelfSource: (input: UpdateShelfSourceInput) => Promise<ShelfSource>
 }
 
 export interface RuntimeInfo {
+  applicationIcon?: string | null
   platform: string
   version: string
 }

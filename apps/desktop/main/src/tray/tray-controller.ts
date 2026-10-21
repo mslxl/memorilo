@@ -1,22 +1,22 @@
 import type { Rectangle } from 'electron'
-import { Buffer } from 'node:buffer'
 import process from 'node:process'
 
 import { Menu, nativeImage, Tray } from 'electron'
-
-const trayIconSvg = `
-<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
-  <rect x="2" y="2" width="28" height="28" rx="7" fill="#4b5563"/>
-  <path d="M9 22V10h3.2l3.8 5.1 3.8-5.1H23v12h-3v-7.1l-4 5.2-4-5.2V22H9Z" fill="#fff"/>
-</svg>`
+import { applicationIconPath, trayTemplatePath, trayTemplateRetinaPath } from '../app-icon-paths'
 
 function createTrayIcon() {
   if (process.platform === 'darwin') {
-    const icon = nativeImage.createFromNamedImage('NSApplicationIcon')
-    return icon.resize({ height: 16, width: 16 })
+    const icon = nativeImage.createFromPath(trayTemplatePath)
+    // Vite hashes both filenames, so the Retina representation must be loaded explicitly.
+    icon.addRepresentation({
+      buffer: nativeImage.createFromPath(trayTemplateRetinaPath).toPNG(),
+      scaleFactor: 2,
+    })
+    icon.setTemplateImage(true)
+    return icon
   }
 
-  const icon = nativeImage.createFromDataURL(`data:image/svg+xml;base64,${Buffer.from(trayIconSvg).toString('base64')}`)
+  const icon = nativeImage.createFromPath(applicationIconPath)
   return icon.resize({ height: 16, width: 16 })
 }
 

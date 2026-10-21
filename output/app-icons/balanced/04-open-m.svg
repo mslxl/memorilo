@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <title>Memorilo - Open M</title>
+  <desc>A centered geometric M with a generous page-like opening, designed as a broad Memorilo brand mark.</desc>
+  <rect x="64" y="64" width="896" height="896" rx="198" fill="#46644F"/>
+  <path d="M280 714V310H374L512 463L650 310H744V714H645V460L512 608L379 460V714Z" fill="#F7F0D7" transform="translate(0 16)"/>
+</svg>

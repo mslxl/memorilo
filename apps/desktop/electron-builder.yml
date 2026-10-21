@@ -3,6 +3,7 @@ productName: Memorilo
 executableName: memorilo
 
 directories:
+  buildResources: resources
   output: dist
 
 artifactName: Memorilo-${version}-${os}-${arch}.${ext}
@@ -36,6 +37,7 @@ npmRebuild: false
 nativeRebuilder: sequential
 
 mac:
+  icon: resources/icon.icns
   extendInfo:
     NSLocalNetworkUsageDescription: Memorilo uses your local network to discover and sync with paired devices.
     NSBonjourServices:
@@ -47,12 +49,14 @@ mac:
 
 linux:
   category: Utility
+  icon: resources/icons
   target:
     - AppImage
     - deb
     - rpm
 
 win:
+  icon: resources/icon.ico
   target:
     - nsis
 

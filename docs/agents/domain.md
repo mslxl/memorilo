@@ -4,8 +4,8 @@ This repository uses a multi-context domain documentation layout.
 
 ## Before exploring
 
-- Read the root `CONTEXT-MAP.md` when it exists.
-- Follow it to each relevant context's `CONTEXT.md`.
+- Read the root `GLOSSARY-MAP.md` when it exists.
+- Follow it to each relevant context's `GLOSSARY.md`.
 - Read relevant system-wide ADRs under `docs/adr/`.
 - Read relevant context-specific ADRs beside each context.
 
@@ -15,18 +15,18 @@ If these files do not yet exist, proceed silently. The domain-modeling workflow 
 
 ```text
 /
-|-- CONTEXT-MAP.md
+|-- GLOSSARY-MAP.md
 |-- docs/adr/
 |-- apps/
 |   `-- desktop/
-|       |-- CONTEXT.md
+|       |-- GLOSSARY.md
 |       `-- docs/adr/
 `-- packages/
     |-- editor/
-    |   |-- CONTEXT.md
+    |   |-- GLOSSARY.md
     |   `-- docs/adr/
     `-- e2e/
-        |-- CONTEXT.md
+        |-- GLOSSARY.md
         `-- docs/adr/
 ```
 
@@ -34,7 +34,7 @@ The context map decides which directories represent independent domain contexts.
 
 ## Vocabulary
 
-Use terminology defined in the relevant `CONTEXT.md`. Avoid introducing synonyms that conflict with the project glossary.
+Use terminology defined in the relevant `GLOSSARY.md`. Avoid introducing synonyms that conflict with the project glossary.
 
 ## ADR conflicts
 

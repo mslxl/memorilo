@@ -29,10 +29,12 @@ import {
   decodeFrame,
   encodeFrames,
   encodeSerialProvisioningRequest,
+  encodeTodoSyncRequest,
   parseApplyStatusEnvelope,
   parseDeviceInfoEnvelope,
   parsePublicConfigEnvelope,
   parseSerialProvisioningResponse,
+  parseSerialProvisioningResponseBytes,
   parseTodoSyncResponse,
   PROTOCOL_VERSION,
   PROVISIONING_UUIDS,
@@ -341,12 +343,12 @@ export class DeviceProvisioningConnection {
       return { requestId, waiter }
     }), ({ requestId, waiter }) => Effect.gen({ self: this }, function* () {
       const frames = yield* Effect.try({
-        try: () => encodeFrames(randomRequestToken(), new TextEncoder().encode(JSON.stringify({
+        try: () => encodeFrames(randomRequestToken(), encodeTodoSyncRequest({
           operation: 'todo.sync',
           protocolVersion: PROTOCOL_VERSION,
           requestId,
           snapshot,
-        })), characteristicChunkBytes),
+        }), characteristicChunkBytes),
         catch: cause => toProvisioningError('protocol-error', cause),
       })
       for (const frame of frames) {
@@ -493,20 +495,19 @@ export class DeviceProvisioningConnection {
       this.galleryFrames.push(frame)
       if (this.galleryFrames.length < frame.count)
         return
-      const json = reassembleFrames(this.galleryFrames)
+      const payload = reassembleFrames(this.galleryFrames)
       this.galleryFrames = []
-      const raw = JSON.parse(new TextDecoder().decode(json)) as { operation?: unknown, requestId?: unknown }
-      if (raw.operation === 'todo.sync') {
-        const response = parseTodoSyncResponse(json)
+      if (payload[0] !== 0x7B) {
+        const response = parseTodoSyncResponse(payload)
         const waiter = this.todoWaiters.get(response.requestId)
         if (waiter)
           Deferred.doneUnsafe(waiter, Effect.succeed(response))
       }
       else {
-        const response = raw as GalleryResponse
-        const waiter = this.galleryWaiters.get(String(response.requestId))
+        const raw = JSON.parse(new TextDecoder().decode(payload)) as GalleryResponse
+        const waiter = this.galleryWaiters.get(String(raw.requestId))
         if (waiter)
-          Deferred.doneUnsafe(waiter, Effect.succeed(response))
+          Deferred.doneUnsafe(waiter, Effect.succeed(raw))
       }
     }
     catch (error) {
@@ -767,21 +768,48 @@ export class SerialProvisioningConnection implements DeviceProvisioningSession {
     const reader = readable.getReader()
     this.reader = reader
     const decoder = new TextDecoder()
-    let buffered = ''
+    let buffered = new Uint8Array()
+    const prefix = new TextEncoder().encode(SERIAL_PROVISIONING_PREFIX)
     try {
       while (!this.closed) {
         const { done, value } = await reader.read()
         if (done)
           break
-        buffered += decoder.decode(value, { stream: true })
-        let newline = buffered.indexOf('\n')
-        while (newline >= 0) {
-          const line = buffered.slice(0, newline).replace(/\r$/u, '')
+        const merged = new Uint8Array(buffered.byteLength + value.byteLength)
+        merged.set(buffered)
+        merged.set(value, buffered.byteLength)
+        buffered = merged
+        while (buffered.byteLength > 0) {
+          const isPrefix = buffered.byteLength >= prefix.byteLength && prefix.every((byte, index) => buffered[index] === byte)
+          if (isPrefix && buffered.byteLength >= prefix.byteLength + 4) {
+            const headerOffset = prefix.byteLength
+            const length = new DataView(buffered.buffer, buffered.byteOffset + headerOffset, 4).getUint32(0, true)
+            const binaryHeader = buffered[headerOffset] !== 0x7B
+              || buffered[headerOffset + 1] === 0
+              || buffered[headerOffset + 2] === 0
+              || buffered[headerOffset + 3] === 0
+            if (!binaryHeader)
+              break
+            const total = prefix.byteLength + 4 + length
+            if (length > 64 * 1024) {
+              this.failPending(toProvisioningError('protocol-error', new Error('serial frame too large')))
+              buffered = new Uint8Array()
+              break
+            }
+            if (buffered.byteLength < total)
+              break
+            this.handleBytes(buffered.slice(0, total))
+            buffered = buffered.slice(total)
+            continue
+          }
+          const newline = buffered.indexOf(0x0A)
+          if (newline < 0)
+            break
+          const line = decoder.decode(buffered.slice(0, newline)).replace(/\r$/u, '')
           buffered = buffered.slice(newline + 1)
           this.handleLine(line)
-          newline = buffered.indexOf('\n')
         }
-        if (buffered.length > 16_384)
+        if (buffered.byteLength > 16_384)
           buffered = buffered.slice(-8_192)
       }
     }
@@ -802,6 +830,20 @@ export class SerialProvisioningConnection implements DeviceProvisioningSession {
       return
     try {
       const response = parseSerialProvisioningResponse(line)
+      if (!response)
+        return
+      const waiter = this.pending.get(response.requestId)
+      if (waiter)
+        Deferred.doneUnsafe(waiter, Effect.succeed(response))
+    }
+    catch (cause) {
+      this.failPending(toProvisioningError('protocol-error', cause))
+    }
+  }
+
+  private handleBytes(bytes: Uint8Array): void {
+    try {
+      const response = parseSerialProvisioningResponseBytes(bytes)
       if (!response)
         return
       const waiter = this.pending.get(response.requestId)

@@ -1,4 +1,5 @@
 import { Buffer } from 'node:buffer'
+import { encodeMemoriloProto } from '@memorilo/sync-protocol'
 import mqtt from 'mqtt'
 
 export interface TodoNotificationPublisher {
@@ -25,17 +26,17 @@ const maxNotificationBytes = 512
 export function todoNotificationPayload(input: {
   readonly changedAt: number
   readonly revision: string
-}): string {
+}): Uint8Array {
   if (!Number.isSafeInteger(input.changedAt) || input.changedAt < 0)
     throw new Error('TODO notification changedAt must be a non-negative timestamp')
   if (input.revision.length === 0 || input.revision.length > 128 || !/^[\x21-\x7E]+$/u.test(input.revision))
     throw new Error('TODO notification revision is invalid')
-  const payload = JSON.stringify({
+  const payload = encodeMemoriloProto('TodoRefreshHint', {
     generatedAt: new Date(input.changedAt).toISOString(),
     revision: input.revision,
     view: 'all',
   })
-  if (Buffer.byteLength(payload, 'utf8') > maxNotificationBytes)
+  if (payload.byteLength > maxNotificationBytes)
     throw new Error('TODO notification payload is too large')
   return payload
 }
@@ -66,8 +67,8 @@ export function createTodoNotificationPublisher(options: TodoNotificationPublish
     connected = false
   })
 
-  const publish = (topic: string, body: string): Promise<void> => new Promise((resolve, reject) => {
-    client.publish(topic, body, { qos: 1, retain: false }, error => error === undefined ? resolve() : reject(error))
+  const publish = (topic: string, body: Uint8Array): Promise<void> => new Promise((resolve, reject) => {
+    client.publish(topic, Buffer.from(body), { qos: 1, retain: false }, error => error === undefined ? resolve() : reject(error))
   })
 
   return {

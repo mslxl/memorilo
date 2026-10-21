@@ -20,6 +20,12 @@ export const appShellStyles = stylex.create({
     minHeight: 0,
     overflow: 'hidden',
   },
+  workspace: {
+    position: 'relative',
+    flex: 1,
+    minHeight: 0,
+    minWidth: 0,
+  },
   routeViewport: {
     position: 'relative',
     display: 'flex',

@@ -5,6 +5,7 @@ import { Buffer } from 'node:buffer'
 import { createHash, randomBytes, randomUUID } from 'node:crypto'
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
+import { decodeMemoriloProto, encodeMemoriloProto } from '@memorilo/sync-protocol'
 import { createDeviceSigner, signDevicePayload, verifyDevicePayload } from './device-signing'
 
 export type { LocalDeviceIdentity, PairingStore } from './pairing-contract'
@@ -302,21 +303,69 @@ function validMembershipEpoch(value: number | undefined): number {
 }
 
 export function encodePairingPayload(payload: PairingInvitation | PairingResponse): string {
-  return `memorilo-pair-v1.${Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url')}`
+  const role = payload.role === 'device' ? 1 : 2
+  const value = payload.version === 1 && 'expiresAt' in payload
+    ? { invitation: {
+        createdAt: payload.createdAt,
+        deviceId: payload.deviceId,
+        deviceName: payload.deviceName,
+        expiresAt: payload.expiresAt,
+        membershipEpoch: payload.membershipEpoch,
+        pairingId: payload.pairingId,
+        peerId: payload.peerId,
+        role,
+        sharedSecret: payload.sharedSecret,
+        signature: payload.signature,
+        signingPublicKey: payload.signingPublicKey,
+        version: payload.version,
+      } }
+    : { response: {
+        deviceId: payload.deviceId,
+        deviceName: payload.deviceName,
+        membershipEpoch: payload.membershipEpoch,
+        pairingId: payload.pairingId,
+        peerId: payload.peerId,
+        role,
+        sharedSecret: payload.sharedSecret,
+        signature: payload.signature,
+        signingPublicKey: payload.signingPublicKey,
+        version: payload.version,
+      } }
+  return `memorilo-pair-v1.${Buffer.from(encodeMemoriloProto('PairingCode', value)).toString('base64url')}`
 }
 
 export function decodePairingPayload<T extends PairingInvitation | PairingResponse>(encoded: string): T {
   const prefix = 'memorilo-pair-v1.'
   if (!encoded.startsWith(prefix))
     throw new TypeError('Unsupported pairing code')
-  let payload: unknown
+  let payload: Record<string, any>
   try {
-    payload = JSON.parse(Buffer.from(encoded.slice(prefix.length), 'base64url').toString('utf8'))
+    payload = decodeMemoriloProto('PairingCode', new Uint8Array(Buffer.from(encoded.slice(prefix.length), 'base64url')))
   }
   catch (error) {
-    throw new TypeError('Invalid pairing code', { cause: error })
+    throw new TypeError('Invalid or incomplete pairing code', { cause: error })
   }
-  if (typeof payload !== 'object' || payload === null)
-    throw new TypeError('Pairing code payload must be an object')
-  return payload as T
+  const invitation = payload.invitation as Record<string, any> | undefined
+  const response = payload.response as Record<string, any> | undefined
+  const source = invitation ?? response
+  if (source === undefined)
+    throw new TypeError('Pairing code payload must contain an invitation or response')
+  const role = source.role === 1 ? 'device' : source.role === 2 ? 'server' : undefined
+  if (role === undefined)
+    throw new TypeError('Pairing code role is invalid')
+  const common = {
+    deviceId: String(source.deviceId),
+    deviceName: String(source.deviceName),
+    membershipEpoch: Number(source.membershipEpoch),
+    pairingId: String(source.pairingId),
+    peerId: String(source.peerId),
+    role,
+    sharedSecret: String(source.sharedSecret),
+    signature: String(source.signature),
+    signingPublicKey: String(source.signingPublicKey),
+    version: 1 as const,
+  }
+  return (invitation === undefined
+    ? common
+    : { ...common, createdAt: Number(source.createdAt), expiresAt: Number(source.expiresAt) }) as T
 }

@@ -11,6 +11,7 @@ pub mod model;
 pub mod network;
 pub mod persistence;
 pub mod power;
+pub mod proto;
 pub mod provisioning;
 pub mod provisioning_protocol;
 pub mod provisioning_serial;

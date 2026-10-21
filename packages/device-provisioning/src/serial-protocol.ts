@@ -10,6 +10,7 @@ import type {
   WifiNetwork,
 } from './protocol'
 import {
+  encodeTodoSyncRequest,
   parseApplyConfigEnvelope,
   parseApplyStatusEnvelope,
   parseDeviceInfoEnvelope,
@@ -86,6 +87,15 @@ export interface SerialProvisioningTodoSyncResponse {
 export type SerialProvisioningResponse = SerialProvisioningApplyResponse | SerialProvisioningReadResponse | SerialProvisioningWifiScanResponse | SerialProvisioningTodoSyncResponse | SerialProvisioningGalleryResponse
 
 export function encodeSerialProvisioningRequest(request: SerialProvisioningRequest): Uint8Array {
+  if (request.operation === 'todo.sync') {
+    const payload = encodeTodoSyncRequest(request)
+    const prefix = new TextEncoder().encode(SERIAL_PROVISIONING_PREFIX)
+    const result = new Uint8Array(prefix.byteLength + 4 + payload.byteLength)
+    result.set(prefix)
+    new DataView(result.buffer).setUint32(prefix.byteLength, payload.byteLength, true)
+    result.set(payload, prefix.byteLength + 4)
+    return result
+  }
   const json = JSON.stringify(request)
   const bytes = new TextEncoder().encode(json)
   if (bytes.byteLength > MAX_SERIAL_MESSAGE_BYTES)
@@ -142,6 +152,26 @@ export function parseSerialProvisioningResponse(line: string): SerialProvisionin
     return value as unknown as SerialProvisioningGalleryResponse
   }
   throw new ProvisioningProtocolError('invalid-request')
+}
+
+export function parseSerialProvisioningResponseBytes(bytes: Uint8Array): SerialProvisioningResponse | null {
+  const prefix = new TextEncoder().encode(SERIAL_PROVISIONING_PREFIX)
+  if (bytes.byteLength < prefix.byteLength + 4 || !prefix.every((value, index) => bytes[index] === value))
+    return null
+  const length = new DataView(bytes.buffer, bytes.byteOffset + prefix.byteLength, 4).getUint32(0, true)
+  if (length > MAX_SERIAL_MESSAGE_BYTES || bytes.byteLength !== prefix.byteLength + 4 + length)
+    throw new ProvisioningProtocolError('invalid-bounds')
+  return parseTodoSyncResponse(bytes.slice(prefix.byteLength + 4))
+}
+
+export function parseSerialProvisioningRequestBytes(bytes: Uint8Array): SerialProvisioningRequest | null {
+  const prefix = new TextEncoder().encode(SERIAL_PROVISIONING_PREFIX)
+  if (bytes.byteLength < prefix.byteLength + 4 || !prefix.every((value, index) => bytes[index] === value))
+    return null
+  const length = new DataView(bytes.buffer, bytes.byteOffset + prefix.byteLength, 4).getUint32(0, true)
+  if (length > MAX_SERIAL_MESSAGE_BYTES || bytes.byteLength !== prefix.byteLength + 4 + length)
+    throw new ProvisioningProtocolError('invalid-bounds')
+  return parseTodoSyncRequest(bytes.slice(prefix.byteLength + 4)) as SerialProvisioningTodoSyncRequest
 }
 
 function isGalleryStatus(value: unknown): value is GalleryStatus {

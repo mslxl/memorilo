@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <title>Memorilo - Paired Folios</title>
+  <desc>Two opposing clipped pages form one balanced mark for connected information and activity.</desc>
+  <rect x="64" y="64" width="896" height="896" rx="198" fill="#46644F"/>
+  <g fill="#F7F0D7">
+    <path d="M288 336Q288 308 316 308H500V620L408 716H288Z"/>
+    <path d="M288 336Q288 308 316 308H500V620L408 716H288Z" transform="rotate(180 512 512)"/>
+  </g>
+</svg>

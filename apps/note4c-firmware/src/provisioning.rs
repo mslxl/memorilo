@@ -297,13 +297,10 @@ impl ProvisioningSession {
         }
         let json = reassemble_frames(&self.gallery_frames).map_err(protocol_error)?;
         self.gallery_frames.clear();
-        let operation = serde_json::from_slice::<serde_json::Value>(&json)
-            .map_err(|_| ProtocolErrorCode::InvalidRequest)?;
-        if operation.get("operation").and_then(|value| value.as_str()) == Some("todo.sync") {
-            parse_todo_request(&json).map(|request| Some(SessionOutput::Todo(request)))
-        } else {
-            parse_gallery_request(&json).map(|request| Some(SessionOutput::Gallery(request)))
+        if json.first() != Some(&b'{') {
+            return parse_todo_request(&json).map(|request| Some(SessionOutput::Todo(request)));
         }
+        parse_gallery_request(&json).map(|request| Some(SessionOutput::Gallery(request)))
     }
 }
 

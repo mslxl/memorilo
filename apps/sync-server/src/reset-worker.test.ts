@@ -72,7 +72,7 @@ describe('sync reset worker', () => {
     await database.repository.appendAssetManifests('account-1', 0, [manifest])
     await database.repository.appendChanges({
       accountId: 'account-1',
-      changes: [{ deviceId: 'device-1', id: 'reset-change', kind: 'note-update', payload: '{}', sequence: 1 }],
+      changes: [{ deviceId: 'device-1', id: 'reset-change', kind: 'note-update', payload: new Uint8Array([0x0A, 0x01, 0x6E, 0x12, 0x01, 0x01]), sequence: 1 }],
       generation: 0,
       namespace: 'notes',
     })

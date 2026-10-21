@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <title>Memorilo - Open Organizer</title>
+  <desc>A centered open personal organizer with paired index tabs and a bookmark built into the binding.</desc>
+  <rect x="64" y="64" width="896" height="896" rx="198" fill="#46644F"/>
+  <g transform="translate(0 -2)">
+    <g fill="#F7F0D7">
+      <path d="M284 350Q395 326 500 395V717Q392 649 284 679Z"/>
+      <path d="M284 350Q395 326 500 395V717Q392 649 284 679Z" transform="translate(1024 0) scale(-1 1)"/>
+      <rect x="258" y="412" width="52" height="66" rx="14"/>
+      <rect x="714" y="412" width="52" height="66" rx="14"/>
+      <rect x="258" y="566" width="52" height="66" rx="14"/>
+      <rect x="714" y="566" width="52" height="66" rx="14"/>
+      <path d="M479 331H545V470L512 441L479 470Z"/>
+    </g>
+  </g>
+</svg>

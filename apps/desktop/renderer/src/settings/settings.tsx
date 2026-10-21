@@ -12,6 +12,7 @@ import { Fragment, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { useDesktopConfiguration } from '../shared/configuration'
+import { getPlatform } from '../shared/platform'
 import { AssetSettings } from './asset-settings'
 import { CalendarSettings } from './calendar-settings'
 import { DatabaseSettings } from './database-settings'
@@ -128,6 +129,7 @@ const fieldLabelKeys: Readonly<Record<string, string>> = {
   'backup.retentionCount': 'backupRetention',
   'language': 'language',
   'reduceMotion': 'reduceMotion',
+  'redrawTitlebar': 'redrawTitlebar',
   'editor.cursor.animationLength': 'cursorAnimationLength',
   'editor.cursor.shortAnimationLength': 'cursorTypingAnimation',
   'editor.cursor.trailSize': 'cursorTrailSize',
@@ -192,6 +194,7 @@ const fieldLabelKeys: Readonly<Record<string, string>> = {
 }
 
 const fieldDescriptionKeys: Readonly<Record<string, string>> = {
+  'redrawTitlebar': 'redrawTitlebarDescription',
   'backup.enabled': 'backupEnabledDescription',
   'backup.intervalMinutes': 'backupIntervalDescription',
   'backup.retentionCount': 'backupRetentionDescription',
@@ -507,7 +510,12 @@ function ThemeGallery({ store }: { store: ConfigurationStore<DesktopConfiguratio
 export function Settings({ store }: { store: ConfigurationStore<DesktopConfiguration> }) {
   const { t } = useTranslation('settings')
   const configuration = useDesktopConfiguration()
-  const localizedSections = desktopConfigurationDefinition.sections.map(section => localizeSection(section, t))
+  const platform = getPlatform()
+  const supportsRedrawnTitlebar = platform === 'windows' || platform === 'linux'
+  const localizedSections = desktopConfigurationDefinition.sections.map(section => localizeSection({
+    ...section,
+    fields: section.fields.filter(field => field.path !== 'redrawTitlebar' || supportsRedrawnTitlebar),
+  }, t))
   const categories = buildSettingsCategories(localizedSections, t, configuration.learning.enabled)
   const [activeCategoryId, setActiveCategoryId] = useState<SettingsCategoryId>('general')
   const shouldReduceMotion = useReducedMotion()

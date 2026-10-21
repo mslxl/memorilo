@@ -3,6 +3,7 @@ import dayjs from 'dayjs'
 export interface TaskIcsEvent {
   allDay: boolean
   description?: string
+  descriptionHtml?: string
   end?: string | null
   parentContext?: string
   start: string
@@ -105,6 +106,8 @@ function eventLines(event: TaskIcsEvent, timeZone: string | undefined, generated
     const description = [event.description, event.parentContext ? `Parent: ${event.parentContext}` : null].filter((value): value is string => value !== undefined && value !== null && value.length > 0).join('\n')
     lines.push(...property('DESCRIPTION', escapeText(description)))
   }
+  if (event.descriptionHtml)
+    lines.push(...property('X-ALT-DESC', escapeText(event.descriptionHtml), ';FMTTYPE=text/html'))
   lines.push(...property('STATUS', event.status ?? 'CONFIRMED'), 'END:VEVENT')
   return lines
 }

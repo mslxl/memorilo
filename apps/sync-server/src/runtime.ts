@@ -54,7 +54,6 @@ export async function createSyncServerRuntime(config: SyncServerConfig, options:
     for (const account of await database.repository.listAccountStates())
       await rebuildAuthoritativeState(database.repository, account)
     const metrics = createSyncServerMetrics()
-    const deviceTodo = createDeviceTodoModule({ repository: database.repository, store: database.deviceTodo })
     const todoNotificationTimers = new Map<string, ReturnType<typeof setTimeout>>()
     const pendingTodoNotifications = new Map<string, { readonly accountId: string, readonly generation: number, readonly changedAt: number }>()
     let todoNotificationPublisher: TodoNotificationPublisher | null = null
@@ -89,6 +88,7 @@ export async function createSyncServerRuntime(config: SyncServerConfig, options:
       name: 'object store',
     })).resource
     await objectStore.verify()
+    const deviceTodo = createDeviceTodoModule({ objectStore, repository: database.repository, store: database.deviceTodo })
     if (config.maintenanceMode !== 'read-only') {
       const resetWorker = (await scope.acquire({
         acquire: () => createResetWorker({ metrics: metrics.peerRecorder, objectStore, repository: database.repository }),

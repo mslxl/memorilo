@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest'
+import { encodeTodoSyncResponse } from './protocol'
 import {
   encodeSerialProvisioningRequest,
   parseSerialProvisioningRequest,
+  parseSerialProvisioningRequestBytes,
   parseSerialProvisioningResponse,
+  parseSerialProvisioningResponseBytes,
   SERIAL_PROVISIONING_PREFIX,
 } from './serial-protocol'
 
@@ -118,13 +121,15 @@ describe('serial provisioning protocol', () => {
         revision: 'empty-revision',
       },
     }
-    const encoded = new TextDecoder().decode(encodeSerialProvisioningRequest(request)).trimEnd()
-    expect(parseSerialProvisioningRequest(encoded)).toEqual(request)
-    expect(parseSerialProvisioningResponse(`${SERIAL_PROVISIONING_PREFIX}${JSON.stringify({
-      operation: 'todo.sync',
-      requestId: request.requestId,
-      status: 'accepted',
-    })}`)).toEqual({
+    const encoded = encodeSerialProvisioningRequest(request)
+    expect(parseSerialProvisioningRequestBytes(encoded)).toEqual(request)
+    const responsePayload = encodeTodoSyncResponse({ operation: 'todo.sync', requestId: request.requestId, status: 'accepted' })
+    const response = new Uint8Array(new TextEncoder().encode(SERIAL_PROVISIONING_PREFIX).byteLength + 4 + responsePayload.byteLength)
+    const prefixLength = new TextEncoder().encode(SERIAL_PROVISIONING_PREFIX).byteLength
+    response.set(new TextEncoder().encode(SERIAL_PROVISIONING_PREFIX))
+    new DataView(response.buffer).setUint32(prefixLength, responsePayload.byteLength, true)
+    response.set(responsePayload, prefixLength + 4)
+    expect(parseSerialProvisioningResponseBytes(response)).toEqual({
       operation: 'todo.sync',
       requestId: request.requestId,
       status: 'accepted',

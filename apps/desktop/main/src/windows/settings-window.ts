@@ -19,6 +19,7 @@ import {
 } from '@memorilo/desktop-api'
 import { Effect } from 'effect'
 import { BrowserWindow, ipcMain } from 'electron'
+import { applicationIconPath } from '../app-icon-paths'
 import { DeviceLocalManagementClient } from '../device-local-management-client'
 import {
   assertLocalManagementToken,
@@ -289,6 +290,7 @@ export function createSettingsWindowController(
       backgroundColor: '#ffffff',
       fullscreenable: false,
       height: 560,
+      icon: applicationIconPath,
       maximizable: false,
       minimizable: false,
       minHeight: 480,

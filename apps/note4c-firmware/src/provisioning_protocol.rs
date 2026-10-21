@@ -1,10 +1,14 @@
 use std::collections::BTreeMap;
 
+use prost::Message;
 use serde::{Deserialize, Serialize};
 
 use crate::persistence::{AlmanacConfig, SelectionPolicy, WeatherConfig};
 use crate::todo_sync::TodoView;
-use crate::todo_sync::{MAX_SNAPSHOT_BYTES, TodoSnapshot, validate_snapshot};
+use crate::todo_sync::{MAX_SNAPSHOT_BYTES, TodoSnapshot, snapshot_from_proto};
+use crate::proto::memorilo::sync::v1::TodoSyncRequest;
+#[cfg(test)]
+use crate::proto::memorilo::sync::v1::TodoItem as ProtoTodoItem;
 
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const CONFIG_SCHEMA_VERSION: u16 = 2;
@@ -32,26 +36,25 @@ pub struct TodoRequest {
     pub snapshot: TodoSnapshot,
 }
 
-pub fn parse_todo_request(json: &[u8]) -> Result<TodoRequest, ProtocolErrorCode> {
-    if json.len() > MAX_JSON_BYTES || json.len() > MAX_SNAPSHOT_BYTES + 512 {
+pub fn parse_todo_request(bytes: &[u8]) -> Result<TodoRequest, ProtocolErrorCode> {
+    if bytes.len() > MAX_JSON_BYTES || bytes.len() > MAX_SNAPSHOT_BYTES + 512 {
         return Err(ProtocolErrorCode::RequestTooLarge);
     }
-    let request: TodoRequest =
-        serde_json::from_slice(json).map_err(|_| ProtocolErrorCode::InvalidRequest)?;
+    let request = TodoSyncRequest::decode(bytes).map_err(|_| ProtocolErrorCode::InvalidRequest)?;
+    let Some(snapshot) = request.snapshot else {
+        return Err(ProtocolErrorCode::InvalidRequest);
+    };
     if request.operation != "todo.sync"
-        || request.protocol_version != PROTOCOL_VERSION
+        || request.protocol_version != u32::from(PROTOCOL_VERSION)
         || request.request_id.is_empty()
         || request.request_id.len() > 64
         || !request.request_id.is_ascii()
-        || request
-            .snapshot
-            .time_zone_offset_minutes
-            .is_some_and(|offset| !(-840..=840).contains(&offset))
-        || validate_snapshot(&request.snapshot).is_err()
+        || snapshot.time_zone_offset_minutes.is_some_and(|offset| !(-840..=840).contains(&offset))
     {
         return Err(ProtocolErrorCode::InvalidRequest);
     }
-    Ok(request)
+    let snapshot = snapshot_from_proto(snapshot).map_err(|_| ProtocolErrorCode::InvalidRequest)?;
+    Ok(TodoRequest { operation: request.operation, protocol_version: PROTOCOL_VERSION, request_id: request.request_id, snapshot })
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -288,6 +291,29 @@ pub enum ProtocolErrorCode {
     InvalidOrder,
     InvalidSlideshowInterval,
     StorageFailure,
+}
+
+impl ProtocolErrorCode {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::AuthenticationRequired => "authentication-required",
+            Self::ConfigurationModeRequired => "configuration-mode-required",
+            Self::UnsupportedProtocol => "unsupported-protocol",
+            Self::UnsupportedCapability => "unsupported-capability",
+            Self::InvalidRequest => "invalid-request",
+            Self::StaleRevision => "stale-revision",
+            Self::ChecksumMismatch => "checksum-mismatch",
+            Self::RequestTooLarge => "request-too-large",
+            Self::Timeout => "timeout",
+            Self::AssetNotFound => "asset-not-found",
+            Self::CapacityExceeded => "capacity-exceeded",
+            Self::InvalidAssetLength => "invalid-asset-length",
+            Self::InvalidAssetName => "invalid-asset-name",
+            Self::InvalidOrder => "invalid-order",
+            Self::InvalidSlideshowInterval => "invalid-slideshow-interval",
+            Self::StorageFailure => "storage-failure",
+        }
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -545,10 +571,32 @@ mod tests {
 
     #[test]
     fn todo_sync_accepts_a_wall_clock_offset_and_rejects_impossible_offsets() {
-        let valid = br#"{"operation":"todo.sync","protocolVersion":1,"requestId":"todo-time","snapshot":{"generatedAt":"2026-09-30T00:00:00.000Z","timeZoneOffsetMinutes":480,"items":[],"revision":"empty"}}"#;
-        assert_eq!(parse_todo_request(valid).unwrap().snapshot.time_zone_offset_minutes, Some(480));
-        let invalid = br#"{"operation":"todo.sync","protocolVersion":1,"requestId":"todo-time","snapshot":{"generatedAt":"2026-09-30T00:00:00.000Z","timeZoneOffsetMinutes":1000,"items":[],"revision":"empty"}}"#;
-        assert_eq!(parse_todo_request(invalid), Err(ProtocolErrorCode::InvalidRequest));
+        let valid = TodoSyncRequest {
+            operation: "todo.sync".into(), protocol_version: 1, request_id: "todo-time".into(),
+            snapshot: Some(crate::proto::memorilo::sync::v1::TodoSnapshot { generated_at: "2026-09-30T00:00:00.000Z".into(), time_zone_offset_minutes: Some(480), items: vec![], revision: "empty".into() }),
+        }.encode_to_vec();
+        assert_eq!(parse_todo_request(&valid).unwrap().snapshot.time_zone_offset_minutes, Some(480));
+        let invalid = TodoSyncRequest {
+            operation: "todo.sync".into(), protocol_version: 1, request_id: "todo-time".into(),
+            snapshot: Some(crate::proto::memorilo::sync::v1::TodoSnapshot { generated_at: "2026-09-30T00:00:00.000Z".into(), time_zone_offset_minutes: Some(1000), items: vec![], revision: "empty".into() }),
+        }.encode_to_vec();
+        assert_eq!(parse_todo_request(&invalid), Err(ProtocolErrorCode::InvalidRequest));
+    }
+
+    #[test]
+    fn todo_sync_rejects_unspecified_item_status() {
+        let invalid = TodoSyncRequest {
+            operation: "todo.sync".into(), protocol_version: 1, request_id: "todo-status".into(),
+            snapshot: Some(crate::proto::memorilo::sync::v1::TodoSnapshot {
+                generated_at: "2026-09-30T00:00:00.000Z".into(), time_zone_offset_minutes: None,
+                items: vec![ProtoTodoItem {
+                    schedule: Some(crate::proto::memorilo::sync::v1::TodoSchedule { body: Some(crate::proto::memorilo::sync::v1::todo_schedule::Body::None(crate::proto::memorilo::sync::v1::TodoUnscheduled {})) }), id: "item-1".into(),
+                    note_title: "Note".into(), parent_id: None, revision: "item-r1".into(),
+                    status: 0, text: "Task".into(), topic_title: "Topic".into(),
+                }], revision: "snapshot-r1".into(),
+            }),
+        }.encode_to_vec();
+        assert_eq!(parse_todo_request(&invalid), Err(ProtocolErrorCode::InvalidRequest));
     }
 
     #[test]

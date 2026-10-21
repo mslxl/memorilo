@@ -55,7 +55,7 @@ export const readerShellStyles = stylex.create({
   toolbarWindow: {
     position: 'fixed',
     zIndex: 22,
-    top: 10,
+    top: 'calc(var(--window-titlebar-height, 0px) + 10px)',
     right: 14,
     left: 'var(--reader-leading-offset, 270px)',
     display: 'block',
@@ -156,7 +156,7 @@ export const readerShellStyles = stylex.create({
   sidebarActionsWindow: {
     position: 'fixed',
     zIndex: 24,
-    top: 10,
+    top: 'calc(var(--window-titlebar-height, 0px) + 10px)',
     right: 14,
     pointerEvents: 'auto',
   },

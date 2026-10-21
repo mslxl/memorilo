@@ -6,7 +6,7 @@ import { drizzle } from 'drizzle-orm/postgres-js'
 import { migrate as migrateDrizzle } from 'drizzle-orm/postgres-js/migrator'
 import postgres from 'postgres'
 import { syncAccounts, syncAssetManifests, syncAuditEvents, syncChanges, syncDeviceCredentials, syncDeviceNonces, syncDeviceTodoTokens, syncInvites, syncLearningEntities, syncLearningTombstones, syncNoteSnapshots, syncObjects, syncPairingSessions, syncResetJobs, syncSessions, syncUsers } from './schema.postgres'
-import { accountStateFromRow, compareLearningEntityOrder, deviceTodoTokenFromRow, frontierFromRows, objectMetadataFromRow, payloadHash, resetJobFromRow } from './shared'
+import { accountStateFromRow, compareLearningEntityOrder, deviceTodoTokenFromRow, frontierFromRows, objectMetadataFromRow, payloadHash, resetJobFromRow, restoredSyncPayload, storedSyncPayload } from './shared'
 
 export interface PostgresSyncDatabaseOptions {
   readonly url: string
@@ -277,7 +277,7 @@ export function createPostgresSyncDatabase(options: PostgresSyncDatabaseOptions)
             id: change.id,
             kind: change.kind,
             namespace: batch.namespace,
-            payload: change.payload,
+            payload: storedSyncPayload(change.payload),
             payloadHash: hash,
             receiptSequence: nextReceiptSequence,
             receivedAt: now(),
@@ -466,7 +466,7 @@ export function createPostgresSyncDatabase(options: PostgresSyncDatabaseOptions)
     },
     listChanges: async (accountId, namespace, generation, since, limit) => {
       const rows = await db.select().from(syncChanges).where(and(eq(syncChanges.accountId, accountId), eq(syncChanges.namespace, namespace), eq(syncChanges.generation, generation))).orderBy(asc(syncChanges.receiptSequence), asc(syncChanges.deviceId), asc(syncChanges.sequence))
-      return rows.filter(row => row.sequence > (since[row.deviceId] ?? 0)).slice(0, limit).map<SyncChangeRecord>(row => ({ ...row, namespace: row.namespace }))
+      return rows.filter(row => row.sequence > (since[row.deviceId] ?? 0)).slice(0, limit).map<SyncChangeRecord>(row => ({ ...row, payload: restoredSyncPayload(row.payload), namespace: row.namespace }))
     },
     isObjectReferenced: async (accountId, generation, contentHash) => (await db.select({ id: syncAssetManifests.id }).from(syncAssetManifests).where(and(
       eq(syncAssetManifests.accountId, accountId),

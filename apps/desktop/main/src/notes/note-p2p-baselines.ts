@@ -1,13 +1,13 @@
 import type { StoredNote } from '@memorilo/editor-storage'
-import type { JsonSyncJournal } from '@memorilo/sync/node'
-import { Buffer } from 'node:buffer'
+import type { ProtobufSyncJournal } from '@memorilo/sync/node'
 import { createEditorNote } from '@memorilo/editor/note'
+import { encodeMemoriloProto } from '@memorilo/sync-protocol'
 
 interface EnsureNoteP2pBaselinesOptions {
   defaultNoteLearningEnabled: () => boolean
   deviceId: string
   getNote: (noteId: string) => Promise<StoredNote>
-  journal: Pick<JsonSyncJournal, 'appendLocal' | 'listChanges'>
+  journal: Pick<ProtobufSyncJournal, 'appendLocal' | 'listChanges'>
   listNoteIds: () => Promise<readonly string[]>
 }
 
@@ -38,7 +38,7 @@ export async function ensureNoteP2pBaselines({
     await journal.appendLocal({
       id: `${baselinePrefix}${noteId}`,
       kind: 'note-update',
-      payload: JSON.stringify({ noteId, update: Buffer.from(snapshot).toString('base64url') }),
+      payload: encodeMemoriloProto('NoteUpdate', { noteId, loroUpdate: snapshot }),
     })
   }
 }

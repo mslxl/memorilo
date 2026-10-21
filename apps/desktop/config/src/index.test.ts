@@ -27,6 +27,7 @@ function configuration(mcp: { accessToken: string, enabled: boolean, port: numbe
     readerAnnotationCopyFormat: 'text',
     readerEpubPresentationMode: 'publisher',
     readerPageMode: 'continuous',
+    redrawTitlebar: true,
     reduceMotion: false,
     shortcuts: desktopConfigurationDefinition.defaults.shortcuts,
     syncServer: desktopConfigurationDefinition.defaults.syncServer,
@@ -37,6 +38,13 @@ function configuration(mcp: { accessToken: string, enabled: boolean, port: numbe
 }
 
 describe('desktop MCP configuration', () => {
+  it('migrates the title bar preference without replacing a saved native-frame choice', () => {
+    const current = configuration({ accessToken: '', enabled: false, port: 8765 })
+    const legacy = Object.fromEntries(Object.entries(current).filter(([key]) => key !== 'redrawTitlebar'))
+    expect(decode(migrateDesktopConfiguration(legacy)).redrawTitlebar).toBe(true)
+    expect(decode(migrateDesktopConfiguration({ ...current, redrawTitlebar: false })).redrawTitlebar).toBe(false)
+    expect(() => decode({ ...current, redrawTitlebar: 'false' })).toThrow()
+  })
   it('uses Neovide cursor timing with smooth blink enabled by default', () => {
     expect(desktopConfigurationDefinition.defaults.editor.cursor).toMatchObject({
       animationLength: 0.15,

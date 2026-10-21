@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <title>Memorilo - Folded M</title>
+  <desc>An emerald folded book forming an M on a warm ivory application tile.</desc>
+  <defs>
+    <linearGradient id="tile" x1="200" y1="80" x2="800" y2="950" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFDF6"/>
+      <stop offset="1" stop-color="#E8E1D3"/>
+    </linearGradient>
+    <linearGradient id="left" x1="283" y1="320" x2="512" y2="750" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#428A65"/>
+      <stop offset="1" stop-color="#24583D"/>
+    </linearGradient>
+    <linearGradient id="right" x1="550" y1="355" x2="780" y2="725" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#357A54"/>
+      <stop offset="1" stop-color="#174C34"/>
+    </linearGradient>
+    <linearGradient id="fold" x1="508" y1="460" x2="666" y2="324" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#96B99C"/>
+      <stop offset="1" stop-color="#E4EACD"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="175%">
+      <feDropShadow dx="0" dy="17" stdDeviation="16" flood-color="#284731" flood-opacity=".2"/>
+    </filter>
+  </defs>
+  <rect x="64" y="64" width="896" height="896" rx="198" fill="url(#tile)"/>
+  <rect x="66" y="66" width="892" height="892" rx="196" fill="none" stroke="#FFFFFF" stroke-opacity=".8" stroke-width="4"/>
+  <g filter="url(#shadow)">
+    <path d="M278 725V330Q278 306 301 319L512 447L723 319Q746 306 746 330V725L662 687V462L512 558L362 462V687Z" fill="#174C34"/>
+    <path d="M278 705V330Q278 306 301 319L512 447V558L362 462V667Z" fill="url(#left)"/>
+    <path d="M512 447L723 319Q746 306 746 330V705L662 667V462L512 558Z" fill="url(#right)"/>
+    <path d="M512 447L679 346L662 462L512 558Z" fill="url(#fold)"/>
+    <path d="M679 346L723 319Q746 306 746 330L662 462Z" fill="#40825D"/>
+    <path d="M301 319L512 447L679 346" fill="none" stroke="#EFF7D9" stroke-opacity=".3" stroke-width="4" stroke-linejoin="round"/>
+  </g>
+</svg>

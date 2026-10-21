@@ -380,6 +380,8 @@
   "english": "英语",
   "chinese": "简体中文",
   "reduceMotion": "减少动态效果",
+  "redrawTitlebar": "启用重绘标题栏",
+  "redrawTitlebarDescription": "将应用菜单放在 Memorilo 名称旁边，关闭后使用系统标题栏。重启应用后生效。",
   "cursorAnimationLength": "光标动画时长",
   "cursorTypingAnimation": "输入时光标动画",
   "cursorTrailSize": "光标拖尾大小",

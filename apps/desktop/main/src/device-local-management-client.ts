@@ -10,6 +10,7 @@ import type {
 } from '@memorilo/desktop-api'
 import type { LocalManagementCredentialStore } from './storage/electron-local-management-credential-store'
 import { Buffer } from 'node:buffer'
+import { encodeTodoSnapshot } from '@memorilo/device-provisioning'
 import { Data, Effect } from 'effect'
 
 const imageBytes = 30_000
@@ -68,12 +69,12 @@ export class DeviceLocalManagementClient {
   pushTodos(input: DesktopDeviceTodoPush): Effect.Effect<void, DeviceLocalManagementError> {
     if (!isTodoSnapshot(input.snapshot))
       return Effect.fail(invalidInput())
-    const body = JSON.stringify(input.snapshot)
-    if (Buffer.byteLength(body, 'utf8') > maxTodoSnapshotBytes)
+    const body = encodeTodoSnapshot(input.snapshot)
+    if (body.byteLength > maxTodoSnapshotBytes)
       return Effect.fail(invalidInput())
     return this.mutate(input, '/v1/todos', {
       body,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/x-protobuf' },
       method: 'POST',
     })
   }

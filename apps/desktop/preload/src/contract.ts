@@ -33,7 +33,10 @@ export type * from '@memorilo/desktop-api'
 
 export type DesktopPlatform = 'macos' | 'windows' | 'linux' | 'other'
 
+export const desktopCustomTitlebarArgument = '--memorilo-custom-titlebar'
+
 export interface DesktopApi {
+  readonly customTitlebarEnabled: boolean
   readonly platform: DesktopPlatform
   deviceProvisioning: {
     cancelSelection: () => Promise<void>

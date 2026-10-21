@@ -3,14 +3,14 @@ import type { DesktopConfiguration } from '@memorilo/desktop-config'
 import type { LearningPracticeConfiguration, TodoTask } from '@memorilo/editor-storage'
 import type { P2pApplication } from '@memorilo/sync/node'
 import type { MessageBoxOptions } from 'electron'
+import type { DesktopPaths } from './storage/workspace-paths'
 import type { TodoDevicePushTarget } from './todo/todo-device-push-service'
-import { Buffer } from 'node:buffer'
 import { createHash, randomBytes } from 'node:crypto'
 import { mkdirSync } from 'node:fs'
 import { rename } from 'node:fs/promises'
 import { hostname } from 'node:os'
-import { join, resolve } from 'node:path'
 
+import { dirname, join, resolve } from 'node:path'
 import process from 'node:process'
 import { createConfigurationStore } from '@memorilo/config'
 import { desktopSyncServerEventChannel } from '@memorilo/desktop-api'
@@ -26,9 +26,10 @@ import {
 } from '@memorilo/editor-storage'
 import { createOperationSupervisor, createResourceScope } from '@memorilo/effect-lifecycle'
 import { ShelfReadingFileStore } from '@memorilo/shelf/node'
-import { decodeSyncServerCredentialBundle } from '@memorilo/sync'
+import { decodeSyncServerCredentialBundle, encodeLearningMutation, learningMutationRecord } from '@memorilo/sync'
 
-import { createP2pApplication, JsonSyncJournal, syncServerDialTarget } from '@memorilo/sync/node'
+import { decodeMemoriloProto, encodeMemoriloProto } from '@memorilo/sync-protocol'
+import { createP2pApplication, ProtobufSyncJournal, syncServerDialTarget } from '@memorilo/sync/node'
 import { Effect } from 'effect'
 import { app, BrowserWindow, dialog } from 'electron'
 import { installApplicationMenu } from './application-menu'
@@ -49,12 +50,6 @@ import { ElectronLocalManagementCredentialStore } from './storage/electron-local
 import { ElectronSyncServerCredentialStore } from './storage/electron-sync-server-credential-store'
 import { openCurrentMainDatabase } from './storage/main-database'
 import { TransformersEmbeddingModel } from './storage/transformers-embedding-model'
-import {
-  applicationDataDirectory,
-  assetDirectory,
-  mainDatabasePath,
-  shelfLibraryDirectory,
-} from './storage/workspace-paths'
 import { createSyncServerStatusController } from './sync-server-status'
 import { createTodoCalendarFeedService, ElectronTodoCalendarFeedTokenStore } from './todo/todo-calendar-feed-service'
 import { createTodoDevicePushService } from './todo/todo-device-push-service'
@@ -69,16 +64,11 @@ export interface DesktopRuntime {
 
 interface DesktopRuntimeOptions {
   allowTestClock: boolean
-  createWindow: () => void
+  createWindow: (redrawTitlebar: boolean) => void
+  paths: DesktopPaths
   flushRenderer: () => Promise<boolean>
   mainDirectory: string
   requestRestart: () => void
-}
-
-function embeddingModelCacheDirectory(mainDirectory: string): string {
-  if (app.isPackaged)
-    return join(process.resourcesPath, 'embedding-models')
-  return resolve(mainDirectory, '../../../../.cache/embedding-models')
 }
 
 function learningPracticeConfiguration(
@@ -156,42 +146,6 @@ async function createDesktopConfigurationStore(dataDirectory: string): Promise<C
   }
 }
 
-function shelfImageCacheDatabasePath(dataDirectory: string): string {
-  const configured = process.env.MEMORILO_SHELF_IMAGE_CACHE_PATH
-  if (configured !== undefined) {
-    if (configured.length === 0)
-      throw new TypeError('MEMORILO_SHELF_IMAGE_CACHE_PATH must not be empty')
-    return configured
-  }
-  if (!app.isPackaged)
-    return join(dataDirectory, 'shelf-images.sqlite')
-  const homePath = app.getPath('home')
-  const cacheDirectory = process.platform === 'darwin'
-    ? join(homePath, 'Library', 'Caches', 'Memorilo')
-    : process.platform === 'win32'
-      ? join(process.env.LOCALAPPDATA || app.getPath('sessionData'), 'Memorilo', 'Cache')
-      : join(process.env.XDG_CACHE_HOME || join(homePath, '.cache'), 'memorilo')
-  mkdirSync(cacheDirectory, { recursive: true })
-  return join(cacheDirectory, 'shelf-images.sqlite')
-}
-
-function shelfBookCacheDirectory(dataDirectory: string): string {
-  const configured = process.env.MEMORILO_SHELF_BOOK_CACHE_PATH
-  if (configured !== undefined) {
-    if (configured.length === 0)
-      throw new TypeError('MEMORILO_SHELF_BOOK_CACHE_PATH must not be empty')
-    return configured
-  }
-  if (process.env.MEMORILO_SHELF_IMAGE_CACHE_PATH === ':memory:')
-    return join(dataDirectory, 'shelf-book-cache')
-  const homePath = app.getPath('home')
-  return process.platform === 'darwin'
-    ? join(homePath, 'Library', 'Caches', 'Memorilo', 'shelf-books')
-    : process.platform === 'win32'
-      ? join(process.env.LOCALAPPDATA || app.getPath('sessionData'), 'Memorilo', 'Cache', 'shelf-books')
-      : join(process.env.XDG_CACHE_HOME || join(homePath, '.cache'), 'memorilo', 'shelf-books')
-}
-
 function learningNow(allowTestClock: boolean): () => number {
   const configured = process.env.MEMORILO_E2E_NOW_MS
   if (configured === undefined)
@@ -232,11 +186,17 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   // a failed close retry. Do not release prerequisites past the first failure.
   const scope = createResourceScope('Application', { closeMode: 'dependent' })
   try {
-    const userDataPath = app.getPath('userData')
-    const dataDirectory = applicationDataDirectory(userDataPath, resolve(options.mainDirectory, '../../../../.dev'), app.isPackaged)
+    const {
+      assetDirectory: assets,
+      dataDirectory,
+      databasePath: database,
+      shelfBookCacheDirectory,
+      shelfImageCacheDatabasePath,
+      shelfLibraryDirectory,
+    } = options.paths
     mkdirSync(dataDirectory, { recursive: true })
-    const database = mainDatabasePath(dataDirectory)
-    const assets = assetDirectory(database)
+    if (shelfImageCacheDatabasePath !== ':memory:')
+      mkdirSync(dirname(shelfImageCacheDatabasePath), { recursive: true })
     const configuration = await scope.acquire({
       acquire: () => createDesktopConfigurationStore(dataDirectory),
       close: store => store.close(),
@@ -284,7 +244,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
         databaseOwnership: 'borrowed',
         embeddingModel: new TransformersEmbeddingModel({
           allowRemoteModels: !app.isPackaged && process.env.MEMORILO_EMBEDDING_MODEL_OFFLINE !== '1',
-          cacheDirectory: embeddingModelCacheDirectory(options.mainDirectory),
+          cacheDirectory: options.paths.embeddingModelCacheDirectory,
         }),
         learningConfiguration: () => learningPracticeConfiguration(configurationStore.getSnapshot()),
         operationSupervisor: mainDatabaseOperations,
@@ -348,8 +308,8 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
         })
     // Development worktrees keep identity, pairing, signing keys, and journal in .dev.
     const p2pStatePath = join(dataDirectory, 'p2p', 'identity.json')
-    const syncJournalPath = join(dataDirectory, 'p2p', 'sync-journal.json')
-    let syncJournal = new JsonSyncJournal(syncJournalPath)
+    const syncJournalPath = join(dataDirectory, 'p2p', 'sync-journal.bin')
+    let syncJournal = new ProtobufSyncJournal(syncJournalPath)
     await syncJournal.load()
     const pendingJournalWrites = new Set<Promise<void>>()
     const pendingLocalNoteUpdates: Array<{ noteId: string, update: Uint8Array }> = []
@@ -383,7 +343,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
         .update('\0')
         .update(update)
         .digest('hex')
-      const payload = JSON.stringify({ noteId, update: Buffer.from(update).toString('base64url') })
+      const payload = encodeMemoriloProto('NoteUpdate', { noteId, loroUpdate: update })
       const write = syncJournal.appendLocal({
         id: `${deviceId}:note:${updateId}`,
         kind: 'note-update',
@@ -404,7 +364,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       name: 'Shelf storage',
     })).resource
     const imageCacheDatabase = await scope.acquire({
-      acquire: () => new BetterSqliteDatabase(shelfImageCacheDatabasePath(dataDirectory), {
+      acquire: () => new BetterSqliteDatabase(shelfImageCacheDatabasePath, {
         loadVectorExtension: false,
       }),
       close: current => current.close(),
@@ -417,8 +377,8 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     })).resource
     const shelfReadingFiles = (await scope.acquire({
       acquire: () => ShelfReadingFileStore.open({
-        cacheDirectory: shelfBookCacheDirectory(dataDirectory),
-        libraryDirectory: shelfLibraryDirectory(database, dataDirectory),
+        cacheDirectory: shelfBookCacheDirectory,
+        libraryDirectory: shelfLibraryDirectory,
       }),
       close: files => files.close(),
       name: 'Shelf reading files',
@@ -517,14 +477,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
               const noteUpdates = new Map<string, Uint8Array[]>()
               for (const change of changes) {
                 if (change.kind === 'learning-mutation') {
-                  const learningChange = JSON.parse(change.payload) as {
-                    createdAt: number
-                    entityId: string
-                    entityKind: 'assignment' | 'card' | 'optimizer' | 'review-event' | 'tombstone'
-                    mutationId: string
-                    operation: 'delete' | 'upsert'
-                    payload: unknown
-                  }
+                  const learningChange = learningMutationRecord(change.payload) as any
                   await editorStorage.learning.sync.applyRemote({
                     ...learningChange,
                     sourceDeviceId: change.deviceId,
@@ -535,10 +488,10 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
                 }
                 if (change.kind !== 'note-update')
                   continue
-                const payload = JSON.parse(change.payload) as { noteId: string, update: string }
-                const updates = noteUpdates.get(payload.noteId) ?? []
-                updates.push(Uint8Array.from(Buffer.from(payload.update, 'base64url')))
-                noteUpdates.set(payload.noteId, updates)
+                const payload = decodeMemoriloProto('NoteUpdate', change.payload) as any
+                const updates = noteUpdates.get(String(payload.noteId)) ?? []
+                updates.push(new Uint8Array(payload.loroUpdate))
+                noteUpdates.set(String(payload.noteId), updates)
               }
               for (const [noteId, updates] of noteUpdates)
                 await notes.saveNoteUpdates({ noteId, updates })
@@ -603,7 +556,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
               const write = syncJournal.appendLocal({
                 id: change.mutationId,
                 kind: 'learning-mutation',
-                payload: JSON.stringify(change),
+                payload: encodeLearningMutation(change as any),
               })
               await write
             }
@@ -649,7 +602,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       if (syncJournal.deviceId !== null && syncJournal.deviceId !== deviceId) {
         const backupPath = `${syncJournal.path}.backup-${Date.now()}-${randomBytes(6).toString('hex')}`
         await rename(syncJournal.path, backupPath)
-        syncJournal = new JsonSyncJournal(syncJournal.path)
+        syncJournal = new ProtobufSyncJournal(syncJournal.path)
         await syncJournal.load()
         await reportP2pJournalRecovery(backupPath)
       }
@@ -684,7 +637,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
         databasePath: database,
         flushRenderer: options.flushRenderer,
         requestRestart: options.requestRestart,
-        shelfDirectory: shelfLibraryDirectory(database, dataDirectory),
+        shelfDirectory: shelfLibraryDirectory,
       }),
       close: application => application.close(),
       name: 'database backup',
@@ -801,10 +754,10 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       close: remove => remove(),
       name: 'application menu',
     })
-    options.createWindow()
+    options.createWindow(configurationStore.getSnapshot().redrawTitlebar)
     const handleActivate = (): void => {
       if (BrowserWindow.getAllWindows().length === 0)
-        options.createWindow()
+        options.createWindow(configurationStore.getSnapshot().redrawTitlebar)
     }
     await scope.acquire({
       acquire: () => {

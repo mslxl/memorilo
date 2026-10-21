@@ -3,6 +3,7 @@ import type { DeviceId, SyncChange, SyncDataNamespace, VersionVector } from './m
 import { randomUUID } from 'node:crypto'
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
+import { decodeMemoriloProto, encodeMemoriloProto } from '@memorilo/sync-protocol'
 import { normalizeVersionVector } from './model'
 
 export type { LocalSyncChangeInput } from './journal-contract'
@@ -36,10 +37,35 @@ function namespaceForChange(change: Pick<SyncChange, 'kind'>): SyncDataNamespace
   return change.kind === 'note-update' ? 'notes' : 'learning'
 }
 
-function parseJournal(value: unknown): PersistedSyncJournal {
+function parseJournal(bytes: Uint8Array): PersistedSyncJournal {
+  const value = decodeMemoriloProto('SyncJournal', bytes) as any
+  const pendingEntries = (value.pendingReceivedSequences ?? []) as Array<{ deviceId?: string, sequence?: number }>
+  const pendingReceivedSequences: Record<string, number[]> = {}
+  for (const entry of pendingEntries) {
+    const deviceId = String(entry.deviceId ?? '')
+    const sequence = Number(entry.sequence)
+    if (!deviceId || !Number.isSafeInteger(sequence) || sequence < 1) {
+      throw new TypeError('P2P sync journal pending sequences are invalid')
+    }
+    ;(pendingReceivedSequences[deviceId] ??= []).push(sequence)
+  }
+  const decodedChanges = ((value.changes ?? []) as any[]).map(change => ({
+    deviceId: String(change.deviceId),
+    id: String(change.id),
+    kind: change.noteUpdate !== undefined ? 'note-update' : 'learning-mutation',
+    payload: change.noteUpdate !== undefined
+      ? encodeMemoriloProto('NoteUpdate', change.noteUpdate)
+      : encodeMemoriloProto('LearningMutation', change.learningMutation),
+    sequence: Number(change.sequence),
+  }))
+  const candidate = {
+    ...value,
+    changes: decodedChanges,
+    pendingReceivedSequences,
+    receivedVersionVector: Object.fromEntries(((value.receivedVersionVector?.entries ?? []) as Array<{ deviceId?: string, sequence?: number }>).map(entry => [String(entry.deviceId), Number(entry.sequence)])),
+  } as Partial<PersistedSyncJournal>
   if (typeof value !== 'object' || value === null)
     throw new TypeError('P2P sync journal must contain an object')
-  const candidate = value as Partial<PersistedSyncJournal>
   if (candidate.version !== 1 || !Array.isArray(candidate.changes))
     throw new TypeError('Unsupported P2P sync journal version')
   assertSequence(candidate.nextSequence, 'P2P sync journal next sequence')
@@ -49,7 +75,6 @@ function parseJournal(value: unknown): PersistedSyncJournal {
   if (deviceId === undefined)
     throw new TypeError('P2P sync journal device id is invalid')
   const receivedVersionVector = normalizeVersionVector(candidate.receivedVersionVector ?? {})
-  const pendingReceivedSequences: Record<string, number[]> = {}
   for (const [sourceDeviceId, sequences] of Object.entries(candidate.pendingReceivedSequences ?? {})) {
     if (!Array.isArray(sequences))
       throw new TypeError('P2P sync journal pending sequences are invalid')
@@ -67,7 +92,7 @@ function parseJournal(value: unknown): PersistedSyncJournal {
     if (typeof current.id !== 'string' || current.id.length === 0
       || typeof current.deviceId !== 'string' || current.deviceId.length === 0
       || (current.kind !== 'note-update' && current.kind !== 'learning-mutation')
-      || typeof current.payload !== 'string') {
+      || !(current.payload instanceof Uint8Array)) {
       throw new TypeError('P2P sync journal change is invalid')
     }
     assertSequence(current.sequence, 'P2P sync journal change sequence')
@@ -75,7 +100,7 @@ function parseJournal(value: unknown): PersistedSyncJournal {
       deviceId: current.deviceId,
       id: current.id,
       kind: current.kind,
-      payload: current.payload,
+      payload: new Uint8Array(current.payload),
       sequence: current.sequence,
     }
   })
@@ -89,7 +114,7 @@ function parseJournal(value: unknown): PersistedSyncJournal {
   }
 }
 
-export class JsonSyncJournal {
+export class ProtobufSyncJournal {
   #state: PersistedSyncJournal = emptyJournal()
   #loaded = false
   #mutationQueue: Promise<void> = Promise.resolve()
@@ -100,7 +125,7 @@ export class JsonSyncJournal {
     if (this.#loaded)
       return
     try {
-      this.#state = parseJournal(JSON.parse(await readFile(this.path, 'utf8')) as unknown)
+      this.#state = parseJournal(await readFile(this.path))
     }
     catch (error) {
       if (!(error instanceof Error && 'code' in error && error.code === 'ENOENT'))
@@ -166,7 +191,7 @@ export class JsonSyncJournal {
         deviceId: this.#state.deviceId,
         id: input.id,
         kind: input.kind,
-        payload: input.payload,
+        payload: new Uint8Array(input.payload),
         sequence: this.#state.nextSequence,
       }
       this.#state.nextSequence += 1
@@ -188,7 +213,7 @@ export class JsonSyncJournal {
       for (const change of changes) {
         assertSequence(change.sequence, 'Received P2P sync change sequence')
         if (!knownChangeIds.has(change.id)) {
-          this.#state.changes.push({ ...change })
+          this.#state.changes.push({ ...change, payload: new Uint8Array(change.payload) })
           knownChangeIds.add(change.id)
           acceptedNewChange = true
         }
@@ -246,7 +271,22 @@ export class JsonSyncJournal {
   async #save(): Promise<void> {
     await mkdir(dirname(this.path), { recursive: true })
     const temporaryPath = `${this.path}.tmp-${randomUUID()}`
-    await writeFile(temporaryPath, `${JSON.stringify(this.#state)}\n`, { encoding: 'utf8', flag: 'wx' })
+    const bytes = encodeMemoriloProto('SyncJournal', {
+      changes: this.#state.changes.map(change => ({
+        deviceId: change.deviceId,
+        id: change.id,
+        sequence: change.sequence,
+        ...(change.kind === 'note-update'
+          ? { noteUpdate: decodeMemoriloProto('NoteUpdate', change.payload) }
+          : { learningMutation: decodeMemoriloProto('LearningMutation', change.payload) }),
+      })),
+      deviceId: this.#state.deviceId ?? undefined,
+      nextSequence: this.#state.nextSequence,
+      pendingReceivedSequences: Object.entries(this.#state.pendingReceivedSequences).flatMap(([deviceId, sequences]) => sequences.map(sequence => ({ deviceId, sequence }))),
+      receivedVersionVector: { entries: Object.entries(this.#state.receivedVersionVector).map(([deviceId, sequence]) => ({ deviceId, sequence })) },
+      version: this.#state.version,
+    })
+    await writeFile(temporaryPath, bytes, { flag: 'wx' })
     await rename(temporaryPath, this.path)
   }
 }

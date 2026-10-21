@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <title>Memorilo - Grow and Do</title>
+  <desc>An open notebook with new leaves and a completed task, connecting knowledge with everyday action.</desc>
+  <rect x="64" y="64" width="896" height="896" rx="198" fill="#46644F"/>
+  <path d="M512 549V429" fill="none" stroke="#F7F0D7" stroke-width="28" stroke-linecap="round"/>
+  <path d="M512 450C420 451 364 397 356 305C447 300 509 347 512 450Z" fill="#F7F0D7"/>
+  <path d="M512 403C510 315 569 267 668 272C661 363 610 409 512 403Z" fill="#F7F0D7"/>
+  <path d="M268 505Q387 470 500 541V746Q387 679 268 713Z" fill="#F7F0D7"/>
+  <path d="M524 541Q637 470 756 505V713Q637 679 524 746Z" fill="#F7F0D7"/>
+  <path d="M574 618L618 654L705 566" fill="none" stroke="#46644F" stroke-width="32" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

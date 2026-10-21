@@ -560,6 +560,14 @@ export const desktopOperationSchemas = {
     updateSource: operation(Schema.Tuple([UpdateShelfSourceInputSchema]), ShelfSourceSchema),
   },
   window: {
+    showApplicationMenu: contextualOperation(Schema.Tuple([Schema.Struct({
+      anchor: Schema.Struct({ x: Schema.Int, y: Schema.Int }),
+      menu: Schema.Literals(['file', 'edit', 'view', 'window']),
+    })]), NullResultSchema),
+    setTitlebarAppearance: contextualOperation(Schema.Tuple([Schema.Struct({
+      backgroundColor: Schema.String.check(Schema.isPattern(/^#[\da-f]{6}$/i)),
+      symbolColor: Schema.String.check(Schema.isPattern(/^#[\da-f]{6}$/i)),
+    })]), NullResultSchema),
     captureReaderRegion: contextualOperation(Schema.Tuple([CaptureReaderRegionInputSchema]), Schema.Uint8ArrayFromBase64),
     showColumnVisibilityMenu: contextualOperation(
       Schema.Tuple([ShowColumnVisibilityMenuInputSchema]),

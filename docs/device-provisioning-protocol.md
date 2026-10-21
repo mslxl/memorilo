@@ -27,7 +27,13 @@ Stable error codes are `authentication-required`, `configuration-mode-required`,
 
 ## USB serial transport
 
-The desktop opens the selected Web Serial port at 115200 baud. Requests and responses are newline-delimited UTF-8 JSON prefixed with `MEMORILO_PROVISIONING_V1 `. Firmware logs share the same USB Serial/JTAG stream, so clients must ignore every line without that exact prefix. A serial message is limited to 64 KiB.
+The desktop opens the selected Web Serial port at 115200 baud. Configuration,
+Wi-Fi, and gallery requests and responses are newline-delimited UTF-8 JSON
+prefixed with `MEMORILO_PROVISIONING_V1 `. TODO synchronization uses a binary
+frame with the same prefix, a little-endian `u32` payload length, and a
+Protobuf payload. Firmware logs share the same USB Serial/JTAG stream, so
+clients must ignore every line without that exact prefix. Every serial message
+is limited to 64 KiB.
 
 A read request contains `operation: "read"`, `protocolVersion`, and `requestId`. Its response contains the same request ID plus `deviceInfo` and `publicConfig`. An apply request contains `operation: "apply"` and the same `ApplyConfigEnvelope` sent through the BLE apply characteristic. Its response contains the same `ApplyStatusEnvelope` emitted through the BLE status characteristic. The firmware routes both transports through one persistence, validation, application dispatch, and network reconfiguration transaction.
 
@@ -41,16 +47,10 @@ those names manually in the Device Settings SSID field.
 ### TODO synchronization
 
 Both transports also accept a bounded `todo.sync` request on the gallery
-characteristic/serial envelope:
-
-```json
-{
-  "operation": "todo.sync",
-  "protocolVersion": 1,
-  "requestId": "todo-1",
-  "snapshot": { "generatedAt": "...", "revision": "...", "items": [] }
-}
-```
+characteristic/serial envelope. The request and response use the shared
+`TodoSyncRequest` and `TodoSyncResponse` Protobuf messages. BLE carries the
+Protobuf bytes in the normal chunk frames. Serial carries them in the binary
+frame described above.
 
 The response is `accepted` or `rejected`. `items: []` is a valid authoritative
 snapshot and clears the device's retained TODO model; it is never treated as a
@@ -70,7 +70,9 @@ Weather is fetched only when it is enabled, Wi-Fi is online, trusted time has sy
 
 ## Framing and limits
 
-JSON payloads are UTF-8 and limited to 64 KiB. They use binary GATT frames with an 18-byte little-endian header followed by at most 384 payload bytes:
+JSON payloads are UTF-8 and limited to 64 KiB. TODO Protobuf payloads use the
+same binary GATT frames with an 18-byte little-endian header followed by at
+most 384 payload bytes. The CRC covers the complete payload bytes:
 
 | Offset | Size | Meaning |
 | --- | --- | --- |
@@ -97,6 +99,8 @@ Ordinary JSON and command requests are limited to 1024 body bytes. Gallery uploa
 | --- | --- | --- |
 | `GET` | `/v1/status` | bounded device and network status |
 | `GET` | `/v1/gallery` | bounded gallery metadata, storage limits, last mutation result, and full-refresh cost |
+| `GET` | `/v1/todos` | bounded TODO status (JSON status projection) |
+| `POST` | `/v1/todos` | enqueue a `TodoSnapshot` Protobuf payload |
 | `POST` | `/v1/gallery/assets` | enqueue one exact packed frame; percent-encoded name and Unix timestamp are supplied in bounded headers |
 | `POST` | `/v1/gallery/delete` | enqueue `{ "id": number }` |
 | `POST` | `/v1/gallery/reorder` | enqueue `{ "order": number[] }` containing every current asset ID once |
@@ -105,7 +109,7 @@ Ordinary JSON and command requests are limited to 1024 body bytes. Gallery uploa
 | `POST` | `/v1/commands/next-page` | enqueue page navigation |
 | `POST` | `/v1/commands/sleep` | request sleep |
 
-Mutating commands return `202` only after entering the bounded application queue. The application main loop owns all gallery index and partition writes; HTTP workers never call the display or retained C panel driver. Clients observe completion by polling `/v1/gallery` until `mutationRevision` advances, then check `lastError`. Missing or incorrect authentication returns `401`, malformed or incorrectly sized gallery bodies return `400`, oversized ordinary requests return `413`, disallowed methods return `405`, and a saturated command queue returns `503`. Audit logs record only the command kind and outcome, never credentials.
+Mutating commands return `202` only after entering the bounded application queue. A TODO push uses `application/x-protobuf` with the shared `TodoSnapshot` message and returns a `TodoSyncResponse` Protobuf body. The application main loop owns all gallery index and partition writes; HTTP workers never call the display or retained C panel driver. Clients observe completion by polling `/v1/gallery` until `mutationRevision` advances, then check `lastError`. Missing or incorrect authentication returns `401`, malformed or incorrectly sized gallery bodies return `400`, oversized ordinary requests return `413`, disallowed methods return `405`, and a saturated command queue returns `503`. Audit logs record only the command kind and outcome, never credentials.
 
 Memorilo's renderer passes only the device ID, a user-entered private IPv4 address or generated `memorilo-*.local` discovery name, and operation data through the preload bridge. The Electron main process loads the encrypted token, restricts literal addresses to RFC1918 or link-local IPv4 targets, adds the Bearer header, rejects redirects, and bounds response parsing. The token is never returned to renderer code. Address and device ID are not cryptographically bound yet, so verify the configured target before enabling LAN management; challenge/response is a future hardening step.
 ## Wi-Fi network selection

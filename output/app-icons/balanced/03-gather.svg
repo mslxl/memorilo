@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <title>Memorilo - Gather</title>
+  <desc>Four equally weighted page forms collect around a shared center, representing an organized personal workspace.</desc>
+  <rect x="64" y="64" width="896" height="896" rx="198" fill="#46644F"/>
+  <g fill="#F7F0D7">
+    <path d="M512 286H660Q738 286 738 364V488H614V410H512Z"/>
+    <path d="M512 286H660Q738 286 738 364V488H614V410H512Z" transform="rotate(90 512 512)"/>
+    <path d="M512 286H660Q738 286 738 364V488H614V410H512Z" transform="rotate(180 512 512)"/>
+    <path d="M512 286H660Q738 286 738 364V488H614V410H512Z" transform="rotate(270 512 512)"/>
+  </g>
+</svg>

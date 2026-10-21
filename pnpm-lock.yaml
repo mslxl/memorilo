@@ -187,6 +187,9 @@ importers:
       '@memorilo/desktop-preload':
         specifier: workspace:*
         version: link:../preload
+      '@memorilo/device-provisioning':
+        specifier: workspace:*
+        version: link:../../../packages/device-provisioning
       '@memorilo/editor':
         specifier: workspace:*
         version: link:../../../packages/editor
@@ -205,6 +208,9 @@ importers:
       '@memorilo/sync':
         specifier: workspace:*
         version: link:../../../packages/sync
+      '@memorilo/sync-protocol':
+        specifier: workspace:*
+        version: link:../../../packages/sync-protocol
       '@modelcontextprotocol/sdk':
         specifier: 1.30.0
         version: 1.30.0(zod@4.4.3)
@@ -433,6 +439,9 @@ importers:
       '@memorilo/sync':
         specifier: workspace:*
         version: link:../../packages/sync
+      '@memorilo/sync-protocol':
+        specifier: workspace:*
+        version: link:../../packages/sync-protocol
       '@memorilo/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -539,6 +548,13 @@ importers:
         version: 19.2.3(@types/react@19.2.17)
 
   packages/device-provisioning:
+    dependencies:
+      '@memorilo/sync-protocol':
+        specifier: workspace:*
+        version: link:../sync-protocol
+      protobufjs:
+        specifier: 7.6.5
+        version: 7.6.5
     devDependencies:
       '@types/node':
         specifier: ^22.15.30
@@ -1042,6 +1058,9 @@ importers:
       '@libp2p/websockets':
         specifier: ^10.1.20
         version: 10.1.20
+      '@memorilo/sync-protocol':
+        specifier: workspace:*
+        version: link:../sync-protocol
       '@multiformats/multiaddr':
         specifier: ^13.0.3
         version: 13.0.3
@@ -1054,6 +1073,9 @@ importers:
       main-event:
         specifier: ^1.0.5
         version: 1.0.5
+      protobufjs:
+        specifier: 7.6.5
+        version: 7.6.5
       uint8arraylist:
         specifier: ^3.0.2
         version: 3.0.2
@@ -1070,6 +1092,16 @@ importers:
       effect:
         specifier: 4.0.0-beta.23
         version: 4.0.0-beta.23
+
+  packages/sync-protocol:
+    dependencies:
+      protobufjs:
+        specifier: 7.6.5
+        version: 7.6.5
+    devDependencies:
+      '@types/node':
+        specifier: ^22.15.30
+        version: 22.20.1
 
   packages/ui:
     dependencies:

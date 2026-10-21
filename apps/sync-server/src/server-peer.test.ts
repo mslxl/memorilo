@@ -1,10 +1,11 @@
 import type { SyncAssetManifest, SyncChange, SyncHello, SyncObjectStore } from '@memorilo/sync'
 import type { P2pNodeHandle, SyncObjectTransferStore, SyncStateProvider } from '@memorilo/sync/node'
-import { Buffer } from 'node:buffer'
 import { createHash } from 'node:crypto'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { encodeLearningMutation } from '@memorilo/sync'
+import { encodeMemoriloProto } from '@memorilo/sync-protocol'
 import { createP2pNode, MemoryPairingStore, PairingManager } from '@memorilo/sync/node'
 import { LoroDoc } from 'loro-crdt'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -16,6 +17,16 @@ describe('sync server peer', () => {
   const handles: Array<{ close: () => Promise<void> }> = []
   const databases: Array<{ close: () => void }> = []
   const directories: string[] = []
+
+  const notePayload = (noteId: string, update: Uint8Array = Uint8Array.from([1])) => encodeMemoriloProto('NoteUpdate', { noteId, loroUpdate: update })
+  const tombstonePayload = (id: string) => encodeLearningMutation({
+    createdAt: 10,
+    entityId: id,
+    entityKind: 'tombstone',
+    mutationId: id,
+    operation: 'delete',
+    payload: { generation: 0, scopeId: 'card-1', scopeKind: 'card', tombstoneId: id },
+  })
 
   afterEach(async () => {
     await Promise.all(handles.splice(0).map(handle => handle.close()))
@@ -161,10 +172,7 @@ describe('sync server peer', () => {
       deviceId: fixture.clientDeviceId,
       id: 'authoritative-change',
       kind: 'note-update',
-      payload: JSON.stringify({
-        noteId: 'authoritative-note',
-        update: Buffer.from(source.export({ mode: 'snapshot' })).toString('base64url'),
-      }),
+      payload: notePayload('authoritative-note', source.export({ mode: 'snapshot' })),
       sequence: 1,
     }
     fixture.clientChanges.push(change)
@@ -186,7 +194,7 @@ describe('sync server peer', () => {
       deviceId: fixture.clientDeviceId,
       id: 'invalid-authoritative-note',
       kind: 'note-update',
-      payload: '{"title":"not a note update"}',
+      payload: Uint8Array.from([0xFF]),
       sequence: 1,
     })
     const target = fixture.server.multiaddrs[0]
@@ -203,17 +211,7 @@ describe('sync server peer', () => {
       deviceId: fixture.clientDeviceId,
       id: 'learning-tombstone-change',
       kind: 'learning-mutation',
-      payload: JSON.stringify({
-        createdAt: 10,
-        entityId: 'tombstone-1',
-        entityKind: 'tombstone',
-        generation: 0,
-        mutationId: 'learning-tombstone-change',
-        operation: 'delete',
-        scopeId: 'card-1',
-        scopeKind: 'card',
-        tombstoneId: 'tombstone-1',
-      }),
+      payload: tombstonePayload('tombstone-1'),
       sequence: 1,
     })
     const target = fixture.server.multiaddrs[0]
@@ -237,7 +235,7 @@ describe('sync server peer', () => {
       deviceId: fixture.clientDeviceId,
       id: 'authoritative-note-snapshot',
       kind: 'note-update',
-      payload: JSON.stringify({ noteId: 'note-1', update: Buffer.from(source.export({ mode: 'snapshot' })).toString('base64url') }),
+      payload: notePayload('note-1', source.export({ mode: 'snapshot' })),
       sequence: 1,
     })
     const target = fixture.server.multiaddrs[0]
@@ -326,7 +324,7 @@ describe('sync server peer', () => {
       deviceId: fixture.clientDeviceId,
       id: 'relay-only-change',
       kind: 'learning-mutation',
-      payload: '{"rating":4}',
+      payload: tombstonePayload('relay-only-change'),
       sequence: 1,
     })
     const serverPeerId = fixture.server.application.localDevice().peerId
@@ -352,7 +350,7 @@ describe('sync server peer', () => {
       deviceId: fixture.clientDeviceId,
       id: 'relayed-change',
       kind: 'note-update',
-      payload: '{"title":"relayed"}',
+      payload: notePayload('relayed-note'),
       sequence: 1,
     }
     fixture.clientChanges.push(change)
@@ -449,7 +447,7 @@ describe('sync server peer', () => {
       deviceId: fixture.clientDeviceId,
       id: 'maintenance-change',
       kind: 'note-update',
-      payload: '{"title":"blocked"}',
+      payload: notePayload('blocked-note'),
       sequence: 1,
     })
     const serverPeerId = fixture.server.application.localDevice().peerId

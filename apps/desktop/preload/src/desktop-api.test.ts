@@ -14,6 +14,21 @@ function serviceStub(): DesktopIpcClient {
 }
 
 describe('desktop preload API', () => {
+  it.each(['windows', 'linux', 'macos', 'other'] as const)('exposes the actual frame choice on %s', (platform) => {
+    const api = createDesktopApi(
+      platform,
+      serviceStub(),
+      vi.fn(() => vi.fn()),
+      vi.fn(() => vi.fn()),
+      vi.fn(() => vi.fn()),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      true,
+    )
+    expect(api.customTitlebarEnabled).toBe(platform === 'windows' || platform === 'linux')
+  })
   it('exposes the user Whiteboard Library transport unchanged', async () => {
     const services = serviceStub()
     const library = {

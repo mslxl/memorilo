@@ -1,13 +1,17 @@
+import type { EditorExportNode } from '@memorilo/editor/export'
 import type { TaskIcsEvent, TaskSchedule, TaskStatus } from '@memorilo/editor/task'
 import type {
   SyncDeviceTodoScope,
   SyncDeviceTodoStore,
   SyncDeviceTodoToken,
   SyncNoteSnapshotRecord,
+  SyncObjectStore,
   SyncRepository,
+  VersionVector,
 } from '@memorilo/sync'
 import { Buffer } from 'node:buffer'
 import { createHash, randomBytes, randomUUID } from 'node:crypto'
+import { renderHtmlContent } from '@memorilo/editor/export'
 import { createEditorNote } from '@memorilo/editor/note'
 import { parseTaskRepeatRule, parseTaskSchedule, projectTaskOccurrences, readTaskStatus, serializeTodoIcsFeed, todoOccurrenceUid } from '@memorilo/editor/task'
 import { Effect } from 'effect'
@@ -16,6 +20,10 @@ import { noteSnapshotRevision } from '../infrastructure/database/shared'
 const deviceTokenPrefix = 'memorilo-todo-v1.'
 const calendarTokenPrefix = 'memorilo-calendar-v1.'
 const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/u
+const managedAssetPattern = /^memorilo:\/\/asset\/([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.[a-z0-9]+)$/u
+const maxInlineImageBytes = 1024 * 1024
+const assetManifestPageSize = 1_000
+const inlineImageMimeTypes = new Set(['image/gif', 'image/jpeg', 'image/png', 'image/webp'])
 
 export type DeviceTodoErrorCode
   = | 'account_not_authoritative'
@@ -104,11 +112,13 @@ interface TodoIdentity {
 
 interface ProjectedTodo extends DeviceTodoItem, TodoIdentity {
   readonly attributes: Readonly<Record<string, unknown>>
+  readonly content: EditorExportNode
   readonly journalDate: string | null
 }
 
 export interface DeviceTodoModuleOptions {
   readonly now?: () => number
+  readonly objectStore?: SyncObjectStore
   readonly repository: SyncRepository
   readonly store: SyncDeviceTodoStore
 }
@@ -118,6 +128,125 @@ const maxTokenLifetimeMs = 365 * 24 * 60 * 60 * 1000
 interface TodoProjection {
   readonly todos: readonly ProjectedTodo[]
   readonly revision: string
+}
+
+interface ManagedAsset {
+  readonly contentHash: string
+  readonly contentType: string | null
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll('\'', '&#39;')
+}
+
+function collectBlockNodes(node: EditorExportNode, result: Map<string, EditorExportNode>): void {
+  if (node.type === 'list' && typeof node.attrs?.blockId === 'string')
+    result.set(node.attrs.blockId, node)
+  node.content?.forEach(child => collectBlockNodes(child, result))
+}
+
+function imageSources(node: EditorExportNode, result: Set<string>): void {
+  if (node.type === 'image' && typeof node.attrs?.src === 'string' && managedAssetPattern.test(node.attrs.src))
+    result.add(node.attrs.src)
+  node.content?.forEach(child => imageSources(child, result))
+}
+
+async function readObject(objectStore: SyncObjectStore, accountId: string, key: string): Promise<Uint8Array | null> {
+  const object = await objectStore.get(accountId, key)
+  if (object === null)
+    return null
+  const chunks: Uint8Array[] = []
+  let length = 0
+  for await (const chunk of object.body) {
+    length += chunk.byteLength
+    if (length > maxInlineImageBytes)
+      return null
+    chunks.push(chunk)
+  }
+  const result = new Uint8Array(length)
+  let offset = 0
+  for (const chunk of chunks) {
+    result.set(chunk, offset)
+    offset += chunk.byteLength
+  }
+  return result
+}
+
+async function loadManagedAssets(
+  repository: SyncRepository,
+  accountId: string,
+  generation: number,
+): Promise<ReadonlyMap<string, ManagedAsset>> {
+  const result = new Map<string, ManagedAsset>()
+  let frontier: VersionVector = {}
+  while (true) {
+    const page = await repository.listAssetManifests(accountId, generation, frontier, assetManifestPageSize)
+    if (page.length === 0)
+      break
+    for (const manifest of page) {
+      if (manifest.operation === 'delete' || manifest.contentHash === null) {
+        result.delete(manifest.fileName)
+        continue
+      }
+      result.set(manifest.fileName, {
+        contentHash: manifest.contentHash,
+        contentType: manifest.contentType,
+      })
+    }
+    const next: Record<string, number> = { ...frontier }
+    for (const manifest of page)
+      next[manifest.deviceId] = Math.max(next[manifest.deviceId] ?? 0, manifest.sequence)
+    frontier = next
+    if (page.length < assetManifestPageSize)
+      break
+  }
+  return result
+}
+
+async function inlineManagedImage(
+  repository: SyncRepository,
+  objectStore: SyncObjectStore | undefined,
+  assets: ReadonlyMap<string, ManagedAsset>,
+  accountId: string,
+  generation: number,
+  source: string,
+): Promise<string | undefined> {
+  if (objectStore === undefined)
+    return undefined
+  // Feed generation never fetches arbitrary remote image URLs.
+  const match = managedAssetPattern.exec(source)
+  if (!match)
+    return undefined
+  const fileName = match[1]!
+  const asset = assets.get(fileName)
+  if (!asset || !inlineImageMimeTypes.has(asset.contentType ?? ''))
+    return undefined
+  const metadata = await repository.getObjectMetadata(accountId, generation, asset.contentHash)
+  if (metadata === null)
+    return undefined
+  const bytes = await readObject(objectStore, accountId, metadata.key)
+  if (bytes === null)
+    return undefined
+  return `data:${asset.contentType};base64,${Buffer.from(bytes).toString('base64')}`
+}
+
+function todoSummary(value: string): string {
+  const summary = value.replace(/\s+/gu, ' ').trim()
+  return summary.length === 0 ? 'Todo' : summary
+}
+
+function todoDescriptionHtml(todo: ProjectedTodo, imageData: ReadonlyMap<string, string>, parent: ProjectedTodo | undefined): string {
+  const content = renderHtmlContent(todo.content, {
+    inlineAsset: source => imageData.get(source),
+  })
+  const source = `${escapeHtml(todo.noteTitle)} / ${escapeHtml(todo.topicTitle)}`
+  const parentText = parent === undefined ? '' : `<br><strong>Parent:</strong> ${escapeHtml(parent.text)}`
+  return `${content}<p style="margin:1em 0 0;color:#68707d;font-size:.9em"><strong>Source:</strong> ${source}${parentText}</p>`
 }
 
 function fail(error: unknown): DeviceTodoError {
@@ -204,6 +333,10 @@ function projectSnapshot(snapshot: SyncNoteSnapshotRecord): readonly ProjectedTo
         continue
       const content = note.getTopicContent(entry.id)
       const blockById = new Map(content.blocks.map(block => [block.id, block]))
+      const validation = note.getTopicValidationInput(entry.id)
+      const blockNodes = new Map<string, EditorExportNode>()
+      if ('document' in validation)
+        collectBlockNodes(validation.document, blockNodes)
       for (const block of content.blocks) {
         if (block.kind !== 'task')
           continue
@@ -228,6 +361,10 @@ function projectSnapshot(snapshot: SyncNoteSnapshotRecord): readonly ProjectedTo
           projected.push({
             attributes: block.attributes,
             blockId: block.id,
+            content: blockNodes.get(block.id) ?? {
+              content: [{ text: block.text, type: 'text' }],
+              type: 'paragraph',
+            },
             id: todoId({ blockId: block.id, noteId: snapshot.noteId, topicId: entry.id }),
             journalDate,
             noteId: snapshot.noteId,
@@ -399,6 +536,25 @@ export function createDeviceTodoModule(options: DeviceTodoModuleOptions): Device
       const state = await accountState(credential.accountId)
       const projection = await getProjection(credential.accountId, state.generation)
       const byId = new Map(projection.todos.map(todo => [todo.id, todo]))
+      const sources = new Set<string>()
+      for (const todo of projection.todos)
+        imageSources(todo.content, sources)
+      const managedAssets = sources.size === 0
+        ? new Map<string, ManagedAsset>()
+        : await loadManagedAssets(options.repository, credential.accountId, state.generation)
+      const imageData = new Map<string, string>()
+      await Promise.all([...sources].map(async (source) => {
+        const value = await inlineManagedImage(
+          options.repository,
+          options.objectStore,
+          managedAssets,
+          credential.accountId,
+          state.generation,
+          source,
+        )
+        if (value !== undefined)
+          imageData.set(source, value)
+      }))
       const events: TaskIcsEvent[] = []
       for (const todo of projection.todos) {
         if (input.options.completed === 'hide' && todo.status === 'done')
@@ -425,10 +581,11 @@ export function createDeviceTodoModule(options: DeviceTodoModuleOptions): Device
           events.push({
             allDay: occurrence.allDay,
             description: `${todo.noteTitle} / ${todo.topicTitle}`,
+            descriptionHtml: todoDescriptionHtml(todo, imageData, parent),
             end: occurrence.end,
             parentContext: parent?.text,
             start: occurrence.start,
-            summary: todo.text,
+            summary: todoSummary(todo.text),
             uid: todoOccurrenceUid(todo.id, occurrence.key),
           })
         }

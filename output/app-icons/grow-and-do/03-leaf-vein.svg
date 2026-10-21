@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <title>Memorilo - Leaf Vein</title>
+  <desc>An open notebook with one leaf; a check-shaped leaf vein combines growth and action.</desc>
+  <rect x="64" y="64" width="896" height="896" rx="198" fill="#46644F"/>
+  <path d="M512 549V440" fill="none" stroke="#F7F0D7" stroke-width="28" stroke-linecap="round"/>
+  <path d="M438 455C411 337 502 267 641 280C652 399 572 480 438 455Z" fill="#F7F0D7"/>
+  <path d="M473 377L510 412L585 335" fill="none" stroke="#46644F" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M286 520Q391 485 500 553V743Q391 677 286 714Z" fill="#F7F0D7"/>
+  <path d="M524 553Q633 485 738 520V714Q633 677 524 743Z" fill="#F7F0D7"/>
+</svg>

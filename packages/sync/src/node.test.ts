@@ -9,9 +9,21 @@ import { peerIdFromPrivateKey } from '@libp2p/peer-id'
 import { multiaddr } from '@multiformats/multiaddr'
 import { Deferred, Duration, Effect, Exit, Schedule } from 'effect'
 import { afterEach, describe, expect, it } from 'vitest'
-import { JsonSyncJournal } from './journal'
+import { ProtobufSyncJournal } from './journal'
 import { createP2pNode } from './node'
 import { MemoryPairingStore, PairingManager } from './pairing'
+import { encodeLearningMutation } from './protobuf-codec'
+
+function learningMutationPayload(): Uint8Array {
+  return encodeLearningMutation({
+    createdAt: 1,
+    entityId: 'test-entity',
+    entityKind: 'tombstone',
+    mutationId: 'test-mutation',
+    operation: 'delete',
+    payload: { generation: 0, scopeId: 'test-scope', scopeKind: 'card', tombstoneId: 'test-tombstone' },
+  })
+}
 
 describe('p2p communication', () => {
   const handles: Array<{ close: () => Promise<void> }> = []
@@ -160,7 +172,7 @@ describe('p2p communication', () => {
       pairing: firstPairing,
       provider: {
         applyChanges: async () => undefined,
-        getChanges: async (namespace, since) => namespace === 'learning' && since.first !== 1 ? [{ deviceId: 'first', id: 'change-1', kind: 'learning-mutation', payload: '{}', sequence: 1 }] : [],
+        getChanges: async (namespace, since) => namespace === 'learning' && since.first !== 1 ? [{ deviceId: 'first', id: 'change-1', kind: 'learning-mutation', payload: learningMutationPayload(), sequence: 1 }] : [],
         getMembershipEpoch: () => 1,
         getVersionVector: (namespace): VersionVector => namespace === 'learning' ? { first: 1 } : {},
       },
@@ -219,7 +231,7 @@ describe('p2p communication', () => {
       deviceId: 'first',
       id: 'change-after-connect',
       kind: 'learning-mutation',
-      payload: '{}',
+      payload: learningMutationPayload(),
       sequence: 1,
     })
 
@@ -242,7 +254,7 @@ describe('p2p communication', () => {
       deviceId: 'first',
       id: 'barrier-change',
       kind: 'learning-mutation',
-      payload: '{}',
+      payload: learningMutationPayload(),
       sequence: 1,
     }
     const hooks: SyncSessionHooks = {
@@ -485,7 +497,7 @@ describe('p2p communication', () => {
             deviceId: 'first',
             id: 'second-change',
             kind: 'learning-mutation',
-            payload: '{}',
+            payload: learningMutationPayload(),
             sequence: 2,
           })
           void first?.notifyChangesAvailable()
@@ -500,7 +512,7 @@ describe('p2p communication', () => {
       deviceId: 'first',
       id: 'first-change',
       kind: 'learning-mutation',
-      payload: '{}',
+      payload: learningMutationPayload(),
       sequence: 1,
     })
 
@@ -527,7 +539,7 @@ describe('p2p communication', () => {
         },
         getChanges: async () => {
           requestedChanges += 1
-          return [{ deviceId: 'first', id: 'private-change', kind: 'learning-mutation', payload: '{}', sequence: 1 }]
+          return [{ deviceId: 'first', id: 'private-change', kind: 'learning-mutation', payload: learningMutationPayload(), sequence: 1 }]
         },
         getMembershipEpoch: () => 1,
         getVersionVector: () => ({ first: 1 }),
@@ -685,11 +697,11 @@ describe('p2p communication', () => {
       transport: 'websocket',
     })
     handles.push(client)
-    await waitFor(() => client.status().devices.some(device => device.peerId === serverKey.peerId && device.state === 'synced'))
+    await waitFor(() => client.status().devices.some(device => device.peerId === serverKey.peerId && device.state === 'synced'), 30_000)
 
     handles.splice(handles.indexOf(server), 1)
     await server.close()
-    await waitFor(() => client.status().devices.some(device => device.peerId === serverKey.peerId && device.state === 'paused'))
+    await waitFor(() => client.status().devices.some(device => device.peerId === serverKey.peerId && device.state === 'paused'), 30_000)
     await Effect.runPromise(Effect.sleep(Duration.millis(250)))
     server = await createP2pNode({
       discovery: false,
@@ -706,7 +718,7 @@ describe('p2p communication', () => {
     await client.notifyChangesAvailable()
     // A restarted WebSocket listener may spend several seconds rebinding on a busy CI runner.
     await waitFor(() => client.status().devices.some(device => device.peerId === serverKey.peerId && device.state === 'synced'), 30_000)
-  })
+  }, 90_000)
 
   it('discovers a paired peer without a user-provided multiaddress', async () => {
     const firstPairing = new PairingManager({ deviceId: 'first', deviceName: 'First', peerId: '' }, new MemoryPairingStore())
@@ -716,7 +728,7 @@ describe('p2p communication', () => {
     const received: string[] = []
     const firstProvider = {
       applyChanges: async () => undefined,
-      getChanges: async (namespace: 'notes' | 'learning', since: VersionVector) => namespace === 'learning' && since.first !== 1 ? [{ deviceId: 'first', id: 'mdns-change', kind: 'learning-mutation' as const, payload: '{}', sequence: 1 }] : [],
+      getChanges: async (namespace: 'notes' | 'learning', since: VersionVector) => namespace === 'learning' && since.first !== 1 ? [{ deviceId: 'first', id: 'mdns-change', kind: 'learning-mutation' as const, payload: learningMutationPayload(), sequence: 1 }] : [],
       getMembershipEpoch: () => 1,
       getVersionVector: (namespace: 'notes' | 'learning'): VersionVector => namespace === 'learning' ? { first: 1 } : {},
     }
@@ -764,10 +776,10 @@ describe('p2p communication', () => {
       deviceId,
       new PairingManager({ deviceId, deviceName: deviceId, peerId: '' }, new MemoryPairingStore()),
     ] as const))
-    const journals = new Map<string, JsonSyncJournal>()
+    const journals = new Map<string, ProtobufSyncJournal>()
     for (const deviceId of devices) {
       await pairings.get(deviceId)?.load()
-      const journal = new JsonSyncJournal(join(directory, `${deviceId}.json`))
+      const journal = new ProtobufSyncJournal(join(directory, `${deviceId}.bin`))
       await journal.load()
       await journal.setDeviceId(deviceId)
       journals.set(deviceId, journal)
@@ -817,7 +829,7 @@ describe('p2p communication', () => {
     const acceptedMiddle = await middlePairing.acceptInvitation(firstPairing.createInvitation())
     await firstPairing.completeInvitation(acceptedMiddle.response)
 
-    await journals.get('first')!.appendLocal({ id: 'relayed-change', kind: 'learning-mutation', payload: '{}' })
+    await journals.get('first')!.appendLocal({ id: 'relayed-change', kind: 'learning-mutation', payload: learningMutationPayload() })
     const middleAddress = middle.node.getMultiaddrs()[0]
     const lastAddress = last.node.getMultiaddrs()[0]
     const middlePeerId = middle.status().peerId

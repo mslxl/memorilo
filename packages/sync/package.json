@@ -24,10 +24,12 @@
     "@libp2p/tcp": "^11.0.26",
     "@libp2p/utils": "^7.4.0",
     "@libp2p/websockets": "^10.1.20",
+    "@memorilo/sync-protocol": "workspace:*",
     "@multiformats/multiaddr": "^13.0.3",
     "libp2p": "^3.3.8",
     "loro-crdt": "1.13.8",
     "main-event": "^1.0.5",
+    "protobufjs": "7.6.5",
     "uint8arraylist": "^3.0.2",
     "ws": "^8.21.1"
   },
